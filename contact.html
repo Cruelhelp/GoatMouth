@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Contact Us - GoatMouth</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800">
+        <nav class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <a href="index.html" class="flex items-center gap-3">
+                    <img src="assets/mainlogo.png" alt="GoatMouth" style="height: 60px; width: 60px;" class="logo-no-bg">
+                    <span class="text-xl font-bold" style="color: #00CB97;">GoatMouth</span>
+                </a>
+                <a href="index.html" class="px-6 py-3 rounded-xl font-semibold text-white border-2 hover:bg-opacity-20 transition" style="border-color: #00CB97; background-color: rgba(0, 203, 151, 0.1);">
+                    Back to Markets
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-12 max-w-3xl">
+        <!-- Hero Section -->
+        <div class="text-center mb-12">
+            <img src="assets/mainlogo.png" alt="GoatMouth" class="mx-auto mb-6 logo-no-bg" style="height: 120px; width: 120px;">
+            <h1 class="text-4xl font-bold mb-4">
+                Contact <span style="color: #00CB97;">GoatMouth</span>
+            </h1>
+            <p class="text-xl text-gray-400">
+                Have a question or found an issue? We're here to help!
+            </p>
+        </div>
+
+        <!-- Success Message (hidden by default) -->
+        <div id="success-message" class="hidden mb-8 p-6 rounded-xl border-2" style="border-color: #00CB97; background-color: rgba(0, 203, 151, 0.1);">
+            <div class="flex items-start gap-3">
+                <svg class="w-6 h-6 flex-shrink-0" style="color: #00CB97;" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <div>
+                    <h3 class="font-bold text-lg mb-1" style="color: #00CB97;">Message Sent Successfully!</h3>
+                    <p class="text-gray-300">We've received your message and will get back to you soon. You can track your message status in your account.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Form -->
+        <div class="bg-gray-800 rounded-2xl border-2 border-gray-700 p-8">
+            <form id="contact-form" class="space-y-6">
+                <!-- Name Field -->
+                <div>
+                    <label for="name" class="block text-sm font-semibold mb-2" style="color: #00CB97;">Your Name</label>
+                    <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        required
+                        class="w-full px-4 py-3 bg-gray-900 border-2 border-gray-600 rounded-xl text-white focus:border-teal-500 focus:outline-none transition"
+                        placeholder="John Doe">
+                </div>
+
+                <!-- Email Field -->
+                <div>
+                    <label for="email" class="block text-sm font-semibold mb-2" style="color: #00CB97;">Email Address</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        required
+                        class="w-full px-4 py-3 bg-gray-900 border-2 border-gray-600 rounded-xl text-white focus:border-teal-500 focus:outline-none transition"
+                        placeholder="john@example.com">
+                    <p class="text-xs text-gray-400 mt-1">We'll use this to reply to you</p>
+                </div>
+
+                <!-- Subject Field -->
+                <div>
+                    <label for="subject" class="block text-sm font-semibold mb-2" style="color: #00CB97;">Subject</label>
+                    <select
+                        id="subject"
+                        name="subject"
+                        required
+                        class="w-full px-4 py-3 bg-gray-900 border-2 border-gray-600 rounded-xl text-white focus:border-teal-500 focus:outline-none transition">
+                        <option value="">Select a topic...</option>
+                        <option value="Bug Report">🐛 Bug Report</option>
+                        <option value="Feature Request">💡 Feature Request</option>
+                        <option value="Account Issue">👤 Account Issue</option>
+                        <option value="Market Question">📊 Market Question</option>
+                        <option value="Payment/Balance">💰 Payment/Balance</option>
+                        <option value="General Inquiry">💬 General Inquiry</option>
+                        <option value="Other">📝 Other</option>
+                    </select>
+                </div>
+
+                <!-- Priority Field -->
+                <div>
+                    <label for="priority" class="block text-sm font-semibold mb-2" style="color: #00CB97;">Priority</label>
+                    <select
+                        id="priority"
+                        name="priority"
+                        required
+                        class="w-full px-4 py-3 bg-gray-900 border-2 border-gray-600 rounded-xl text-white focus:border-teal-500 focus:outline-none transition">
+                        <option value="normal">Normal - General questions</option>
+                        <option value="high">High - Account/payment issues</option>
+                        <option value="urgent">Urgent - Critical bugs</option>
+                        <option value="low">Low - Suggestions/feedback</option>
+                    </select>
+                </div>
+
+                <!-- Message Field -->
+                <div>
+                    <label for="message" class="block text-sm font-semibold mb-2" style="color: #00CB97;">Message</label>
+                    <textarea
+                        id="message"
+                        name="message"
+                        rows="6"
+                        required
+                        class="w-full px-4 py-3 bg-gray-900 border-2 border-gray-600 rounded-xl text-white focus:border-teal-500 focus:outline-none transition resize-none"
+                        placeholder="Describe your issue or question in detail..."></textarea>
+                    <p class="text-xs text-gray-400 mt-1">Minimum 10 characters</p>
+                </div>
+
+                <!-- Error Message -->
+                <div id="error-message" class="hidden p-4 rounded-lg bg-red-900 bg-opacity-20 border-2 border-red-500">
+                    <p class="text-red-400 text-sm"></p>
+                </div>
+
+                <!-- Submit Button -->
+                <button
+                    type="submit"
+                    id="submit-btn"
+                    class="w-full py-4 rounded-xl font-bold text-lg transition text-white"
+                    style="background-color: #00CB97;"
+                    onmouseover="this.style.backgroundColor='#00e5af'"
+                    onmouseout="this.style.backgroundColor='#00CB97'">
+                    Send Message
+                </button>
+            </form>
+        </div>
+
+        <!-- Info Cards -->
+        <div class="grid md:grid-cols-3 gap-6 mt-12">
+            <!-- Response Time -->
+            <div class="text-center p-6 bg-gray-800 rounded-xl border-2 border-gray-700">
+                <div class="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center" style="background-color: rgba(0, 203, 151, 0.2);">
+                    <svg class="w-6 h-6" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <h3 class="font-bold mb-2" style="color: #00CB97;">Response Time</h3>
+                <p class="text-sm text-gray-400">We typically respond within 24-48 hours</p>
+            </div>
+
+            <!-- Track Status -->
+            <div class="text-center p-6 bg-gray-800 rounded-xl border-2 border-gray-700">
+                <div class="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center" style="background-color: rgba(99, 27, 221, 0.2);">
+                    <svg class="w-6 h-6" style="color: #631BDD;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <h3 class="font-bold mb-2" style="color: #631BDD;">Track Status</h3>
+                <p class="text-sm text-gray-400">View message status in your profile</p>
+            </div>
+
+            <!-- Direct Support -->
+            <div class="text-center p-6 bg-gray-800 rounded-xl border-2 border-gray-700">
+                <div class="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center" style="background-color: rgba(255, 193, 7, 0.2);">
+                    <svg class="w-6 h-6" style="color: #FFC107;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <h3 class="font-bold mb-2" style="color: #FFC107;">Get Updates</h3>
+                <p class="text-sm text-gray-400">Receive replies via email & in-app</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 border-t border-gray-800 py-8 mt-16">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between text-sm text-gray-400">
+                <div class="flex items-center gap-4">
+                    <span>GoatMouth © 2025</span>
+                    <span>•</span>
+                    <a href="privacy.html" class="hover:text-white transition">Privacy</a>
+                    <span>•</span>
+                    <a href="terms.html" class="hover:text-white transition">Terms</a>
+                    <span>•</span>
+                    <a href="index.html" class="hover:text-white transition">Markets</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/contact.js"></script>
+</body>
+</html>
