@@ -104,6 +104,8 @@
         margin-bottom: 0.75rem;
     }
 
+}
+
 /* Mobile Bottom Navigation - Show ONLY on mobile */
 @media (max-width: 768px) {
     .mobile-bottom-nav {
