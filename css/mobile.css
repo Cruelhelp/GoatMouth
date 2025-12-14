@@ -183,30 +183,53 @@
     }
 }
 
-    /* Mobile footer - At the very bottom */
-    footer.fixed {
-        position: fixed;
-        bottom: 0; /* At the very bottom, below nav bar */
-        left: 0;
-        right: 0;
-        padding: 0.5rem 0.75rem !important;
-        background: rgba(17, 24, 39, 0.95) !important;
-        backdrop-filter: blur(10px);
-        border-top: 1px solid rgba(0, 203, 151, 0.15) !important;
-        border-bottom: none !important;
-        z-index: 40 !important;
-        transition: all 0.3s ease;
+/* Hide desktop footer on mobile */
+@media (max-width: 768px) {
+    footer {
+        display: none !important;
     }
 
-    /* Footer on non-main pages (no bottom nav) */
-    footer:not(.fixed) {
-        padding: 1rem 0.75rem !important;
-        background: rgba(17, 24, 39, 0.98) !important;
-        border-top: 1px solid rgba(0, 203, 151, 0.15) !important;
+    /* Fix loading spinner for mobile */
+    .spinner-container {
+        width: 100%;
+        max-width: 100%;
+        padding: 1rem;
+        box-sizing: border-box;
+        overflow: hidden;
     }
 
-    footer.fixed .container {
-        padding: 0 !important;
+    .inline-loader {
+        width: 100%;
+        max-width: 100%;
+        padding: 1rem !important;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .spinner-glow {
+        width: 40px !important;
+        height: 40px !important;
+        border-width: 3px !important;
+    }
+
+    .spinner-text {
+        font-size: 0.75rem !important;
+        text-align: center;
+        max-width: 90%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .page-loader {
+        padding: 1rem;
+        box-sizing: border-box;
+    }
+
+    .page-loader .spinner-container {
+        max-width: 100%;
+    }
+}
         max-width: 100% !important;
     }
 
@@ -346,13 +369,20 @@
 
     /* Mobile category nav */
     .category-nav-mobile {
+        display: block !important;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;
+        visibility: visible !important;
     }
 
     .category-nav-mobile::-webkit-scrollbar {
         display: none;
+    }
+
+    /* Ensure category nav is visible on mobile */
+    #category-nav {
+        display: block !important;
     }
 
     /* Swipe indicator */

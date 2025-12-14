@@ -7,6 +7,9 @@ class GoatMouth {
         this.currentCategory = 'all';
         this.isMobile = this.detectMobile();
         this.mobileMenuOpen = false;
+        this.mobileSearch = null;
+        this.marketOffset = 0; // For pagination
+        this.marketsPerPage = 25; // 5x5 grid
         this.init();
     }
 
@@ -38,6 +41,9 @@ class GoatMouth {
         }
 
         this.api = new GoatMouthAPI(window.supabaseClient);
+
+        // Initialize mobile search
+        this.mobileSearch = new MobileSearch(this);
 
         // Render header IMMEDIATELY (before auth check) for instant display
         this.renderNav();
@@ -243,11 +249,13 @@ class GoatMouth {
             }
 
             // Auth buttons
-            if (e.target.matches('[data-action="connect"]')) {
+            if (e.target.closest('[data-action="connect"]')) {
+                e.preventDefault();
                 this.showAuthModal();
             }
 
-            if (e.target.matches('[data-action="signout"]')) {
+            if (e.target.closest('[data-action="signout"]')) {
+                e.preventDefault();
                 this.handleSignOut();
             }
 
@@ -287,6 +295,7 @@ class GoatMouth {
     filterByCategory(category) {
         this.currentCategory = category;
         this.currentView = 'markets';
+        this.marketOffset = 0; // Reset pagination when changing category
         this.render();
     }
 
@@ -304,55 +313,39 @@ class GoatMouth {
         const mainNav = document.querySelector('#main-nav');
         const categoryNav = document.querySelector('#category-nav');
         const isAuth = !!this.currentUser;
+        const isOnIndexPage = window.location.pathname.endsWith('index.html') || window.location.pathname === '/' || window.location.pathname === '';
 
         // Mobile Navigation
         if (this.isMobile) {
+
             mainNav.innerHTML = `
                 <!-- Mobile Header - Redesigned -->
                 <div class="mobile-header bg-gray-900 border-b border-gray-800">
                     <!-- Top Bar -->
                     <div class="flex items-center justify-between px-3 py-2">
                         <!-- Logo -->
-                        <div class="flex-shrink-0 cursor-pointer" data-nav="markets">
-                            <img src="assets/mainlogo.png" alt="GoatMouth" class="mobile-logo logo-no-bg" style="height: 100px; width: 100px;">
-                        </div>
+                        ${isOnIndexPage ? `
+                            <div class="flex-shrink-0 cursor-pointer" data-nav="markets">
+                                <img src="assets/mainlogo.png" alt="GoatMouth" class="mobile-logo logo-no-bg" style="height: 100px; width: 100px;">
+                            </div>
+                        ` : `
+                            <a href="index.html" class="flex-shrink-0 cursor-pointer">
+                                <img src="assets/mainlogo.png" alt="GoatMouth" class="mobile-logo logo-no-bg" style="height: 100px; width: 100px;">
+                            </a>
+                        `}
 
                         <!-- Right Actions -->
                         <div class="flex items-center gap-2">
                             ${isAuth ? `
                                 <!-- Balance -->
-                                <div class="px-2.5 py-1.5 rounded-lg border" style="background: rgba(0, 203, 151, 0.1); border-color: rgba(0, 203, 151, 0.3);">
-                                    <span class="text-xs font-bold" style="color: #00CB97;" id="user-balance">$0.00</span>
+                                <div class="px-2 py-1 rounded-lg border" style="background: rgba(0, 203, 151, 0.1); border-color: rgba(0, 203, 151, 0.3); max-width: 85px; overflow: hidden;">
+                                    <span class="text-xs font-bold whitespace-nowrap" style="color: #00CB97; display: block; overflow: hidden; text-overflow: ellipsis;" id="mobile-user-balance">$0.00</span>
                                 </div>
-                            ` : ''}
-
-                            <!-- How It Works -->
-                            <a href="how-it-works.html" class="p-2 rounded-lg active:bg-gray-800 transition touch-target">
-                                <img src="assets/info.png" alt="Info" class="h-7 w-7">
-                            </a>
-
-                            ${isAuth ? `
-                                <!-- Hamburger Menu -->
-                                <button class="p-2 rounded-lg active:bg-gray-800 transition touch-target" onclick="app.toggleMobileMenu()">
-                                    <svg class="w-6 h-6" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16"/>
-                                    </svg>
-                                </button>
                             ` : `
                                 <!-- Login & Sign Up Buttons -->
-                                <button class="px-2.5 py-1.5 rounded-lg font-bold text-xs border-2" style="border-color: #00CB97; color: #00CB97;" data-action="connect">Login</button>
-                                <button class="px-2.5 py-1.5 rounded-lg font-bold text-xs" style="background: #00CB97; color: white;" data-action="connect">Sign Up</button>
+                                <button class="px-2 py-1.5 rounded-lg font-semibold text-xs border touch-target" style="border-color: #00CB97; color: #00CB97; min-height: 32px;" data-action="connect">Login</button>
+                                <button class="px-2 py-1.5 rounded-lg font-semibold text-xs touch-target" style="background: #00CB97; color: white; min-height: 32px;" data-action="connect">Sign Up</button>
                             `}
-                        </div>
-                    </div>
-
-                    <!-- Search Bar - Always Visible -->
-                    <div class="px-3 pb-2">
-                        <div class="relative">
-                            <input type="text" placeholder="Search markets..." class="w-full px-3 py-2 pl-10 bg-gray-800 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-gray-600" style="font-size: 14px;">
-                            <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
                         </div>
                     </div>
                 </div>
@@ -428,22 +421,23 @@ class GoatMouth {
 
             // Mobile Bottom Navigation - Show for ALL users (both auth and non-auth)
             const bottomNav = document.createElement('div');
+
             bottomNav.innerHTML = `
                 <nav class="mobile-bottom-nav">
                     <div class="mobile-bottom-nav-container">
-                        <a href="#" class="mobile-nav-item active" data-nav="markets">
+                        <a href="${isOnIndexPage ? '#' : 'index.html'}" class="mobile-nav-item ${isOnIndexPage ? 'active' : ''}" ${isOnIndexPage ? 'data-nav="markets"' : ''}>
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                             </svg>
                             <span>Home</span>
                         </a>
-                        <a href="voting.html" class="mobile-nav-item">
+                        <a href="voting.html" class="mobile-nav-item ${window.location.pathname.includes('voting.html') ? 'active' : ''}">
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                             <span>Voting</span>
                         </a>
-                        <button class="mobile-nav-item" onclick="document.querySelector('input[type=text]').focus()">
+                        <button class="mobile-nav-item" onclick="app.mobileSearch.show()">
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                             </svg>
@@ -458,9 +452,7 @@ class GoatMouth {
                             </button>
                         ` : `
                             <a href="how-it-works.html" class="mobile-nav-item">
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
+                                <img src="assets/info.png" alt="Info">
                                 <span>Info</span>
                             </a>
                         `}
@@ -477,9 +469,15 @@ class GoatMouth {
         mainNav.innerHTML = `
             <div class="container mx-auto px-4 py-1 flex items-center justify-between gap-6">
                 <!-- Left: Logo -->
-                <div class="flex-shrink-0 cursor-pointer" data-nav="markets">
-                    <img src="assets/mainlogo.png" alt="GoatMouth" style="height: 120px; width: 120px;" class="logo-no-bg">
-                </div>
+                ${isOnIndexPage ? `
+                    <div class="flex-shrink-0 cursor-pointer" data-nav="markets">
+                        <img src="assets/mainlogo.png" alt="GoatMouth" style="height: 120px; width: 120px;" class="logo-no-bg">
+                    </div>
+                ` : `
+                    <a href="index.html" class="flex-shrink-0 cursor-pointer">
+                        <img src="assets/mainlogo.png" alt="GoatMouth" style="height: 120px; width: 120px;" class="logo-no-bg">
+                    </a>
+                `}
 
                 <!-- Center: Search -->
                 <div class="flex-1 max-w-3xl">
@@ -515,9 +513,9 @@ class GoatMouth {
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
                                     </svg>
                                 </div>
-                                <div class="flex flex-col">
+                                <div class="flex flex-col" style="min-width: 0;">
                                     <span class="text-xs font-medium tracking-wide" style="color: rgba(0, 203, 151, 0.8);">BALANCE</span>
-                                    <span class="text-lg font-bold leading-none tracking-tight" style="color: #00CB97;" id="user-balance">$0.00</span>
+                                    <span class="text-lg font-bold leading-none tracking-tight whitespace-nowrap" style="color: #00CB97; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 120px;" id="desktop-user-balance">$0.00</span>
                                 </div>
                             </div>
                         </div>
@@ -718,6 +716,15 @@ class GoatMouth {
                            data-category="Culture">Culture</a>
                     </div>
                 </div>
+                <!-- Search Bar - Below Category Nav -->
+                <div class="px-3 py-2 bg-gray-900 border-b border-gray-800" id="mobile-search-bar" style="display: block !important; visibility: visible !important;">
+                    <div class="relative">
+                        <input type="text" id="mobile-search-input" placeholder="Search markets..." class="w-full px-3 py-2.5 pl-10 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-400 focus:outline-none focus:border-green-500" style="font-size: 16px;">
+                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                </div>
                 <style>
                     .category-nav-mobile > div::-webkit-scrollbar {
                         display: none;
@@ -769,7 +776,19 @@ class GoatMouth {
     async loadUserBalance() {
         try {
             const profile = await this.api.getProfile(this.currentUser.id);
-            document.getElementById('user-balance').textContent = `$${parseFloat(profile.balance).toFixed(2)}`;
+            const balanceText = `$${parseFloat(profile.balance).toFixed(2)}`;
+
+            // Update mobile balance
+            const mobileBalance = document.getElementById('mobile-user-balance');
+            if (mobileBalance) {
+                mobileBalance.textContent = balanceText;
+            }
+
+            // Update desktop balance
+            const desktopBalance = document.getElementById('desktop-user-balance');
+            if (desktopBalance) {
+                desktopBalance.textContent = balanceText;
+            }
         } catch (error) {
             console.error('Error loading balance:', error);
         }
@@ -833,14 +852,51 @@ class GoatMouth {
             }
 
             const categoryTitle = this.currentCategory === 'all' ? 'Active Markets' : `${this.currentCategory} Markets`;
+
+            // Pagination: Display markets in 5x5 grid (25 per page)
+            const startIndex = this.marketOffset;
+            const endIndex = startIndex + this.marketsPerPage;
+            const displayedMarkets = markets.slice(startIndex, endIndex);
+            const hasMore = markets.length > endIndex;
+            const hasPrevious = startIndex > 0;
+            const totalPages = Math.ceil(markets.length / this.marketsPerPage);
+            const currentPage = Math.floor(startIndex / this.marketsPerPage) + 1;
+
             container.innerHTML = `
                 <div class="mb-6 flex justify-between items-center">
-                    <h1 class="text-3xl font-bold">${categoryTitle}</h1>
+                    <div>
+                        <h1 class="text-3xl font-bold">${categoryTitle}</h1>
+                        <p class="text-sm text-gray-400 mt-1">Page ${currentPage} of ${totalPages} • ${markets.length} total markets</p>
+                    </div>
                     ${this.currentProfile && this.currentProfile.role === 'admin' ? '<button class="px-4 py-2 rounded-lg text-white transition" style="background-color: #00CB97;" onmouseover="this.style.backgroundColor=\'#00e5af\'" onmouseout="this.style.backgroundColor=\'#00CB97\'" onclick="app.showCreateMarketModal()">Create Market</button>' : ''}
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    ${markets.map(market => this.renderMarketCard(market)).join('')}
+
+                <!-- Responsive Grid Container -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-6">
+                    ${displayedMarkets.map(market => this.renderMarketCard(market)).join('')}
                 </div>
+
+                <!-- Pagination Controls -->
+                ${(hasPrevious || hasMore) ? `
+                    <div class="flex items-center justify-center gap-4">
+                        ${hasPrevious ? `
+                            <button class="px-6 py-3 rounded-lg font-bold text-white transition border border-gray-600 hover:bg-gray-700"
+                                    onclick="app.previousPage()">
+                                ← Previous
+                            </button>
+                        ` : ''}
+                        <span class="text-gray-400 font-medium">Page ${currentPage} of ${totalPages}</span>
+                        ${hasMore ? `
+                            <button class="px-6 py-3 rounded-lg font-bold text-white transition"
+                                    style="background-color: #00CB97;"
+                                    onmouseover="this.style.backgroundColor='#00e5af'"
+                                    onmouseout="this.style.backgroundColor='#00CB97'"
+                                    onclick="app.nextPage()">
+                                Next →
+                            </button>
+                        ` : ''}
+                    </div>
+                ` : ''}
             `;
         } catch (error) {
             container.innerHTML = `<div class="text-red-500">Error loading markets: ${error.message}</div>`;
@@ -848,120 +904,161 @@ class GoatMouth {
     }
 
     renderMarketCard(market) {
-        const yesPercent = (market.yes_price * 100).toFixed(1);
-        const noPercent = (market.no_price * 100).toFixed(1);
+        const yesPercent = (market.yes_price * 100).toFixed(0);
+        const noPercent = (market.no_price * 100).toFixed(0);
         const timeLeft = this.getTimeLeft(market.end_date);
 
+        // Calculate circular progress for visual indicator
+        const circumference = 2 * Math.PI * 45; // radius = 45
+        const yesStrokeDashoffset = circumference - (yesPercent / 100) * circumference;
+
         if (this.isMobile) {
-            // Mobile-optimized card - Polymarket style
+            // Mobile card with visual indicators
             return `
-                <div class="mobile-card bg-gray-800 rounded-xl p-5 border border-gray-700 active:scale-98 transition-all touch-target"
+                <div class="mobile-card bg-gray-800 rounded-xl overflow-hidden border border-gray-700 touch-target"
                      onclick="app.showMarketDetail('${market.id}')"
-                     style="min-height: 44px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+                     style="box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);"
+                     ontouchstart="this.style.transform='scale(0.97)'; this.style.boxShadow='0 1px 4px rgba(0,0,0,0.2), inset 0 0 0 1px rgba(0, 203, 151, 0.3)'; this.style.borderColor='rgba(0, 203, 151, 0.4)';"
+                     ontouchend="this.style.transform='scale(1)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.3)'; this.style.borderColor='rgb(55, 65, 81)';"
+                     ontouchcancel="this.style.transform='scale(1)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.3)'; this.style.borderColor='rgb(55, 65, 81)';">
 
-                    <!-- Category Badge -->
-                    ${market.category ? `
-                        <div class="mb-3">
-                            <span class="text-xs px-2.5 py-1 rounded-md font-medium" style="background-color: rgba(99, 27, 221, 0.15); color: #a78bfa;">${market.category}</span>
-                        </div>
-                    ` : ''}
+                    <!-- Colored Top Bar -->
+                    <div style="height: 4px; background: linear-gradient(90deg, #00CB97 0%, #00CB97 ${yesPercent}%, #ef4444 ${yesPercent}%, #ef4444 100%);"></div>
 
-                    <!-- Title -->
-                    <h3 class="text-base font-bold mb-3 leading-tight line-clamp-2" style="color: #ffffff;">${market.title}</h3>
-
-                    <!-- Probability Display -->
-                    <div class="mb-4">
-                        <div class="flex items-center gap-4 mb-2">
-                            <div class="flex items-baseline gap-1">
-                                <span class="text-xs font-semibold uppercase tracking-wide" style="color: #00CB97;">Yes</span>
-                                <span class="text-xl font-bold" style="color: #00CB97;">${yesPercent}%</span>
+                    <div class="p-4">
+                        <!-- Category Badge -->
+                        ${market.category ? `
+                            <div class="mb-3">
+                                <span class="text-xs px-2.5 py-1 rounded-full font-semibold" style="background-color: rgba(0, 203, 151, 0.15); color: #00CB97;">${market.category}</span>
                             </div>
-                            <div class="flex items-baseline gap-1">
-                                <span class="text-xs font-semibold uppercase tracking-wide" style="color: #ef4444;">No</span>
-                                <span class="text-xl font-bold" style="color: #ef4444;">${noPercent}%</span>
+                        ` : ''}
+
+                        <!-- Title -->
+                        <h3 class="text-base font-bold mb-4 leading-tight line-clamp-2" style="color: #ffffff;">${market.title}</h3>
+
+                        <!-- Visual Odds Display -->
+                        <div class="flex items-center justify-between mb-4">
+                            <!-- YES Side -->
+                            <div class="flex-1 text-center">
+                                <div class="mb-2">
+                                    <div class="text-3xl font-black" style="color: #00CB97;">${yesPercent}%</div>
+                                    <div class="text-xs font-semibold uppercase tracking-wider mt-1" style="color: #00CB97;">YES</div>
+                                </div>
+                            </div>
+
+                            <!-- Divider with VS -->
+                            <div class="px-3">
+                                <div class="text-xs font-bold text-gray-500">VS</div>
+                            </div>
+
+                            <!-- NO Side -->
+                            <div class="flex-1 text-center">
+                                <div class="mb-2">
+                                    <div class="text-3xl font-black" style="color: #ef4444;">${noPercent}%</div>
+                                    <div class="text-xs font-semibold uppercase tracking-wider mt-1" style="color: #ef4444;">NO</div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Progress Bar -->
-                        <div class="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
-                            <div class="h-full transition-all duration-300"
-                                 style="width: ${yesPercent}%; background: linear-gradient(90deg, #00CB97 0%, #00e5af 100%);"></div>
+                        <!-- Animated Progress Bar -->
+                        <div class="w-full bg-gray-900 rounded-full h-2 overflow-hidden mb-4" style="box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);">
+                            <div class="h-full transition-all duration-500 ease-out"
+                                 style="width: ${yesPercent}%; background: linear-gradient(90deg, #00CB97 0%, #00e5af 100%); box-shadow: 0 0 8px rgba(0, 203, 151, 0.5);"></div>
                         </div>
-                    </div>
 
-                    <!-- Footer Info -->
-                    <div class="flex justify-between text-sm">
-                        <div class="flex items-center gap-1">
-                            <svg class="h-3.5 w-3.5" style="color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                            </svg>
-                            <span class="font-medium" style="color: #9ca3af;">$${parseFloat(market.total_volume).toLocaleString()}</span>
-                        </div>
-                        <div class="flex items-center gap-1">
-                            <svg class="h-3.5 w-3.5" style="color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                            <span class="font-medium" style="color: #9ca3af;">${timeLeft}</span>
+                        <!-- Footer Info -->
+                        <div class="flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-1.5 px-2 py-1 rounded-md" style="background: rgba(0, 203, 151, 0.1);">
+                                <svg class="h-3.5 w-3.5" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                                </svg>
+                                <span class="font-bold" style="color: #00CB97;">$${parseFloat(market.total_volume).toLocaleString()}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 text-gray-400">
+                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span class="font-medium">${timeLeft}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             `;
         } else {
-            // Desktop card - Polymarket style
+            // Desktop card - Compact 5-column layout
             return `
-                <div class="bg-gray-800 rounded-xl p-5 transition-all cursor-pointer border border-gray-700 hover:border-gray-600"
+                <div class="bg-gray-800 rounded-lg overflow-hidden cursor-pointer border border-gray-700"
                      onclick="app.showMarketDetail('${market.id}')"
-                     style="box-shadow: 0 1px 3px rgba(0,0,0,0.2);"
-                     onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)'; this.style.transform='translateY(-2px)';"
-                     onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.2)'; this.style.transform='translateY(0)';">
+                     style="box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);"
+                     onmouseover="this.style.boxShadow='0 8px 24px rgba(0, 203, 151, 0.15), 0 4px 12px rgba(0,0,0,0.4)'; this.style.transform='translateY(-4px) scale(1.01)'; this.style.borderColor='rgba(0, 203, 151, 0.5)';"
+                     onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.2)'; this.style.transform='translateY(0) scale(1)'; this.style.borderColor='rgb(55, 65, 81)';"
+                     onmousedown="this.style.transform='translateY(-2px) scale(0.99)'; this.style.boxShadow='0 4px 12px rgba(0, 203, 151, 0.2)';"
+                     onmouseup="this.style.transform='translateY(-4px) scale(1.01)'; this.style.boxShadow='0 8px 24px rgba(0, 203, 151, 0.15), 0 4px 12px rgba(0,0,0,0.4)';">
 
-                    <!-- Category Badge -->
-                    ${market.category ? `
-                        <div class="mb-3">
-                            <span class="text-xs px-2.5 py-1 rounded-md font-medium" style="background-color: rgba(99, 27, 221, 0.15); color: #a78bfa;">${market.category}</span>
+                    <!-- Colored Top Bar -->
+                    <div style="height: 3px; background: linear-gradient(90deg, #00CB97 0%, #00CB97 ${yesPercent}%, #ef4444 ${yesPercent}%, #ef4444 100%);"></div>
+
+                    <!-- Image Placeholder -->
+                    ${market.image_url ? `
+                        <div style="height: 100px; background: url('${market.image_url}') center/cover; position: relative;">
+                            <div style="position: absolute; top: 8px; left: 8px;">
+                                ${market.category ? `<span class="text-xs px-2 py-1 rounded-full font-semibold" style="background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); color: #00CB97; border: 1px solid rgba(0, 203, 151, 0.3); font-size: 10px;">${market.category}</span>` : ''}
+                            </div>
                         </div>
-                    ` : ''}
+                    ` : `
+                        <div style="height: 100px; background: linear-gradient(135deg, #1f2937 0%, #111827 100%); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                            <div style="position: absolute; inset: 0; opacity: 0.03; background-image: radial-gradient(circle, #00CB97 1px, transparent 1px); background-size: 15px 15px;"></div>
+                            <div style="position: absolute; top: 8px; left: 8px;">
+                                ${market.category ? `<span class="text-xs px-2 py-1 rounded-full font-semibold" style="background-color: rgba(0, 203, 151, 0.15); color: #00CB97; border: 1px solid rgba(0, 203, 151, 0.3); font-size: 10px;">${market.category}</span>` : ''}
+                            </div>
+                            <svg width="60" height="60" style="transform: rotate(-90deg);">
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3"/>
+                                <circle cx="30" cy="30" r="26" fill="none" stroke="#00CB97" stroke-width="3"
+                                        stroke-dasharray="${2 * Math.PI * 26}"
+                                        stroke-dashoffset="${2 * Math.PI * 26 - (yesPercent / 100) * 2 * Math.PI * 26}"
+                                        stroke-linecap="round"
+                                        style="filter: drop-shadow(0 0 4px rgba(0, 203, 151, 0.6)); transition: stroke-dashoffset 0.5s ease;"/>
+                                <text x="30" y="30" text-anchor="middle" dy="5" font-size="16" font-weight="bold" fill="#00CB97" transform="rotate(90 30 30)">${yesPercent}%</text>
+                            </svg>
+                        </div>
+                    `}
 
-                    <!-- Title -->
-                    <h3 class="text-lg font-bold mb-3 leading-snug line-clamp-2" style="color: #ffffff;">${market.title}</h3>
+                    <div class="p-3">
+                        <!-- Title -->
+                        <h3 class="text-sm font-bold mb-2 leading-tight line-clamp-2" style="color: #ffffff; min-height: 40px;">${market.title}</h3>
 
-                    <!-- Probability Display -->
-                    <div class="mb-4">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="flex items-center gap-3 flex-1">
-                                <div class="flex items-baseline gap-1.5">
-                                    <span class="text-xs font-semibold uppercase tracking-wide" style="color: #00CB97;">Yes</span>
-                                    <span class="text-2xl font-bold" style="color: #00CB97;">${yesPercent}%</span>
-                                </div>
-                                <div class="flex items-baseline gap-1.5">
-                                    <span class="text-xs font-semibold uppercase tracking-wide" style="color: #ef4444;">No</span>
-                                    <span class="text-2xl font-bold" style="color: #ef4444;">${noPercent}%</span>
-                                </div>
+                        <!-- Visual Odds Display -->
+                        <div class="flex items-stretch mb-2 rounded-md overflow-hidden" style="height: 50px;">
+                            <div class="flex-1 flex flex-col items-center justify-center" style="background: linear-gradient(135deg, rgba(0, 203, 151, 0.15) 0%, rgba(0, 203, 151, 0.05) 100%); border-right: 1px solid rgba(0, 203, 151, 0.2);">
+                                <div class="text-2xl font-black" style="color: #00CB97; text-shadow: 0 0 15px rgba(0, 203, 151, 0.3);">${yesPercent}%</div>
+                                <div class="text-xs font-bold uppercase" style="color: #00CB97; opacity: 0.7; font-size: 9px;">YES</div>
+                            </div>
+                            <div class="flex-1 flex flex-col items-center justify-center" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%);">
+                                <div class="text-2xl font-black" style="color: #ef4444; text-shadow: 0 0 15px rgba(239, 68, 68, 0.3);">${noPercent}%</div>
+                                <div class="text-xs font-bold uppercase" style="color: #ef4444; opacity: 0.7; font-size: 9px;">NO</div>
                             </div>
                         </div>
 
                         <!-- Progress Bar -->
-                        <div class="w-full bg-gray-700 rounded-full h-1.5 overflow-hidden">
-                            <div class="h-full transition-all duration-300"
-                                 style="width: ${yesPercent}%; background: linear-gradient(90deg, #00CB97 0%, #00e5af 100%);"></div>
+                        <div class="w-full bg-gray-900 rounded-full h-1.5 overflow-hidden mb-2" style="box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);">
+                            <div class="h-full transition-all duration-500 ease-out"
+                                 style="width: ${yesPercent}%; background: linear-gradient(90deg, #00CB97 0%, #00e5af 100%); box-shadow: 0 0 8px rgba(0, 203, 151, 0.5);"></div>
                         </div>
-                    </div>
 
-                    <!-- Footer Info -->
-                    <div class="flex items-center justify-between text-sm">
-                        <div class="flex items-center gap-4">
-                            <div class="flex items-center gap-1.5">
-                                <svg class="h-4 w-4" style="color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <!-- Footer -->
+                        <div class="flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-1 px-2 py-1 rounded" style="background: rgba(0, 203, 151, 0.1);">
+                                <svg class="h-3 w-3" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
                                 </svg>
-                                <span class="font-medium" style="color: #9ca3af;">$${parseFloat(market.total_volume).toLocaleString()}</span>
+                                <span class="font-bold" style="color: #00CB97; font-size: 11px;">$${parseFloat(market.total_volume/1000).toFixed(1)}K</span>
                             </div>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <svg class="h-4 w-4" style="color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                            <span class="font-medium" style="color: #9ca3af;">${timeLeft}</span>
+                            <div class="flex items-center gap-1 text-gray-400">
+                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span class="font-medium" style="font-size: 11px;">${timeLeft}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1795,6 +1892,11 @@ class GoatMouth {
 
     async handleSignOut() {
         try {
+            // Close mobile menu if open
+            if (this.mobileMenuOpen) {
+                this.toggleMobileMenu();
+            }
+
             // Sign out from Supabase
             await this.api.signOut();
 
@@ -1824,8 +1926,136 @@ class GoatMouth {
         this.marketDetailModal.show();
     }
 
+    nextPage() {
+        this.marketOffset += this.marketsPerPage;
+        this.renderMarketsView();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    previousPage() {
+        this.marketOffset = Math.max(0, this.marketOffset - this.marketsPerPage);
+        this.renderMarketsView();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     showCreateMarketModal() {
-        alert('Create market functionality coming soon!');
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        modal.innerHTML = `
+            <div class="bg-gray-800 rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold" style="color: #00CB97;">Create New Market</h2>
+                    <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white transition">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <form id="createMarketForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Title *</label>
+                        <input type="text" name="title" required
+                               class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-green-500"
+                               placeholder="Will Bitcoin reach $100k in 2025?">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Description</label>
+                        <textarea name="description" rows="3"
+                                  class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-green-500"
+                                  placeholder="Market details and resolution criteria..."></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Category *</label>
+                        <select name="category" required
+                                class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-green-500">
+                            <option value="">Select category</option>
+                            <option value="Politics">Politics</option>
+                            <option value="Sports">Sports</option>
+                            <option value="Crypto">Crypto</option>
+                            <option value="Finance">Finance</option>
+                            <option value="Technology">Technology</option>
+                            <option value="Science">Science</option>
+                            <option value="Entertainment">Entertainment</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Image URL (optional)</label>
+                        <input type="url" name="image_url"
+                               class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-green-500"
+                               placeholder="https://example.com/image.jpg">
+                        <p class="text-xs text-gray-400 mt-1">Enter a direct URL to an image for this market</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Initial YES Price *</label>
+                            <input type="number" name="yes_price" step="0.01" min="0" max="1" value="0.50" required
+                                   class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-green-500">
+                            <p class="text-xs text-gray-400 mt-1">0.00 - 1.00 (50% = 0.50)</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">End Date *</label>
+                            <input type="datetime-local" name="end_date" required
+                                   class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-green-500">
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 pt-4">
+                        <button type="submit"
+                                class="flex-1 px-6 py-3 rounded-lg font-bold text-white transition"
+                                style="background-color: #00CB97;"
+                                onmouseover="this.style.backgroundColor='#00e5af'"
+                                onmouseout="this.style.backgroundColor='#00CB97'">
+                            Create Market
+                        </button>
+                        <button type="button" onclick="this.closest('.fixed').remove()"
+                                class="px-6 py-3 rounded-lg font-bold text-gray-400 border border-gray-600 hover:bg-gray-700 transition">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Handle form submission
+        document.getElementById('createMarketForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const marketData = {
+                title: formData.get('title'),
+                description: formData.get('description'),
+                category: formData.get('category'),
+                image_url: formData.get('image_url') || null,
+                yes_price: parseFloat(formData.get('yes_price')),
+                no_price: 1 - parseFloat(formData.get('yes_price')),
+                end_date: formData.get('end_date'),
+                status: 'active',
+                total_volume: 0
+            };
+
+            try {
+                const { data, error } = await this.api.db
+                    .from('markets')
+                    .insert([marketData])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                alert('Market created successfully!');
+                modal.remove();
+                this.render(); // Refresh the view
+            } catch (error) {
+                alert('Error creating market: ' + error.message);
+            }
+        });
     }
 }
 

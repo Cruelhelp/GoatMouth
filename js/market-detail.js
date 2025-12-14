@@ -38,109 +38,109 @@ class MarketDetailModal {
         const timeLeft = this.app.getTimeLeft(market.end_date);
 
         return `
-            <div class="bg-gray-800 rounded-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto mobile-market-modal" style="margin: 1rem;">
                 <!-- Header -->
-                <div class="p-6 border-b border-gray-700">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex-1">
+                <div class="p-4 md:p-6 border-b border-gray-700">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex-1 pr-2">
                             ${market.category ? `<span class="text-xs px-2 py-1 rounded mb-2 inline-block" style="background-color: #631BDD;">${market.category}</span>` : ''}
-                            <h2 class="text-2xl font-bold">${market.title}</h2>
+                            <h2 class="text-lg md:text-2xl font-bold leading-tight">${market.title}</h2>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <button onclick="navigator.share ? navigator.share({title: '${market.title.replace(/'/g, "\\'")}', text: 'Check out this market on GoatMouth!', url: window.location.href + '?market=${market.id}'}) : (navigator.clipboard.writeText(window.location.href + '?market=${market.id}').then(() => alert('Link copied to clipboard!')))" class="p-2 rounded-lg hover:bg-gray-700 transition" title="Share market">
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                            <button onclick="navigator.share ? navigator.share({title: '${market.title.replace(/'/g, "\\'")}', text: 'Check out this market on GoatMouth!', url: window.location.href + '?market=${market.id}'}) : (navigator.clipboard.writeText(window.location.href + '?market=${market.id}').then(() => alert('Link copied to clipboard!')))" class="p-2 rounded-lg hover:bg-gray-700 transition touch-target" title="Share market">
                                 <svg class="h-5 w-5" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
                                 </svg>
                             </button>
-                            <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                            <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white text-3xl leading-none p-1 touch-target">&times;</button>
                         </div>
                     </div>
-                    <p class="text-gray-300">${market.description || ''}</p>
-                    <div class="mt-4 flex flex-wrap items-center gap-4 text-sm text-gray-400">
+                    <p class="text-sm md:text-base text-gray-300 mb-3">${market.description || ''}</p>
+                    <div class="flex flex-wrap items-center gap-2 text-xs md:text-sm text-gray-400">
                         ${market.creator ? `
-                            <div class="flex items-center gap-2">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="flex items-center gap-1">
+                                <svg class="h-3 w-3 md:h-4 md:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                                 </svg>
                                 <span style="color: #00CB97;">@${market.creator.username}</span>
                             </div>
-                            <span>•</span>
+                            <span class="hidden md:inline">•</span>
                         ` : ''}
-                        <span>Volume: $${parseFloat(market.total_volume).toFixed(0)}</span>
-                        <span>•</span>
-                        <span>${timeLeft}</span>
-                        <span>•</span>
-                        <span>Ends: ${new Date(market.end_date).toLocaleDateString()}</span>
+                        <span>Vol: $${parseFloat(market.total_volume).toFixed(0)}</span>
+                        <span class="hidden md:inline">•</span>
+                        <span class="hidden md:inline">${timeLeft}</span>
+                        <span class="hidden md:inline">•</span>
+                        <span>Ends: ${new Date(market.end_date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}</span>
                     </div>
                 </div>
 
                 <!-- Prices -->
-                <div class="p-6 border-b border-gray-700">
-                    <h3 class="font-semibold mb-4">Current Prices</h3>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-green-900 bg-opacity-20 border border-green-500 rounded-lg p-4">
-                            <div class="text-green-400 font-semibold mb-2">YES</div>
-                            <div class="text-3xl font-bold">${yesPercent}¢</div>
-                            <div class="text-sm text-gray-400 mt-2">${(100 - parseFloat(yesPercent)).toFixed(1)}% return</div>
+                <div class="p-4 md:p-6 border-b border-gray-700">
+                    <h3 class="font-semibold mb-3 text-sm md:text-base">Current Prices</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-green-900 bg-opacity-20 border border-green-500 rounded-lg p-3 md:p-4">
+                            <div class="text-green-400 font-semibold mb-1 text-sm">YES</div>
+                            <div class="text-2xl md:text-3xl font-bold">${yesPercent}¢</div>
+                            <div class="text-xs md:text-sm text-gray-400 mt-1">${(100 - parseFloat(yesPercent)).toFixed(1)}% return</div>
                         </div>
-                        <div class="bg-red-900 bg-opacity-20 border border-red-500 rounded-lg p-4">
-                            <div class="text-red-400 font-semibold mb-2">NO</div>
-                            <div class="text-3xl font-bold">${noPercent}¢</div>
-                            <div class="text-sm text-gray-400 mt-2">${(100 - parseFloat(noPercent)).toFixed(1)}% return</div>
+                        <div class="bg-red-900 bg-opacity-20 border border-red-500 rounded-lg p-3 md:p-4">
+                            <div class="text-red-400 font-semibold mb-1 text-sm">NO</div>
+                            <div class="text-2xl md:text-3xl font-bold">${noPercent}¢</div>
+                            <div class="text-xs md:text-sm text-gray-400 mt-1">${(100 - parseFloat(noPercent)).toFixed(1)}% return</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Betting Interface -->
                 ${this.app.currentUser ? `
-                    <div class="p-6">
-                        <h3 class="font-semibold mb-4">Place Your Bet</h3>
+                    <div class="p-4 md:p-6">
+                        <h3 class="font-semibold mb-3 text-sm md:text-base">Place Your Bet</h3>
 
                         <!-- Outcome Selection -->
-                        <div class="mb-4">
-                            <label class="block text-sm text-gray-400 mb-2">Select Outcome</label>
-                            <div class="grid grid-cols-2 gap-3">
+                        <div class="mb-3">
+                            <label class="block text-xs md:text-sm text-gray-400 mb-2">Select Outcome</label>
+                            <div class="grid grid-cols-2 gap-2 md:gap-3">
                                 <button
                                     data-outcome="yes"
-                                    class="outcome-btn px-4 py-3 border-2 rounded-lg transition ${this.selectedOutcome === 'yes' ? 'border-green-500 bg-green-900 bg-opacity-20' : 'border-gray-600 hover:border-green-500'}"
+                                    class="outcome-btn px-3 py-2 md:px-4 md:py-3 border-2 rounded-lg transition touch-target ${this.selectedOutcome === 'yes' ? 'border-green-500 bg-green-900 bg-opacity-20' : 'border-gray-600 hover:border-green-500'}"
                                 >
-                                    <span class="block font-semibold">YES</span>
-                                    <span class="block text-sm">${yesPercent}¢</span>
+                                    <span class="block font-semibold text-sm md:text-base">YES</span>
+                                    <span class="block text-xs md:text-sm">${yesPercent}¢</span>
                                 </button>
                                 <button
                                     data-outcome="no"
-                                    class="outcome-btn px-4 py-3 border-2 rounded-lg transition ${this.selectedOutcome === 'no' ? 'border-red-500 bg-red-900 bg-opacity-20' : 'border-gray-600 hover:border-red-500'}"
+                                    class="outcome-btn px-3 py-2 md:px-4 md:py-3 border-2 rounded-lg transition touch-target ${this.selectedOutcome === 'no' ? 'border-red-500 bg-red-900 bg-opacity-20' : 'border-gray-600 hover:border-red-500'}"
                                 >
-                                    <span class="block font-semibold">NO</span>
-                                    <span class="block text-sm">${noPercent}¢</span>
+                                    <span class="block font-semibold text-sm md:text-base">NO</span>
+                                    <span class="block text-xs md:text-sm">${noPercent}¢</span>
                                 </button>
                             </div>
                         </div>
 
                         <!-- Amount Input -->
-                        <div class="mb-4">
-                            <label class="block text-sm text-gray-400 mb-2">Bet Amount ($)</label>
+                        <div class="mb-3">
+                            <label class="block text-xs md:text-sm text-gray-400 mb-2">Bet Amount ($)</label>
                             <input
                                 type="number"
                                 step="0.01"
                                 min="1"
                                 placeholder="10.00"
-                                class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg" style="focus:border-color: #00CB97;"
+                                class="w-full px-3 py-2 md:px-4 md:py-2 bg-gray-700 border border-gray-600 rounded-lg text-base touch-target" style="font-size: 16px; focus:border-color: #00CB97;"
                                 id="bet-amount"
                             >
                         </div>
 
                         <!-- Bet Summary -->
-                        <div id="bet-summary" class="mb-4 p-4 bg-gray-700 rounded-lg hidden">
-                            <div class="flex justify-between text-sm mb-2">
+                        <div id="bet-summary" class="mb-3 p-3 md:p-4 bg-gray-700 rounded-lg hidden">
+                            <div class="flex justify-between text-xs md:text-sm mb-2">
                                 <span class="text-gray-400">Shares</span>
                                 <span id="shares-amount">-</span>
                             </div>
-                            <div class="flex justify-between text-sm mb-2">
+                            <div class="flex justify-between text-xs md:text-sm mb-2">
                                 <span class="text-gray-400">Avg Cost</span>
                                 <span id="avg-cost">-</span>
                             </div>
-                            <div class="flex justify-between font-semibold">
+                            <div class="flex justify-between font-semibold text-sm md:text-base">
                                 <span>Potential Return</span>
                                 <span id="potential-return" class="text-green-400">-</span>
                             </div>
@@ -150,51 +150,52 @@ class MarketDetailModal {
                         <button
                             id="place-bet-btn"
                             disabled
-                            class="w-full px-6 py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed text-white transition" style="background-color: #00CB97;" onmouseover="if(!this.disabled) this.style.backgroundColor='#00e5af'" onmouseout="if(!this.disabled) this.style.backgroundColor='#00CB97'"
+                            class="w-full px-4 py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed text-white transition touch-target text-sm md:text-base" style="background-color: #00CB97; min-height: 44px;" onmouseover="if(!this.disabled) this.style.backgroundColor='#00e5af'" onmouseout="if(!this.disabled) this.style.backgroundColor='#00CB97'"
                         >
                             Place Bet
                         </button>
                     </div>
                 ` : `
-                    <div class="p-6 text-center">
-                        <p class="text-gray-400 mb-4">Sign in to place bets</p>
-                        <button onclick="app.showAuthModal(); this.closest('.fixed').remove();" class="px-6 py-2 rounded-lg text-white transition" style="background-color: #00CB97;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'">
+                    <div class="p-4 md:p-6 text-center">
+                        <p class="text-gray-400 mb-3 text-sm md:text-base">Sign in to place bets</p>
+                        <button onclick="app.showAuthModal(); this.closest('.fixed').remove();" class="px-4 py-2 rounded-lg text-white transition touch-target text-sm md:text-base" style="background-color: #00CB97; min-height: 44px;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'">
                             Sign In
                         </button>
                     </div>
                 `}
 
                 <!-- Comments Section -->
-                <div class="p-6 border-t border-gray-700">
-                    <h3 class="font-semibold mb-4 text-lg">Discussion</h3>
+                <div class="p-4 md:p-6 border-t border-gray-700">
+                    <h3 class="font-semibold mb-3 text-base md:text-lg">Discussion</h3>
 
                     <!-- Comment Form -->
                     ${this.app.currentUser ? `
-                        <div class="mb-6">
+                        <div class="mb-4">
                             <textarea
                                 id="comment-input"
                                 placeholder="Share your thoughts on this market..."
-                                class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-gray-500 resize-none"
+                                class="w-full px-3 py-2 md:px-4 md:py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-gray-500 resize-none text-sm md:text-base"
                                 rows="3"
                                 maxlength="1000"
+                                style="font-size: 16px;"
                             ></textarea>
                             <div class="flex justify-between items-center mt-2">
                                 <span class="text-xs text-gray-400">Max 1000 characters</span>
                                 <button
                                     id="post-comment-btn"
-                                    class="px-4 py-2 rounded-lg font-semibold transition text-white"
-                                    style="background-color: #00CB97;"
+                                    class="px-3 py-2 md:px-4 md:py-2 rounded-lg font-semibold transition text-white touch-target text-xs md:text-sm"
+                                    style="background-color: #00CB97; min-height: 36px;"
                                     onmouseover="this.style.backgroundColor='#00e5af'"
                                     onmouseout="this.style.backgroundColor='#00CB97'"
                                 >
-                                    Post Comment
+                                    Post
                                 </button>
                             </div>
                         </div>
                     ` : `
-                        <div class="mb-6 p-4 bg-gray-700 rounded-lg text-center">
-                            <p class="text-gray-400 mb-2">Sign in to join the discussion</p>
-                            <button onclick="app.showAuthModal(); this.closest('.fixed').remove();" class="text-sm px-4 py-2 rounded-lg text-white transition" style="background-color: #00CB97;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'">
+                        <div class="mb-4 p-3 md:p-4 bg-gray-700 rounded-lg text-center">
+                            <p class="text-gray-400 mb-2 text-sm md:text-base">Sign in to join the discussion</p>
+                            <button onclick="app.showAuthModal(); this.closest('.fixed').remove();" class="text-xs md:text-sm px-3 py-2 md:px-4 md:py-2 rounded-lg text-white transition touch-target" style="background-color: #00CB97; min-height: 36px;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'">
                                 Sign In
                             </button>
                         </div>
@@ -202,7 +203,7 @@ class MarketDetailModal {
 
                     <!-- Comments List -->
                     <div id="comments-list">
-                        <div class="text-center py-4 text-gray-400">
+                        <div class="text-center py-4 text-gray-400 text-sm">
                             Loading comments...
                         </div>
                     </div>
@@ -336,24 +337,24 @@ class MarketDetailModal {
         const isCurrentUser = this.app.currentUser && comment.user_id === this.app.currentUser.id;
 
         return `
-            <div class="mb-4 p-4 bg-gray-700 rounded-lg" data-comment-id="${comment.id}">
+            <div class="mb-3 p-3 md:p-4 bg-gray-700 rounded-lg" data-comment-id="${comment.id}">
                 <div class="flex items-start justify-between mb-2">
                     <div class="flex items-center gap-2">
-                        <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="h-6 w-6 md:h-8 md:w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                         </svg>
                         <div>
-                            <div class="font-semibold" style="color: #00CB97;">@${comment.user.username}</div>
+                            <div class="font-semibold text-sm md:text-base" style="color: #00CB97;">@${comment.user.username}</div>
                             <div class="text-xs text-gray-400">${timeAgo}</div>
                         </div>
                     </div>
                     ${isCurrentUser ? `
-                        <button onclick="event.stopPropagation(); app.marketDetailModal.deleteComment('${comment.id}')" class="text-xs text-red-400 hover:text-red-300">
+                        <button onclick="event.stopPropagation(); app.marketDetailModal.deleteComment('${comment.id}')" class="text-xs text-red-400 hover:text-red-300 touch-target p-1">
                             Delete
                         </button>
                     ` : ''}
                 </div>
-                <p class="text-gray-200 whitespace-pre-wrap">${this.escapeHtml(comment.content)}</p>
+                <p class="text-gray-200 whitespace-pre-wrap text-sm md:text-base">${this.escapeHtml(comment.content)}</p>
             </div>
         `;
     }
