@@ -901,8 +901,8 @@ class GoatMouth {
                                 <span class="pm-dot"></span>
                                 <span class="text-gray-300 text-sm">Live, updated in real-time</span>
                             </div>
-                            <h1 class="pm-hero__headline">Polymarket-grade trading without losing the GoatMouth edge</h1>
-                            <p class="text-gray-200 text-base md:text-lg leading-relaxed max-w-2xl">Refined typography, glass panels, and chip-driven rails mirror the polish of Polymarket and Kalshi while keeping GoatMouth’s bold palette. Every touch target and stat is tuned for fast scans on mobile and desktop.</p>
+                            <h1 class="pm-hero__headline">Trade narratives like Polymarket and Kalshi</h1>
+                            <p class="text-gray-300 text-base md:text-lg leading-relaxed max-w-2xl">We kept the GoatMouth energy but tightened the spacing, readability, and touch targets so it feels like the pro desks on Polymarket and Kalshi.</p>
                             <div class="pm-hero__actions">
                                 <button class="pm-cta" data-action="connect">Connect to trade</button>
                                 <button class="pm-ghost" data-nav="voting">View voting</button>
@@ -921,6 +921,15 @@ class GoatMouth {
                                         <p class="text-xs text-gray-400">Total volume</p>
                                         <p class="text-lg font-bold text-white">$${totalVolume.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                                         <p class="text-[11px] text-gray-500">24h traction tracker</p>
+                                        <p class="text-lg font-bold">${markets.length}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-400">Closing soon</p>
+                                        <p class="text-lg font-bold">${closingSoon}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-400">Total volume</p>
+                                        <p class="text-lg font-bold">$${totalVolume.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                                     </div>
                                 </div>
                             </div>
@@ -943,6 +952,7 @@ class GoatMouth {
                                     </span>
                                 </div>
                                 <p class="text-sm uppercase tracking-wide text-gray-400 mb-1">Featured market — Polymarket style depth</p>
+                                <p class="text-sm uppercase tracking-wide text-gray-400 mb-1">Featured market</p>
                                 <p class="text-xl font-bold leading-snug mb-4">${heroMarket?.title || 'Stay tuned for the next catalyst'}</p>
                                 <div class="pm-price-row">
                                     <div class="pm-price-chip">
@@ -981,6 +991,7 @@ class GoatMouth {
                         </div>
                         <div class="pm-filter-context">
                             <span class="text-sm text-gray-300">Mirrors Polymarket’s dense layout: decisive typography, premium spacing, and rails that stay finger-friendly on mobile.</span>
+                            <span>Streamlined for mobile: tighter gutters, larger tap areas, and a Polymarket-style card rail below.</span>
                         </div>
                     </div>
                 </section>
@@ -1125,6 +1136,7 @@ class GoatMouth {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
                             </svg>
                             $${totalVolume.toLocaleString()}
+                            $${parseFloat(market.total_volume).toLocaleString()}
                         </span>
                         <span class="market-chip">
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1196,6 +1208,7 @@ class GoatMouth {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
                             </svg>
                             $${totalVolume.toLocaleString()}
+                            $${parseFloat(market.total_volume).toLocaleString()}
                         </span>
                         <span class="market-chip">
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
