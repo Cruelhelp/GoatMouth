@@ -5,6 +5,7 @@ class GoatMouth {
         this.currentUser = null;
         this.currentView = 'markets';
         this.currentCategory = 'all';
+        this.marketSort = 'featured';
         this.isMobile = this.detectMobile();
         this.mobileMenuOpen = false;
         this.init();
@@ -242,6 +243,13 @@ class GoatMouth {
                 this.filterByCategory(categoryEl.dataset.category);
             }
 
+            // Sorting chips
+            if (e.target.matches('[data-sort]') || e.target.closest('[data-sort]')) {
+                e.preventDefault();
+                const sortEl = e.target.matches('[data-sort]') ? e.target : e.target.closest('[data-sort]');
+                this.setMarketSort(sortEl.dataset.sort);
+            }
+
             // Auth buttons
             if (e.target.matches('[data-action="connect"]')) {
                 this.showAuthModal();
@@ -286,6 +294,12 @@ class GoatMouth {
 
     filterByCategory(category) {
         this.currentCategory = category;
+        this.currentView = 'markets';
+        this.render();
+    }
+
+    setMarketSort(sort) {
+        this.marketSort = sort;
         this.currentView = 'markets';
         this.render();
     }
@@ -812,13 +826,39 @@ class GoatMouth {
         try {
             let filters = { status: 'active' };
 
-            // Add category filter if not "all"
             if (this.currentCategory && this.currentCategory !== 'all') {
                 filters.category = this.currentCategory;
             }
 
             const allMarkets = await this.api.getMarkets(filters);
-            const markets = allMarkets;
+
+            const closingSoon = allMarkets.filter(market => {
+                const end = new Date(market.end_date);
+                const now = new Date();
+                const diffDays = (end - now) / (1000 * 60 * 60 * 24);
+                return diffDays > 0 && diffDays <= 3;
+            }).length;
+
+            const totalVolume = allMarkets.reduce((sum, market) => sum + parseFloat(market.total_volume || 0), 0);
+
+            const sortedMarkets = [...allMarkets];
+            switch (this.marketSort) {
+                case 'ending':
+                    sortedMarkets.sort((a, b) => new Date(a.end_date) - new Date(b.end_date));
+                    break;
+                case 'volume':
+                    sortedMarkets.sort((a, b) => parseFloat(b.total_volume || 0) - parseFloat(a.total_volume || 0));
+                    break;
+                case 'recent': {
+                    const toDate = (market) => new Date(market.created_at || market.start_date || market.end_date);
+                    sortedMarkets.sort((a, b) => toDate(b) - toDate(a));
+                    break;
+                }
+                default:
+                    sortedMarkets.sort((a, b) => parseFloat(b.total_volume || 0) - parseFloat(a.total_volume || 0));
+            }
+
+            const markets = sortedMarkets;
 
             if (markets.length === 0) {
                 const categoryText = this.currentCategory === 'all' ? '' : ` in ${this.currentCategory}`;
@@ -833,12 +873,150 @@ class GoatMouth {
             }
 
             const categoryTitle = this.currentCategory === 'all' ? 'Active Markets' : `${this.currentCategory} Markets`;
+            const heroMarket = markets[0];
+            const topVolumeMarkets = [...markets].sort((a, b) => parseFloat(b.total_volume || 0) - parseFloat(a.total_volume || 0)).slice(0, 6);
+            const endingSoonMarkets = [...markets]
+                .filter(market => new Date(market.end_date) > new Date())
+                .sort((a, b) => new Date(a.end_date) - new Date(b.end_date))
+                .slice(0, 6);
+
+            const sortChips = [
+                { key: 'featured', label: 'Featured', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />' },
+                { key: 'ending', label: 'Ending Soon', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />' },
+                { key: 'volume', label: 'Highest Volume', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.002 9.002 0 1021 12h-9V3.055z" />' },
+                { key: 'recent', label: 'Recently Added', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c1.657 0 3 .895 3 2s-1.343 2-3 2-3 .895-3 2 1.343 2 3 2m0-12v2m0 8v2m-6-6h2m8 0h2" />' }
+            ].map(chip => `
+                <button class="gm-chip ${this.marketSort === chip.key ? 'active' : ''}" data-sort="${chip.key}">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">${chip.icon}</svg>
+                    ${chip.label}
+                </button>
+            `).join('');
+
             container.innerHTML = `
-                <div class="mb-6 flex justify-between items-center">
-                    <h1 class="text-3xl font-bold">${categoryTitle}</h1>
-                    ${this.currentProfile && this.currentProfile.role === 'admin' ? '<button class="px-4 py-2 rounded-lg text-white transition" style="background-color: #00CB97;" onmouseover="this.style.backgroundColor=\'#00e5af\'" onmouseout="this.style.backgroundColor=\'#00CB97\'" onclick="app.showCreateMarketModal()">Create Market</button>' : ''}
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <section class="pm-hero glass-panel mb-6">
+                    <div class="pm-hero__grid">
+                        <div class="space-y-4">
+                            <div class="flex items-center gap-2">
+                                <span class="pm-badge">${categoryTitle}</span>
+                                <span class="pm-dot"></span>
+                                <span class="text-gray-300 text-sm">Live, updated in real-time</span>
+                            </div>
+                            <h1 class="pm-hero__headline">Polymarket-grade trading without losing the GoatMouth edge</h1>
+                            <p class="text-gray-200 text-base md:text-lg leading-relaxed max-w-2xl">Refined typography, glass panels, and chip-driven rails mirror the polish of Polymarket and Kalshi while keeping GoatMouth’s bold palette. Every touch target and stat is tuned for fast scans on mobile and desktop.</p>
+                            <div class="pm-hero__actions">
+                                <button class="pm-cta" data-action="connect">Connect to trade</button>
+                                <button class="pm-ghost" data-nav="voting">View voting</button>
+                                <div class="pm-quick-meta">
+                                    <div>
+                                        <p class="text-xs text-gray-400">Active markets</p>
+                                        <p class="text-lg font-bold text-white">${markets.length}</p>
+                                        <p class="text-[11px] text-gray-500">Live book-style pricing</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-400">Closing soon</p>
+                                        <p class="text-lg font-bold text-white">${closingSoon}</p>
+                                        <p class="text-[11px] text-gray-500">Deadline heat pulled forward</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-400">Total volume</p>
+                                        <p class="text-lg font-bold text-white">$${totalVolume.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                                        <p class="text-[11px] text-gray-500">24h traction tracker</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pm-hero__market">
+                            <div class="pm-hero__card">
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center gap-2">
+                                        <span class="market-card__status">
+                                            <span class="live-dot"></span>
+                                            Live
+                                        </span>
+                                        ${heroMarket?.category ? `<span class="pm-pill">${heroMarket.category}</span>` : ''}
+                                    </div>
+                                    <span class="market-card__time">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        ${heroMarket ? this.getTimeLeft(heroMarket.end_date) : 'Fresh drop'}
+                                    </span>
+                                </div>
+                                <p class="text-sm uppercase tracking-wide text-gray-400 mb-1">Featured market — Polymarket style depth</p>
+                                <p class="text-xl font-bold leading-snug mb-4">${heroMarket?.title || 'Stay tuned for the next catalyst'}</p>
+                                <div class="pm-price-row">
+                                    <div class="pm-price-chip">
+                                        <span class="label">Yes</span>
+                                        <span class="value">${heroMarket ? (Number(heroMarket.yes_price ?? 0.5) * 100).toFixed(1) : '50.0'}%</span>
+                                    </div>
+                                    <div class="pm-price-chip no">
+                                        <span class="label">No</span>
+                                        <span class="value">${heroMarket ? (Number(heroMarket.no_price ?? 0.5) * 100).toFixed(1) : '50.0'}%</span>
+                                    </div>
+                                </div>
+                                <div class="pm-hero__cta-row">
+                                    <button class="pm-trade yes" onclick="app.showMarketDetail('${heroMarket?.id || ''}')">Trade Yes</button>
+                                    <button class="pm-trade no" onclick="app.showMarketDetail('${heroMarket?.id || ''}')">Trade No</button>
+                                </div>
+                                <div class="pm-hero__meta">
+                                    <span class="market-chip">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                                        </svg>
+                                        $${parseFloat(heroMarket?.total_volume || 0).toLocaleString()}
+                                    </span>
+                                    <span class="market-chip">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        ${heroMarket ? this.getTimeLeft(heroMarket.end_date) : 'Open' }
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pm-hero__filters">
+                        <div class="pm-filter-chips">
+                            ${sortChips}
+                        </div>
+                        <div class="pm-filter-context">
+                            <span class="text-sm text-gray-300">Mirrors Polymarket’s dense layout: decisive typography, premium spacing, and rails that stay finger-friendly on mobile.</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="pm-rail glass-panel mb-6">
+                    <div class="pm-rail__header">
+                        <div>
+                            <p class="text-sm text-gray-400">Top movers</p>
+                            <h2 class="text-xl font-bold">Volume leaders right now</h2>
+                        </div>
+                        <div class="pm-rail__meta">
+                            <span class="pm-pill">$${totalVolume.toLocaleString(undefined, { maximumFractionDigits: 0 })} total</span>
+                            <span class="pm-pill">${closingSoon} ending soon</span>
+                        </div>
+                    </div>
+                    <div class="market-rail" role="list">
+                        ${topVolumeMarkets.map(market => this.renderRailCard(market)).join('')}
+                    </div>
+                </section>
+
+                <section class="pm-rail glass-panel mb-6">
+                    <div class="pm-rail__header">
+                        <div>
+                            <p class="text-sm text-gray-400">Deadline heat</p>
+                            <h2 class="text-xl font-bold">Ending soon</h2>
+                        </div>
+                        <div class="pm-rail__meta">
+                            <span class="pm-pill">${endingSoonMarkets.length} picks</span>
+                        </div>
+                    </div>
+                    <div class="market-rail" role="list">
+                        ${endingSoonMarkets.map(market => this.renderRailCard(market)).join('')}
+                    </div>
+                </section>
+
+                <div class="market-grid">
                     ${markets.map(market => this.renderMarketCard(market)).join('')}
                 </div>
             `;
@@ -847,17 +1025,68 @@ class GoatMouth {
         }
     }
 
+    renderRailCard(market) {
+        const yesPrice = Number(market.yes_price ?? 0.5);
+        const noPrice = Number(market.no_price ?? 0.5);
+        const yesPercent = (yesPrice * 100).toFixed(1);
+        const noPercent = (noPrice * 100).toFixed(1);
+        const timeLeft = this.getTimeLeft(market.end_date);
+        const totalVolume = Number(market.total_volume ?? 0);
+        const volume = parseFloat(market.total_volume || 0);
+
+        return `
+            <article class="rail-card" role="listitem" onclick="app.showMarketDetail('${market.id}')">
+                <div class="rail-card__top">
+                    <div class="rail-card__meta">
+                        ${market.category ? `<span class="pm-pill">${market.category}</span>` : ''}
+                        <span class="rail-time">${timeLeft}</span>
+                    </div>
+                    <span class="rail-volume">$${volume.toLocaleString()}</span>
+                </div>
+                <h3 class="rail-card__title">${market.title}</h3>
+                <div class="rail-card__prices">
+                    <div class="pm-price-chip">
+                        <span class="label">Yes</span>
+                        <span class="value">${yesPercent}%</span>
+                    </div>
+                    <div class="pm-price-chip no">
+                        <span class="label">No</span>
+                        <span class="value">${noPercent}%</span>
+                    </div>
+                </div>
+                <div class="rail-progress">
+                    <div class="rail-progress__bar" style="width: ${yesPercent}%;"></div>
+                </div>
+            </article>
+        `;
+    }
+
     renderMarketCard(market) {
-        const yesPercent = (market.yes_price * 100).toFixed(1);
-        const noPercent = (market.no_price * 100).toFixed(1);
+        const yesPrice = Number(market.yes_price ?? 0.5);
+        const noPrice = Number(market.no_price ?? 0.5);
+        const yesPercent = (yesPrice * 100).toFixed(1);
+        const noPercent = (noPrice * 100).toFixed(1);
         const timeLeft = this.getTimeLeft(market.end_date);
 
         if (this.isMobile) {
             // Mobile-optimized card - Polymarket style
             return `
-                <div class="mobile-card bg-gray-800 rounded-xl p-5 border border-gray-700 active:scale-98 transition-all touch-target"
+                <div class="mobile-card market-card bg-gray-800 rounded-xl p-5 border border-gray-700 active:scale-98 transition-all touch-target"
                      onclick="app.showMarketDetail('${market.id}')"
                      style="min-height: 44px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+
+                    <div class="market-card__header mb-3">
+                        <span class="market-card__status">
+                            <span class="live-dot"></span>
+                            Live
+                        </span>
+                        <span class="market-card__time">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            ${timeLeft}
+                        </span>
+                    </div>
 
                     <!-- Category Badge -->
                     ${market.category ? `
@@ -890,30 +1119,43 @@ class GoatMouth {
                     </div>
 
                     <!-- Footer Info -->
-                    <div class="flex justify-between text-sm">
-                        <div class="flex items-center gap-1">
-                            <svg class="h-3.5 w-3.5" style="color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="market-card__footer">
+                        <span class="market-chip">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
                             </svg>
-                            <span class="font-medium" style="color: #9ca3af;">$${parseFloat(market.total_volume).toLocaleString()}</span>
-                        </div>
-                        <div class="flex items-center gap-1">
-                            <svg class="h-3.5 w-3.5" style="color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            $${totalVolume.toLocaleString()}
+                        </span>
+                        <span class="market-chip">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
-                            <span class="font-medium" style="color: #9ca3af;">${timeLeft}</span>
-                        </div>
+                            ${timeLeft}
+                        </span>
                     </div>
                 </div>
             `;
         } else {
             // Desktop card - Polymarket style
             return `
-                <div class="bg-gray-800 rounded-xl p-5 transition-all cursor-pointer border border-gray-700 hover:border-gray-600"
+                <div class="market-card bg-gray-800 rounded-xl p-5 transition-all cursor-pointer border border-gray-700 hover:border-gray-600"
                      onclick="app.showMarketDetail('${market.id}')"
                      style="box-shadow: 0 1px 3px rgba(0,0,0,0.2);"
                      onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)'; this.style.transform='translateY(-2px)';"
                      onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.2)'; this.style.transform='translateY(0)';">
+
+                    <div class="market-card__header mb-3">
+                        <span class="market-card__status">
+                            <span class="live-dot"></span>
+                            Live
+                        </span>
+                        <span class="market-card__time">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            ${timeLeft}
+                        </span>
+                    </div>
 
                     <!-- Category Badge -->
                     ${market.category ? `
@@ -948,21 +1190,19 @@ class GoatMouth {
                     </div>
 
                     <!-- Footer Info -->
-                    <div class="flex items-center justify-between text-sm">
-                        <div class="flex items-center gap-4">
-                            <div class="flex items-center gap-1.5">
-                                <svg class="h-4 w-4" style="color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                                </svg>
-                                <span class="font-medium" style="color: #9ca3af;">$${parseFloat(market.total_volume).toLocaleString()}</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <svg class="h-4 w-4" style="color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="market-card__footer">
+                        <span class="market-chip">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                            </svg>
+                            $${totalVolume.toLocaleString()}
+                        </span>
+                        <span class="market-chip">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
-                            <span class="font-medium" style="color: #9ca3af;">${timeLeft}</span>
-                        </div>
+                            ${timeLeft}
+                        </span>
                     </div>
                 </div>
             `;
