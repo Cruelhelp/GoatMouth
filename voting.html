@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Community Governance - GoatMouth</title>
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <meta name="theme-color" content="#00CB97">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- Remix Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/mobile.css">
+
+    <style>
+        :root {
+            --page-bg: #111827;
+            --panel-bg: #1f2937;
+            --border: #374151;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+
+            --green: #00CB97;
+            --purple: #631BDD;
+            --yellow: #F2C300;
+            --red: #ef4444;
+
+            --radius-lg: 12px;
+        }
+
+        body {
+            background: var(--page-bg);
+            color: var(--text-main);
+        }
+
+        .main-header {
+            background: var(--panel-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 24px 34px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .main-header-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+
+        .badge-status {
+            font-size: 0.85rem;
+            padding: 6px 12px;
+            background: rgba(0, 203, 151, 0.15);
+            color: var(--green);
+            border-radius: 18px;
+            font-weight: 600;
+            border: 1px solid rgba(0, 203, 151, 0.3);
+        }
+
+        .content {
+            padding: 28px 34px;
+            padding-bottom: 100px;
+            display: grid;
+            grid-template-columns: minmax(0, 2.4fr) minmax(260px, 1fr);
+            gap: 28px;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            padding: 22px 26px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            margin-bottom: 28px;
+        }
+
+        .panel-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 18px;
+        }
+
+        .admin-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 18px;
+            margin-top: 10px;
+        }
+
+        .admin-btn {
+            background: rgba(0, 203, 151, 0.1);
+            border: 1px solid rgba(0, 203, 151, 0.3);
+            border-radius: 10px;
+            padding: 20px 10px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: 0.2s;
+            color: var(--green);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .admin-btn i {
+            font-size: 30px;
+            margin-bottom: 8px;
+            opacity: 0.75;
+        }
+
+        .admin-btn:hover {
+            background: rgba(0, 203, 151, 0.2);
+            border-color: var(--green);
+            transform: translateY(-2px);
+        }
+
+        .admin-btn:active {
+            transform: scale(0.97);
+        }
+
+        .stats-column {
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+        }
+
+        .stat-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 24px;
+            height: 120px;
+            border-radius: var(--radius-lg);
+            color: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .stat-icon {
+            font-size: 42px;
+            color: rgba(255,255,255,0.85);
+            width: 60px;
+            text-align: center;
+        }
+
+        .stat-info {
+            text-align: right;
+        }
+
+        .stat-main {
+            font-size: 1.9rem;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            opacity: 0.92;
+            font-size: 0.9rem;
+        }
+
+        .stat-green { background: linear-gradient(135deg, #00CB97 0%, #00e5af 100%); }
+        .stat-purple { background: linear-gradient(135deg, #631BDD 0%, #8b5cf6 100%); }
+        .stat-yellow { background: linear-gradient(135deg, #F2C300 0%, #ffd700 100%); }
+        .stat-red { background: linear-gradient(135deg, #ef4444 0%, #f87171 100%); }
+
+        .vote-tab {
+            background: rgba(0, 203, 151, 0.1);
+            border: 1px solid rgba(0, 203, 151, 0.3);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            color: var(--green);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .vote-tab:hover {
+            background: rgba(0, 203, 151, 0.2);
+        }
+
+        .vote-tab.active {
+            background: var(--green);
+            color: white;
+            border-color: var(--green);
+        }
+
+        .proposal-accordion {
+            transition: all 0.3s ease;
+        }
+
+        .proposal-accordion:hover {
+            transform: translateY(-2px);
+        }
+
+        .proposal-accordion .proposal-header:hover {
+            background: rgba(0, 203, 151, 0.05);
+        }
+
+        .proposal-content {
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .expand-icon {
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 1024px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-column {
+                grid-template-columns: repeat(2, 1fr);
+                display: grid;
+            }
+        }
+
+        @media (max-width: 768px) {
+            /* Prevent horizontal overflow */
+            body {
+                overflow-x: hidden;
+                max-width: 100vw;
+            }
+
+            * {
+                max-width: 100%;
+            }
+
+            .main-header {
+                padding: 12px 16px !important;
+                flex-direction: column;
+                gap: 8px;
+                align-items: flex-start;
+            }
+
+            .main-header-title {
+                font-size: 1.25rem !important;
+            }
+
+            .content {
+                padding: 12px 16px !important;
+                padding-bottom: 150px !important;
+                grid-template-columns: 1fr !important;
+                gap: 16px !important;
+                max-width: 100vw;
+                box-sizing: border-box;
+            }
+
+            .panel {
+                padding: 16px !important;
+                margin-bottom: 16px !important;
+                width: 100% !important;
+                box-sizing: border-box;
+            }
+
+            .panel-title {
+                font-size: 1rem !important;
+            }
+
+            .admin-grid {
+                grid-template-columns: 1fr !important;
+                gap: 12px !important;
+            }
+
+            .admin-btn {
+                padding: 16px 8px !important;
+                font-size: 0.875rem !important;
+            }
+
+            .admin-btn i {
+                font-size: 24px !important;
+            }
+
+            .stats-column {
+                grid-template-columns: 1fr !important;
+                gap: 12px !important;
+            }
+
+            .stat-card {
+                height: auto !important;
+                min-height: 100px !important;
+                padding: 16px !important;
+            }
+
+            .stat-icon {
+                font-size: 32px !important;
+            }
+
+            .stat-main {
+                font-size: 1.5rem !important;
+            }
+
+            .stat-label {
+                font-size: 0.8rem !important;
+            }
+
+            /* Tab buttons */
+            .vote-tab {
+                padding: 8px 12px !important;
+                font-size: 0.75rem !important;
+                white-space: nowrap;
+            }
+
+            /* Accordion mobile adjustments */
+            .proposal-accordion {
+                width: 100% !important;
+                box-sizing: border-box;
+            }
+
+            .proposal-accordion .proposal-header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 10px !important;
+                padding: 12px !important;
+            }
+
+            .proposal-accordion .proposal-header > div:first-child {
+                width: 100% !important;
+            }
+
+            .proposal-accordion .proposal-header > div:last-child {
+                width: 100% !important;
+                flex-wrap: wrap !important;
+                justify-content: space-between !important;
+            }
+
+            .proposal-content {
+                padding: 12px !important;
+            }
+
+            /* Buttons */
+            button {
+                min-height: 44px;
+                font-size: 0.875rem !important;
+            }
+
+            /* Top action bar */
+            .flex-wrap {
+                gap: 8px !important;
+            }
+
+            h1 {
+                font-size: 1.5rem !important;
+            }
+
+            p {
+                font-size: 0.875rem !important;
+            }
+        }
+
+        /* Small phones */
+        @media (max-width: 375px) {
+            .content {
+                padding: 10px 12px !important;
+            }
+
+            .stat-main {
+                font-size: 1.25rem !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Global Header -->
+    <header class="bg-gray-900 border-b border-gray-800">
+        <nav id="main-nav">
+            <!-- Main nav will be populated by JS -->
+        </nav>
+        <!-- Category Navigation -->
+        <div id="category-nav">
+            <!-- Category nav will be populated by JS -->
+        </div>
+    </header>
+
+    <!-- Content -->
+    <section class="content">
+        <!-- Left Column -->
+        <div>
+            <!-- Top Action Bar -->
+            <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-white mb-1">Community Governance</h1>
+                    <p class="text-gray-400 text-sm">Vote on proposals and shape the market</p>
+                </div>
+                <div id="suggest-market-btn"></div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex gap-3 mb-6 flex-wrap">
+                <button class="vote-tab active" data-tab="active">
+                    <div class="w-2 h-2 rounded-full bg-current"></div>
+                    Active Proposals
+                </button>
+                <button class="vote-tab" data-tab="approved" style="background: rgba(99, 27, 221, 0.1); border-color: rgba(99, 27, 221, 0.3); color: #631BDD;">
+                    <i class="ri-check-line"></i>
+                    Approved
+                </button>
+                <button class="vote-tab" data-tab="rejected" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: #ef4444;">
+                    <i class="ri-close-line"></i>
+                    Rejected
+                </button>
+            </div>
+
+            <!-- Proposals -->
+            <section class="panel">
+                <div class="panel-title">Market Proposals</div>
+                <div id="proposals-container">
+                    <div class="inline-loader">
+                        <div class="spinner-container">
+                            <div class="spinner-glow"></div>
+                            <div class="spinner-text">Loading proposals...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Admin Panel -->
+            <section class="panel" id="admin-panel" style="display: none;">
+                <div class="panel-title">Admin Poll Management</div>
+                <div class="admin-grid">
+                    <div class="admin-btn" data-action="create-proposal">
+                        <i class="ri-add-circle-line"></i>
+                        Create Proposal
+                    </div>
+                    <div class="admin-btn" onclick="window.location.href='admin.html'">
+                        <i class="ri-checkbox-circle-line"></i>
+                        Approve Markets
+                    </div>
+                    <div class="admin-btn" onclick="window.location.href='admin.html'">
+                        <i class="ri-settings-3-line"></i>
+                        Manage Markets
+                    </div>
+                    <div class="admin-btn" data-tab="approved">
+                        <i class="ri-bar-chart-box-line"></i>
+                        View Results
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Right Column - Stats -->
+        <aside class="stats-column">
+            <div class="stat-card stat-green">
+                <div class="stat-icon"><i class="ri-survey-line"></i></div>
+                <div class="stat-info">
+                    <div class="stat-main" id="stat-total">-</div>
+                    <div class="stat-label">Total Proposals</div>
+                </div>
+            </div>
+
+            <div class="stat-card stat-purple">
+                <div class="stat-icon"><i class="ri-user-voice-line"></i></div>
+                <div class="stat-info">
+                    <div class="stat-main" id="stat-participation">-%</div>
+                    <div class="stat-label">Participation Rate</div>
+                </div>
+            </div>
+
+            <div class="stat-card stat-yellow">
+                <div class="stat-icon"><i class="ri-check-double-line"></i></div>
+                <div class="stat-info">
+                    <div class="stat-main" id="stat-approved">-</div>
+                    <div class="stat-label">Approved & Live</div>
+                </div>
+            </div>
+
+            <div class="stat-card stat-red">
+                <div class="stat-icon"><i class="ri-bar-chart-box-line"></i></div>
+                <div class="stat-info">
+                    <div class="stat-main" id="stat-avg-votes">-</div>
+                    <div class="stat-label">Avg Votes/Proposal</div>
+                </div>
+            </div>
+        </aside>
+    </section>
+
+    <!-- Footer -->
+    <footer class="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 py-4 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between text-sm text-gray-400 font-medium">
+                <!-- Left: Links -->
+                <div class="flex items-center gap-4">
+                    <span>GoatMouth © 2025</span>
+                    <span class="text-base">•</span>
+                    <a href="privacy.html" class="hover:text-white transition">Privacy</a>
+                    <span class="text-base">•</span>
+                    <a href="terms.html" class="hover:text-white transition">Terms</a>
+                    <span class="text-base">•</span>
+                    <a href="how-it-works.html" class="hover:text-white transition">How It Works</a>
+                    <span class="text-base">•</span>
+                    <a href="contact.html" class="hover:text-white transition">Contact</a>
+                </div>
+
+                <!-- Right: Social Icons -->
+                <div class="flex items-center gap-3">
+                    <a href="#" class="hover:text-white transition">
+                        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                        </svg>
+                    </a>
+                    <a href="#" class="hover:text-white transition">
+                        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/mobile-search.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // Highlight voting link in navigation when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                // Find and highlight desktop voting link
+                const desktopVotingLink = document.querySelector('#category-nav a[href="voting.html"]');
+                if (desktopVotingLink) {
+                    desktopVotingLink.classList.add('category-active');
+                    desktopVotingLink.style.color = '#00CB97';
+                    desktopVotingLink.style.borderBottom = '2px solid #00CB97';
+                }
+
+                // Find and highlight mobile voting link
+                const mobileVotingLink = document.querySelector('.mobile-menu a[href="voting.html"]');
+                if (mobileVotingLink) {
+                    mobileVotingLink.style.background = 'rgba(0, 203, 151, 0.2)';
+                    mobileVotingLink.style.borderLeft = '3px solid #00CB97';
+                }
+            }, 100);
+        });
+    </script>
+    <script src="js/voting.js"></script>
+</body>
+</html>
