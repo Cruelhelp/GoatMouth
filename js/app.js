@@ -8,6 +8,7 @@ class GoatMouth {
         this.isMobile = this.detectMobile();
         this.mobileMenuOpen = false;
         this.mobileSearch = null;
+        this.bannerCarousel = null;
         this.marketOffset = 0; // For pagination
         this.marketsPerPage = 25; // 5x5 grid
         this.init();
@@ -776,7 +777,7 @@ class GoatMouth {
     async loadUserBalance() {
         try {
             const profile = await this.api.getProfile(this.currentUser.id);
-            const balanceText = `$${parseFloat(profile.balance).toFixed(2)}`;
+            const balanceText = `J$${parseFloat(profile.balance).toFixed(2)}`;
 
             // Update mobile balance
             const mobileBalance = document.getElementById('mobile-user-balance');
@@ -851,8 +852,6 @@ class GoatMouth {
                 return;
             }
 
-            const categoryTitle = this.currentCategory === 'all' ? 'Active Markets' : `${this.currentCategory} Markets`;
-
             // Pagination: Display markets in 5x5 grid (25 per page)
             const startIndex = this.marketOffset;
             const endIndex = startIndex + this.marketsPerPage;
@@ -863,13 +862,14 @@ class GoatMouth {
             const currentPage = Math.floor(startIndex / this.marketsPerPage) + 1;
 
             container.innerHTML = `
-                <div class="mb-6 flex justify-between items-center">
-                    <div>
-                        <h1 class="text-3xl font-bold">${categoryTitle}</h1>
-                        <p class="text-sm text-gray-400 mt-1">Page ${currentPage} of ${totalPages} • ${markets.length} total markets</p>
+                <!-- Banner Carousel (only on "all" category) -->
+                ${this.currentCategory === 'all' ? '<div id="banner-container"></div>' : ''}
+
+                ${this.currentProfile && this.currentProfile.role === 'admin' ? `
+                    <div class="mb-6 flex justify-end">
+                        <button class="px-4 py-2 rounded-lg text-white transition" style="background-color: #00CB97;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'" onclick="app.showCreateMarketModal()">Create Market</button>
                     </div>
-                    ${this.currentProfile && this.currentProfile.role === 'admin' ? '<button class="px-4 py-2 rounded-lg text-white transition" style="background-color: #00CB97;" onmouseover="this.style.backgroundColor=\'#00e5af\'" onmouseout="this.style.backgroundColor=\'#00CB97\'" onclick="app.showCreateMarketModal()">Create Market</button>' : ''}
-                </div>
+                ` : ''}
 
                 <!-- Responsive Grid Container -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-6">
@@ -898,6 +898,16 @@ class GoatMouth {
                     </div>
                 ` : ''}
             `;
+
+            // Initialize banner carousel (only on "all" category)
+            if (this.currentCategory === 'all') {
+                const bannerContainer = document.getElementById('banner-container');
+                if (bannerContainer && window.BannerCarousel) {
+                    this.bannerCarousel = new BannerCarousel(this);
+                    await this.bannerCarousel.loadBanners();
+                    this.bannerCarousel.render(bannerContainer);
+                }
+            }
         } catch (error) {
             container.innerHTML = `<div class="text-red-500">Error loading markets: ${error.message}</div>`;
         }
@@ -972,7 +982,7 @@ class GoatMouth {
                                 <svg class="h-3.5 w-3.5" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
                                 </svg>
-                                <span class="font-bold" style="color: #00CB97;">$${parseFloat(market.total_volume).toLocaleString()}</span>
+                                <span class="font-bold" style="color: #00CB97;">J$${parseFloat(market.total_volume).toLocaleString()}</span>
                             </div>
                             <div class="flex items-center gap-1.5 text-gray-400">
                                 <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1051,7 +1061,7 @@ class GoatMouth {
                                 <svg class="h-3 w-3" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
                                 </svg>
-                                <span class="font-bold" style="color: #00CB97; font-size: 11px;">$${parseFloat(market.total_volume/1000).toFixed(1)}K</span>
+                                <span class="font-bold" style="color: #00CB97; font-size: 11px;">J$${parseFloat(market.total_volume/1000).toFixed(1)}K</span>
                             </div>
                             <div class="flex items-center gap-1 text-gray-400">
                                 <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1119,11 +1129,11 @@ class GoatMouth {
                                     </div>
                                     <div>
                                         <p class="text-gray-400">Invested</p>
-                                        <p class="font-semibold">$${parseFloat(pos.total_invested).toFixed(2)}</p>
+                                        <p class="font-semibold">J$${parseFloat(pos.total_invested).toFixed(2)}</p>
                                     </div>
                                     <div>
                                         <p class="text-gray-400">Current Value</p>
-                                        <p class="font-semibold">$${parseFloat(pos.current_value).toFixed(2)}</p>
+                                        <p class="font-semibold">J$${parseFloat(pos.current_value).toFixed(2)}</p>
                                     </div>
                                 </div>
                             </div>
@@ -1167,7 +1177,7 @@ class GoatMouth {
                                     </div>
                                     <div class="text-right">
                                         <p class="text-sm ${bet.outcome === 'yes' ? 'text-green-400' : 'text-red-400'} font-semibold">${bet.outcome.toUpperCase()}</p>
-                                        <p class="text-sm">$${parseFloat(bet.amount).toFixed(2)} @ ${(parseFloat(bet.price) * 100).toFixed(1)}¢</p>
+                                        <p class="text-sm">J$${parseFloat(bet.amount).toFixed(2)} @ ${(parseFloat(bet.price) * 100).toFixed(1)}¢</p>
                                     </div>
                                 </div>
                             </div>
@@ -1231,7 +1241,7 @@ class GoatMouth {
                                         </svg>
                                         <p class="text-xs font-semibold tracking-wide" style="color: rgba(0, 203, 151, 0.8);">BALANCE</p>
                                     </div>
-                                    <p class="text-2xl font-bold" style="color: #00CB97;">$${parseFloat(this.currentProfile.balance).toFixed(2)}</p>
+                                    <p class="text-2xl font-bold" style="color: #00CB97;">J$${parseFloat(this.currentProfile.balance).toFixed(2)}</p>
                                 </div>
 
                                 <!-- Total Bets Card -->
@@ -1258,7 +1268,7 @@ class GoatMouth {
                                         <p class="text-xs font-semibold tracking-wide" style="color: rgba(${profitLoss >= 0 ? '16, 185, 129' : '239, 68, 68'}, 0.8);">PROFIT/LOSS</p>
                                     </div>
                                     <p class="text-2xl font-bold" style="color: ${profitLoss >= 0 ? '#10B981' : '#EF4444'};">
-                                        ${profitLoss >= 0 ? '+' : ''}$${profitLoss.toFixed(2)}
+                                        ${profitLoss >= 0 ? '+' : ''}J$${profitLoss.toFixed(2)}
                                     </p>
                                 </div>
                             </div>
@@ -1284,7 +1294,7 @@ class GoatMouth {
                                         <div class="text-right">
                                             <p class="text-sm text-gray-400">Shares: ${parseFloat(pos.shares).toFixed(2)}</p>
                                             <p class="text-sm text-gray-400">Avg: ${(parseFloat(pos.avg_price) * 100).toFixed(1)}¢</p>
-                                            <p class="text-sm font-semibold">Value: $${parseFloat(pos.current_value).toFixed(2)}</p>
+                                            <p class="text-sm font-semibold">Value: J$${parseFloat(pos.current_value).toFixed(2)}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -1313,8 +1323,8 @@ class GoatMouth {
                                             <td class="px-4 py-3">
                                                 <span class="badge badge-${tx.type}">${tx.type}</span>
                                             </td>
-                                            <td class="px-4 py-3 font-semibold">${tx.type === 'bet' ? '-' : '+'}$${parseFloat(tx.amount).toFixed(2)}</td>
-                                            <td class="px-4 py-3 text-gray-400">$${parseFloat(tx.balance_after).toFixed(2)}</td>
+                                            <td class="px-4 py-3 font-semibold">${tx.type === 'bet' ? '-' : '+'}J$${parseFloat(tx.amount).toFixed(2)}</td>
+                                            <td class="px-4 py-3 text-gray-400">J$${parseFloat(tx.balance_after).toFixed(2)}</td>
                                             <td class="px-4 py-3 text-sm text-gray-400">${new Date(tx.created_at).toLocaleDateString()}</td>
                                         </tr>
                                     `).join('')}
@@ -1461,7 +1471,7 @@ class GoatMouth {
                         <!-- Top Action Bar -->
                         <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
                             <div>
-                                <h1 class="text-2xl font-bold text-white mb-1">Community Governance</h1>
+                                <h1 class="text-2xl font-bold text-white mb-1">Voting</h1>
                                 <p class="text-gray-400 text-sm">Vote on proposals and shape the market</p>
                             </div>
                             <div id="suggest-market-btn"></div>
@@ -1938,6 +1948,216 @@ class GoatMouth {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    async showEditMarketModal(marketId) {
+        try {
+            // Load existing market data
+            const market = await this.api.getMarket(marketId);
+
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+
+            // Format end_date for datetime-local input
+            const endDate = new Date(market.end_date);
+            const formattedEndDate = endDate.toISOString().slice(0, 16);
+
+            modal.innerHTML = `
+                <div class="bg-gray-800 rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold" style="color: #00CB97;">Edit Market</h2>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white transition">
+                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <form id="editMarketForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Title *</label>
+                            <input type="text" name="title" required value="${market.title.replace(/"/g, '&quot;')}"
+                                   class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-green-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Description</label>
+                            <textarea name="description" rows="3"
+                                      class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-green-500">${market.description || ''}</textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Category *</label>
+                            <select name="category" required
+                                    class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-green-500">
+                                <option value="">Select category</option>
+                                <option value="Jamaican Parliament" ${market.category === 'Jamaican Parliament' ? 'selected' : ''}>Jamaican Parliament</option>
+                                <option value="Dancehall" ${market.category === 'Dancehall' ? 'selected' : ''}>Dancehall</option>
+                                <option value="Reggae" ${market.category === 'Reggae' ? 'selected' : ''}>Reggae</option>
+                                <option value="Jamaica Sports" ${market.category === 'Jamaica Sports' ? 'selected' : ''}>Jamaica Sports</option>
+                                <option value="Caribbean Cricket" ${market.category === 'Caribbean Cricket' ? 'selected' : ''}>Caribbean Cricket</option>
+                                <option value="Jamaica Business" ${market.category === 'Jamaica Business' ? 'selected' : ''}>Jamaica Business</option>
+                                <option value="JMD & Crypto" ${market.category === 'JMD & Crypto' ? 'selected' : ''}>JMD & Crypto</option>
+                                <option value="Jamaican Culture" ${market.category === 'Jamaican Culture' ? 'selected' : ''}>Jamaican Culture</option>
+                                <option value="Caribbean News" ${market.category === 'Caribbean News' ? 'selected' : ''}>Caribbean News</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Market Image</label>
+                            <div class="space-y-2">
+                                <div id="editMarketImagePreview" class="w-full h-48 bg-gray-700 rounded-lg flex items-center justify-center text-gray-400 overflow-hidden">
+                                    ${market.image_url
+                                        ? `<img src="${market.image_url}" class="w-full h-full object-cover">`
+                                        : '<span>No image selected</span>'
+                                    }
+                                </div>
+                                <input type="file" id="editMarketImageInput" accept="image/*"
+                                       class="block w-full text-sm text-gray-400
+                                       file:mr-4 file:py-2 file:px-4
+                                       file:rounded file:border-0
+                                       file:text-sm file:font-semibold
+                                       file:bg-green-600 file:text-white
+                                       hover:file:bg-green-700 file:cursor-pointer cursor-pointer">
+                                <p class="text-xs text-gray-400">Upload a new image or keep existing (max 5MB). Recommended: 400x200px</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">YES Price *</label>
+                                <input type="number" name="yes_price" step="0.01" min="0" max="1" value="${market.yes_price}" required
+                                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-green-500">
+                                <p class="text-xs text-gray-400 mt-1">0.00 - 1.00 (50% = 0.50)</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">End Date *</label>
+                                <input type="datetime-local" name="end_date" required value="${formattedEndDate}"
+                                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-green-500">
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 pt-4">
+                            <button type="submit"
+                                    class="flex-1 px-6 py-3 rounded-lg font-bold text-white transition"
+                                    style="background-color: #00CB97;"
+                                    onmouseover="this.style.backgroundColor='#00e5af'"
+                                    onmouseout="this.style.backgroundColor='#00CB97'">
+                                Update Market
+                            </button>
+                            <button type="button" onclick="this.closest('.fixed').remove()"
+                                    class="px-6 py-3 rounded-lg font-bold text-gray-400 border border-gray-600 hover:bg-gray-700 transition">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Handle image preview
+            const imageInput = document.getElementById('editMarketImageInput');
+            const imagePreview = document.getElementById('editMarketImagePreview');
+
+            imageInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                // Validate file size (5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('Image size must be less than 5MB');
+                    e.target.value = '';
+                    return;
+                }
+
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    alert('Please select an image file');
+                    e.target.value = '';
+                    return;
+                }
+
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    imagePreview.innerHTML = `<img src="${event.target.result}" class="w-full h-full object-cover">`;
+                };
+                reader.readAsDataURL(file);
+            });
+
+            // Handle form submission
+            document.getElementById('editMarketForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const submitBtn = e.target.querySelector('button[type="submit"]');
+                const originalText = submitBtn.textContent;
+
+                try {
+                    // Show loading spinner
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<div class="spinner-glow inline-block w-5 h-5 mr-2"></div>Updating...';
+
+                    const formData = new FormData(e.target);
+                    let imageUrl = market.image_url; // Keep existing image by default
+
+                    // Upload new image if selected
+                    if (imageInput.files.length > 0) {
+                        const file = imageInput.files[0];
+                        const fileExt = file.name.split('.').pop();
+                        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+                        const { data: uploadData, error: uploadError } = await this.api.db.storage
+                            .from('market-images')
+                            .upload(fileName, file, {
+                                cacheControl: '3600',
+                                upsert: false
+                            });
+
+                        if (uploadError) throw uploadError;
+
+                        // Get public URL
+                        const { data: urlData } = this.api.db.storage
+                            .from('market-images')
+                            .getPublicUrl(fileName);
+
+                        imageUrl = urlData.publicUrl;
+                    }
+
+                    const marketData = {
+                        title: formData.get('title'),
+                        description: formData.get('description'),
+                        category: formData.get('category'),
+                        image_url: imageUrl,
+                        yes_price: parseFloat(formData.get('yes_price')),
+                        no_price: 1 - parseFloat(formData.get('yes_price')),
+                        end_date: formData.get('end_date')
+                    };
+
+                    const { error } = await this.api.db
+                        .from('markets')
+                        .update(marketData)
+                        .eq('id', marketId);
+
+                    if (error) throw error;
+
+                    alert('Market updated successfully!');
+                    modal.remove();
+                    this.render(); // Refresh the view
+
+                    // Close the market detail modal if it's open
+                    const detailModal = document.querySelector('.modal-backdrop');
+                    if (detailModal) detailModal.remove();
+                } catch (error) {
+                    alert('Error updating market: ' + error.message);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+            });
+        } catch (error) {
+            alert('Error loading market: ' + error.message);
+        }
+    }
+
     showCreateMarketModal() {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
@@ -1972,22 +2192,33 @@ class GoatMouth {
                         <select name="category" required
                                 class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-green-500">
                             <option value="">Select category</option>
-                            <option value="Politics">Politics</option>
-                            <option value="Sports">Sports</option>
-                            <option value="Crypto">Crypto</option>
-                            <option value="Finance">Finance</option>
-                            <option value="Technology">Technology</option>
-                            <option value="Science">Science</option>
-                            <option value="Entertainment">Entertainment</option>
+                            <option value="Jamaican Parliament">Jamaican Parliament</option>
+                            <option value="Dancehall">Dancehall</option>
+                            <option value="Reggae">Reggae</option>
+                            <option value="Jamaica Sports">Jamaica Sports</option>
+                            <option value="Caribbean Cricket">Caribbean Cricket</option>
+                            <option value="Jamaica Business">Jamaica Business</option>
+                            <option value="JMD & Crypto">JMD & Crypto</option>
+                            <option value="Jamaican Culture">Jamaican Culture</option>
+                            <option value="Caribbean News">Caribbean News</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-semibold mb-2">Image URL (optional)</label>
-                        <input type="url" name="image_url"
-                               class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-green-500"
-                               placeholder="https://example.com/image.jpg">
-                        <p class="text-xs text-gray-400 mt-1">Enter a direct URL to an image for this market</p>
+                        <label class="block text-sm font-semibold mb-2">Market Image (optional)</label>
+                        <div class="space-y-2">
+                            <div id="marketImagePreview" class="w-full h-48 bg-gray-700 rounded-lg flex items-center justify-center text-gray-400 overflow-hidden">
+                                <span>No image selected</span>
+                            </div>
+                            <input type="file" id="marketImageInput" accept="image/*"
+                                   class="block w-full text-sm text-gray-400
+                                   file:mr-4 file:py-2 file:px-4
+                                   file:rounded file:border-0
+                                   file:text-sm file:font-semibold
+                                   file:bg-green-600 file:text-white
+                                   hover:file:bg-green-700 file:cursor-pointer cursor-pointer">
+                            <p class="text-xs text-gray-400">Upload an image for this market (max 5MB). Recommended: 400x200px</p>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
@@ -2024,23 +2255,86 @@ class GoatMouth {
 
         document.body.appendChild(modal);
 
+        // Handle image preview
+        const imageInput = document.getElementById('marketImageInput');
+        const imagePreview = document.getElementById('marketImagePreview');
+
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Validate file size (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Image size must be less than 5MB');
+                e.target.value = '';
+                return;
+            }
+
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                e.target.value = '';
+                return;
+            }
+
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                imagePreview.innerHTML = `<img src="${event.target.result}" class="w-full h-full object-cover">`;
+            };
+            reader.readAsDataURL(file);
+        });
+
         // Handle form submission
         document.getElementById('createMarketForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const formData = new FormData(e.target);
-            const marketData = {
-                title: formData.get('title'),
-                description: formData.get('description'),
-                category: formData.get('category'),
-                image_url: formData.get('image_url') || null,
-                yes_price: parseFloat(formData.get('yes_price')),
-                no_price: 1 - parseFloat(formData.get('yes_price')),
-                end_date: formData.get('end_date'),
-                status: 'active',
-                total_volume: 0
-            };
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
 
             try {
+                // Show loading spinner
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<div class="spinner-glow inline-block w-5 h-5 mr-2"></div>Creating...';
+
+                const formData = new FormData(e.target);
+                let imageUrl = null;
+
+                // Upload image if selected
+                if (imageInput.files.length > 0) {
+                    const file = imageInput.files[0];
+                    const fileExt = file.name.split('.').pop();
+                    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+                    const { data: uploadData, error: uploadError } = await this.api.db.storage
+                        .from('market-images')
+                        .upload(fileName, file, {
+                            cacheControl: '3600',
+                            upsert: false
+                        });
+
+                    if (uploadError) throw uploadError;
+
+                    // Get public URL
+                    const { data: urlData } = this.api.db.storage
+                        .from('market-images')
+                        .getPublicUrl(fileName);
+
+                    imageUrl = urlData.publicUrl;
+                }
+
+                const marketData = {
+                    title: formData.get('title'),
+                    description: formData.get('description'),
+                    category: formData.get('category'),
+                    image_url: imageUrl,
+                    yes_price: parseFloat(formData.get('yes_price')),
+                    no_price: 1 - parseFloat(formData.get('yes_price')),
+                    end_date: formData.get('end_date'),
+                    status: 'active',
+                    total_volume: 0
+                };
+
                 const { data, error } = await this.api.db
                     .from('markets')
                     .insert([marketData])
@@ -2054,6 +2348,8 @@ class GoatMouth {
                 this.render(); // Refresh the view
             } catch (error) {
                 alert('Error creating market: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
             }
         });
     }

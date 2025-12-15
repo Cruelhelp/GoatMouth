@@ -56,16 +56,18 @@ class AdminPanel {
 
         // Update header
         const titles = {
-            dashboard: { title: 'Dashboard', subtitle: 'Overview of platform metrics' },
-            markets: { title: 'Markets', subtitle: 'Manage prediction markets' },
-            users: { title: 'Users', subtitle: 'Manage user accounts' },
-            transactions: { title: 'Transactions', subtitle: 'View transaction history' },
-            messages: { title: 'Messages', subtitle: 'User contact messages and support tickets' },
-            voting: { title: 'Voting Management', subtitle: 'Review and manage community proposals' }
+            dashboard: 'Dashboard',
+            markets: 'Markets',
+            users: 'Users',
+            transactions: 'Transactions',
+            messages: 'Messages',
+            voting: 'Voting Management',
+            banners: 'Banner Management'
         };
 
-        document.getElementById('view-title').textContent = titles[view].title;
-        document.getElementById('view-subtitle').textContent = titles[view].subtitle;
+        document.getElementById('view-title').textContent = titles[view];
+        const subtitle = document.getElementById('view-subtitle');
+        if (subtitle) subtitle.style.display = 'none';
 
         // Render view content
         this.renderView(view);
@@ -102,6 +104,9 @@ class AdminPanel {
                 case 'voting':
                     await this.renderVoting(container);
                     break;
+                case 'banners':
+                    await this.renderBanners(container);
+                    break;
             }
         } catch (error) {
             container.innerHTML = `<div class="text-center py-12 text-red-400">Error: ${error.message}</div>`;
@@ -109,36 +114,220 @@ class AdminPanel {
     }
 
     async renderDashboard(container) {
-        const [marketStats, userStats, transactions] = await Promise.all([
+        const [marketStats, userStats, transactions, allMarkets, contactMessages, proposals] = await Promise.all([
             this.api.getMarketStats(),
             this.api.getUserStats(),
-            this.api.getAllTransactions({ limit: 10 })
+            this.api.getAllTransactions({ limit: 10 }),
+            this.api.getMarkets(),
+            this.api.getContactMessages({ status: 'new' }),
+            window.supabaseClient.from('proposals').select('*', { count: 'exact' }).eq('status', 'pending')
         ]);
 
+        // Calculate additional stats
+        const activeMarkets = allMarkets.filter(m => m.status === 'active').length;
+        const closedMarkets = allMarkets.filter(m => m.status === 'closed').length;
+        const resolvedMarkets = allMarkets.filter(m => m.status === 'resolved').length;
+        const unreadMessages = contactMessages?.length || 0;
+        const pendingProposals = proposals?.count || 0;
+
         container.innerHTML = `
-            <!-- Stats Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div class="stat-card">
-                    <div class="stat-value">${marketStats.total}</div>
-                    <div class="stat-label">Total Markets</div>
+            <!-- Main Stats Grid (Clickable) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <!-- Total Markets -->
+                <div onclick="adminPanel.switchView('markets')" class="bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl p-5 shadow-lg cursor-pointer hover:shadow-2xl hover:scale-105 transition-transform">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-blue-100 text-sm font-medium mb-1">Total Markets</p>
+                            <p class="text-4xl font-bold text-white">${marketStats.total}</p>
+                            <p class="text-blue-200 text-xs mt-1">Click to manage →</p>
+                        </div>
+                        <svg class="w-14 h-14 text-blue-200 opacity-30" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
+                        </svg>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value">${marketStats.active}</div>
-                    <div class="stat-label">Active Markets</div>
+
+                <!-- Active Markets -->
+                <div onclick="adminPanel.switchView('markets')" class="bg-gradient-to-br from-green-600 to-green-800 rounded-xl p-5 shadow-lg cursor-pointer hover:shadow-2xl hover:scale-105 transition-transform">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-green-100 text-sm font-medium mb-1">Active Markets</p>
+                            <p class="text-4xl font-bold text-white">${activeMarkets}</p>
+                            <p class="text-green-200 text-xs mt-1">Click to view →</p>
+                        </div>
+                        <svg class="w-14 h-14 text-green-200 opacity-30" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value">${userStats.total}</div>
-                    <div class="stat-label">Total Users</div>
+
+                <!-- Total Users -->
+                <div onclick="adminPanel.switchView('users')" class="bg-gradient-to-br from-purple-600 to-purple-800 rounded-xl p-5 shadow-lg cursor-pointer hover:shadow-2xl hover:scale-105 transition-transform">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-purple-100 text-sm font-medium mb-1">Total Users</p>
+                            <p class="text-4xl font-bold text-white">${userStats.total}</p>
+                            <p class="text-purple-200 text-xs mt-1">Click to manage →</p>
+                        </div>
+                        <svg class="w-14 h-14 text-purple-200 opacity-30" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+                        </svg>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value">$${marketStats.totalVolume.toFixed(0)}</div>
-                    <div class="stat-label">Total Volume</div>
+
+                <!-- Total Volume -->
+                <div onclick="adminPanel.switchView('transactions')" class="bg-gradient-to-br from-yellow-600 to-yellow-800 rounded-xl p-5 shadow-lg cursor-pointer hover:shadow-2xl hover:scale-105 transition-transform">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-yellow-100 text-sm font-medium mb-1">Total Volume</p>
+                            <p class="text-4xl font-bold text-white">J$${(marketStats.totalVolume/1000).toFixed(1)}K</p>
+                            <p class="text-yellow-200 text-xs mt-1">Click to view →</p>
+                        </div>
+                        <svg class="w-14 h-14 text-yellow-200 opacity-30" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions Grid -->
+            <div class="mb-6">
+                <h3 class="text-lg font-bold mb-3 flex items-center gap-2">
+                    <svg class="w-5 h-5" style="color: #00CB97;" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/>
+                    </svg>
+                    Quick Actions
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Messages -->
+                    <div onclick="adminPanel.switchView('messages')" class="bg-gray-800 rounded-lg p-4 border border-gray-700 cursor-pointer hover:border-green-500 hover:shadow-lg transition">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-3">
+                                <div class="p-2 rounded-lg" style="background-color: rgba(0, 203, 151, 0.1);">
+                                    <svg class="h-5 w-5" style="color: #00CB97;" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
+                                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
+                                    </svg>
+                                </div>
+                                <span class="font-semibold">Messages</span>
+                            </div>
+                            ${unreadMessages > 0 ? `
+                                <span class="px-2 py-1 text-xs rounded-full font-bold" style="background-color: #00CB97; color: white;">${unreadMessages}</span>
+                            ` : ''}
+                        </div>
+                        <p class="text-sm text-gray-400">Manage contact messages</p>
+                    </div>
+
+                    <!-- Voting -->
+                    <div onclick="adminPanel.switchView('voting')" class="bg-gray-800 rounded-lg p-4 border border-gray-700 cursor-pointer hover:border-purple-500 hover:shadow-lg transition">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-3">
+                                <div class="p-2 rounded-lg" style="background-color: rgba(99, 27, 221, 0.1);">
+                                    <svg class="h-5 w-5" style="color: #631BDD;" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                                <span class="font-semibold">Voting</span>
+                            </div>
+                            ${pendingProposals > 0 ? `
+                                <span class="px-2 py-1 text-xs rounded-full font-bold" style="background-color: #F2C300; color: black;">${pendingProposals}</span>
+                            ` : ''}
+                        </div>
+                        <p class="text-sm text-gray-400">Manage proposals & votes</p>
+                    </div>
+
+                    <!-- Banners -->
+                    <div onclick="adminPanel.switchView('banners')" class="bg-gray-800 rounded-lg p-4 border border-gray-700 cursor-pointer hover:border-blue-500 hover:shadow-lg transition">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="p-2 rounded-lg" style="background-color: rgba(59, 130, 246, 0.1);">
+                                <svg class="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <span class="font-semibold">Banners</span>
+                        </div>
+                        <p class="text-sm text-gray-400">Manage homepage banners</p>
+                    </div>
+
+                    <!-- Transactions -->
+                    <div onclick="adminPanel.switchView('transactions')" class="bg-gray-800 rounded-lg p-4 border border-gray-700 cursor-pointer hover:border-yellow-500 hover:shadow-lg transition">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="p-2 rounded-lg" style="background-color: rgba(234, 179, 8, 0.1);">
+                                <svg class="h-5 w-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <span class="font-semibold">Transactions</span>
+                        </div>
+                        <p class="text-sm text-gray-400">View all transactions</p>
+                    </div>
+
+                    <!-- Markets -->
+                    <div onclick="adminPanel.switchView('markets')" class="bg-gray-800 rounded-lg p-4 border border-gray-700 cursor-pointer hover:border-green-500 hover:shadow-lg transition">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="p-2 rounded-lg" style="background-color: rgba(0, 203, 151, 0.1);">
+                                <svg class="h-5 w-5" style="color: #00CB97;" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
+                                </svg>
+                            </div>
+                            <span class="font-semibold">Markets</span>
+                        </div>
+                        <p class="text-sm text-gray-400">Create & manage markets</p>
+                    </div>
+
+                    <!-- Users -->
+                    <div onclick="adminPanel.switchView('users')" class="bg-gray-800 rounded-lg p-4 border border-gray-700 cursor-pointer hover:border-purple-500 hover:shadow-lg transition">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="p-2 rounded-lg" style="background-color: rgba(147, 51, 234, 0.1);">
+                                <svg class="h-5 w-5 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+                                </svg>
+                            </div>
+                            <span class="font-semibold">Users</span>
+                        </div>
+                        <p class="text-sm text-gray-400">Manage user accounts</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                <!-- Market Distribution Chart -->
+                <div class="bg-gray-800 rounded-lg p-5 shadow-lg">
+                    <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5" style="color: #00CB97;" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
+                        </svg>
+                        Market Status Distribution
+                    </h3>
+                    <div style="position: relative; height: 250px;">
+                        <canvas id="marketStatusChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Volume by Category Chart -->
+                <div class="bg-gray-800 rounded-lg p-5 shadow-lg">
+                    <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5" style="color: #00CB97;" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
+                        </svg>
+                        Volume by Category
+                    </h3>
+                    <div style="position: relative; height: 250px;">
+                        <canvas id="categoryVolumeChart"></canvas>
+                    </div>
                 </div>
             </div>
 
             <!-- Recent Transactions -->
-            <div class="bg-gray-800 rounded-lg p-6">
-                <h3 class="text-xl font-bold mb-4">Recent Transactions</h3>
+            <div class="bg-gray-800 rounded-lg p-5 shadow-lg">
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5" style="color: #00CB97;" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+                    </svg>
+                    Recent Transactions
+                </h3>
                 <div class="overflow-x-auto">
                     <table class="data-table">
                         <thead>
@@ -150,19 +339,95 @@ class AdminPanel {
                             </tr>
                         </thead>
                         <tbody>
-                            ${transactions.map(tx => `
+                            ${transactions.length > 0 ? transactions.map(tx => `
                                 <tr>
                                     <td>${tx.profiles?.username || 'Unknown'}</td>
                                     <td><span class="badge badge-${tx.type}">${tx.type}</span></td>
-                                    <td class="font-semibold">$${parseFloat(tx.amount).toFixed(2)}</td>
+                                    <td class="font-semibold">J$${parseFloat(tx.amount).toFixed(2)}</td>
                                     <td class="text-sm text-gray-400">${new Date(tx.created_at).toLocaleString()}</td>
                                 </tr>
-                            `).join('')}
+                            `).join('') : '<tr><td colspan="4" class="text-center text-gray-400">No transactions yet</td></tr>'}
                         </tbody>
                     </table>
                 </div>
             </div>
         `;
+
+        // Initialize charts after DOM is updated
+        this.initDashboardCharts(activeMarkets, closedMarkets, resolvedMarkets, allMarkets);
+    }
+
+    initDashboardCharts(activeMarkets, closedMarkets, resolvedMarkets, allMarkets) {
+        // Market Status Distribution Pie Chart
+        const statusCtx = document.getElementById('marketStatusChart');
+        if (statusCtx) {
+            new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Active', 'Closed', 'Resolved'],
+                    datasets: [{
+                        data: [activeMarkets, closedMarkets, resolvedMarkets],
+                        backgroundColor: ['#00CB97', '#FFC107', '#631BDD'],
+                        borderColor: '#1f2937',
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#9ca3af', font: { size: 12 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Volume by Category Bar Chart
+        const categories = {};
+        allMarkets.forEach(market => {
+            const cat = market.category || 'Other';
+            if (!categories[cat]) categories[cat] = 0;
+            categories[cat] += parseFloat(market.total_volume || 0);
+        });
+
+        const categoryCtx = document.getElementById('categoryVolumeChart');
+        if (categoryCtx) {
+            new Chart(categoryCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(categories),
+                    datasets: [{
+                        label: 'Volume ($)',
+                        data: Object.values(categories),
+                        backgroundColor: '#00CB97',
+                        borderColor: '#00e5af',
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#9ca3af' },
+                            grid: { color: '#374151' }
+                        },
+                        x: {
+                            ticks: { color: '#9ca3af' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
     }
 
     async renderMarkets(container) {
@@ -194,10 +459,11 @@ class AdminPanel {
                                 <td class="font-semibold">${market.title}</td>
                                 <td><span class="text-sm text-gray-400">${market.category || 'N/A'}</span></td>
                                 <td><span class="badge badge-${market.status}">${market.status}</span></td>
-                                <td>$${parseFloat(market.total_volume || 0).toFixed(0)}</td>
+                                <td>J$${parseFloat(market.total_volume || 0).toFixed(0)}</td>
                                 <td class="text-sm text-gray-400">${new Date(market.end_date).toLocaleDateString()}</td>
                                 <td>
                                     <div class="flex gap-2">
+                                        <button onclick="adminPanel.showEditMarketModal('${market.id}')" class="btn-secondary btn-sm" style="background-color: #00CB97; color: white;">Edit</button>
                                         ${market.status === 'active' ? `
                                             <button onclick="adminPanel.showResolveMarketModal('${market.id}')" class="btn-secondary btn-sm">Resolve</button>
                                         ` : ''}
@@ -252,7 +518,7 @@ class AdminPanel {
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm text-gray-400 mb-1">Total Balance</p>
-                            <p class="text-3xl font-bold" style="color: #FFC107;">$${totalBalance.toFixed(2)}</p>
+                            <p class="text-3xl font-bold" style="color: #FFC107;">J$${totalBalance.toFixed(2)}</p>
                         </div>
                         <svg class="w-12 h-12 opacity-20" style="color: #FFC107;" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
@@ -265,7 +531,7 @@ class AdminPanel {
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm text-gray-400 mb-1">Avg Balance</p>
-                            <p class="text-3xl font-bold text-white">$${avgBalance.toFixed(2)}</p>
+                            <p class="text-3xl font-bold text-white">J$${avgBalance.toFixed(2)}</p>
                         </div>
                         <svg class="w-12 h-12 opacity-20 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
@@ -359,7 +625,7 @@ class AdminPanel {
                                     </span>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <span class="font-bold" style="color: #00CB97;">$${parseFloat(user.balance).toFixed(2)}</span>
+                                    <span class="font-bold" style="color: #00CB97;">J$${parseFloat(user.balance).toFixed(2)}</span>
                                 </td>
                                 <td class="px-6 py-4">
                                     <span class="text-sm text-gray-400">${new Date(user.created_at).toLocaleDateString()}</span>
@@ -460,7 +726,7 @@ class AdminPanel {
                         </div>
                         <div class="bg-gray-900 rounded-xl p-4">
                             <p class="text-sm text-gray-400 mb-1">Balance</p>
-                            <p class="text-lg font-bold" style="color: #00CB97;">$${parseFloat(profile.balance).toFixed(2)}</p>
+                            <p class="text-lg font-bold" style="color: #00CB97;">J$${parseFloat(profile.balance).toFixed(2)}</p>
                         </div>
                         <div class="bg-gray-900 rounded-xl p-4">
                             <p class="text-sm text-gray-400 mb-1">User ID</p>
@@ -485,9 +751,9 @@ class AdminPanel {
                                         <div class="flex justify-between items-center py-2 border-b border-gray-800 last:border-0">
                                             <div>
                                                 <p class="font-semibold">${pos.markets?.title || 'Unknown Market'}</p>
-                                                <p class="text-sm text-gray-400">${pos.outcome} • ${pos.shares} shares @ $${parseFloat(pos.avg_price).toFixed(2)}</p>
+                                                <p class="text-sm text-gray-400">${pos.outcome} • ${pos.shares} shares @ J$${parseFloat(pos.avg_price).toFixed(2)}</p>
                                             </div>
-                                            <p class="font-bold" style="color: #00CB97;">$${(pos.shares * parseFloat(pos.avg_price)).toFixed(2)}</p>
+                                            <p class="font-bold" style="color: #00CB97;">J$${(pos.shares * parseFloat(pos.avg_price)).toFixed(2)}</p>
                                         </div>
                                     `).join('')}
                                 </div>
@@ -506,7 +772,7 @@ class AdminPanel {
                                                 <p class="text-xs text-gray-400">${new Date(tx.created_at).toLocaleString()}</p>
                                             </div>
                                             <p class="font-bold ${parseFloat(tx.amount) >= 0 ? 'text-green-400' : 'text-red-400'}">
-                                                ${parseFloat(tx.amount) >= 0 ? '+' : ''}$${parseFloat(tx.amount).toFixed(2)}
+                                                ${parseFloat(tx.amount) >= 0 ? '+' : ''}J$${parseFloat(tx.amount).toFixed(2)}
                                             </p>
                                         </div>
                                     `).join('')}
@@ -537,7 +803,7 @@ class AdminPanel {
         modal.innerHTML = `
             <div class="bg-gray-800 rounded-2xl border-2 border-gray-700 p-8 max-w-md w-full">
                 <h2 class="text-2xl font-bold mb-4" style="color: #FFC107;">Edit User Balance</h2>
-                <p class="text-gray-400 mb-6">Current balance: <span class="font-bold" style="color: #00CB97;">$${parseFloat(currentBalance).toFixed(2)}</span></p>
+                <p class="text-gray-400 mb-6">Current balance: <span class="font-bold" style="color: #00CB97;">J$${parseFloat(currentBalance).toFixed(2)}</span></p>
 
                 <form id="edit-balance-form">
                     <div class="mb-4">
@@ -707,8 +973,8 @@ class AdminPanel {
                             <tr>
                                 <td class="font-semibold">${tx.profiles?.username || 'Unknown'}</td>
                                 <td><span class="badge badge-${tx.type}">${tx.type}</span></td>
-                                <td class="font-semibold">$${parseFloat(tx.amount).toFixed(2)}</td>
-                                <td class="text-sm text-gray-400">$${parseFloat(tx.balance_after).toFixed(2)}</td>
+                                <td class="font-semibold">J$${parseFloat(tx.amount).toFixed(2)}</td>
+                                <td class="text-sm text-gray-400">J$${parseFloat(tx.balance_after).toFixed(2)}</td>
                                 <td class="text-sm text-gray-400">${new Date(tx.created_at).toLocaleString()}</td>
                             </tr>
                         `).join('')}
@@ -739,13 +1005,32 @@ class AdminPanel {
                     <div class="form-group">
                         <label class="form-label">Category</label>
                         <select name="category" class="form-select">
-                            <option value="Crypto">Crypto</option>
-                            <option value="Technology">Technology</option>
-                            <option value="Politics">Politics</option>
-                            <option value="Sports">Sports</option>
-                            <option value="Business">Business</option>
-                            <option value="Science">Science</option>
+                            <option value="Jamaican Parliament">Jamaican Parliament</option>
+                            <option value="Dancehall">Dancehall</option>
+                            <option value="Reggae">Reggae</option>
+                            <option value="Jamaica Sports">Jamaica Sports</option>
+                            <option value="Caribbean Cricket">Caribbean Cricket</option>
+                            <option value="Jamaica Business">Jamaica Business</option>
+                            <option value="JMD & Crypto">JMD & Crypto</option>
+                            <option value="Jamaican Culture">Jamaican Culture</option>
+                            <option value="Caribbean News">Caribbean News</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Market Image (optional)</label>
+                        <div class="space-y-2">
+                            <div id="adminMarketImagePreview" class="w-full h-48 bg-gray-700 rounded-lg flex items-center justify-center text-gray-400 overflow-hidden">
+                                <span>No image selected</span>
+                            </div>
+                            <input type="file" id="adminMarketImageInput" accept="image/*"
+                                   class="block w-full text-sm text-gray-400
+                                   file:mr-4 file:py-2 file:px-4
+                                   file:rounded file:border-0
+                                   file:text-sm file:font-semibold
+                                   file:bg-green-600 file:text-white
+                                   hover:file:bg-green-700 file:cursor-pointer cursor-pointer">
+                            <p class="text-xs text-gray-400">Upload an image for this market (max 5MB). Recommended: 400x200px</p>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">End Date</label>
@@ -761,16 +1046,79 @@ class AdminPanel {
 
         document.body.appendChild(modal);
 
+        // Handle image preview
+        const imageInput = document.getElementById('adminMarketImageInput');
+        const imagePreview = document.getElementById('adminMarketImagePreview');
+
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Validate file size (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Image size must be less than 5MB');
+                e.target.value = '';
+                return;
+            }
+
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                e.target.value = '';
+                return;
+            }
+
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                imagePreview.innerHTML = `<img src="${event.target.result}" class="w-full h-full object-cover">`;
+            };
+            reader.readAsDataURL(file);
+        });
+
         document.getElementById('create-market-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData);
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
 
             try {
+                // Show loading
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<div class="spinner-glow inline-block w-4 h-4 mr-2"></div>Creating...';
+
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData);
+                let imageUrl = null;
+
+                // Upload image if selected
+                if (imageInput.files.length > 0) {
+                    const file = imageInput.files[0];
+                    const fileExt = file.name.split('.').pop();
+                    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+                    const { data: uploadData, error: uploadError } = await this.api.db.storage
+                        .from('market-images')
+                        .upload(fileName, file, {
+                            cacheControl: '3600',
+                            upsert: false
+                        });
+
+                    if (uploadError) throw uploadError;
+
+                    // Get public URL
+                    const { data: urlData } = this.api.db.storage
+                        .from('market-images')
+                        .getPublicUrl(fileName);
+
+                    imageUrl = urlData.publicUrl;
+                }
+
                 await this.api.createMarket({
                     title: data.title,
                     description: data.description,
                     category: data.category,
+                    image_url: imageUrl,
                     end_date: new Date(data.end_date).toISOString(),
                     yes_price: 0.5,
                     no_price: 0.5
@@ -780,8 +1128,190 @@ class AdminPanel {
                 this.renderView('markets');
             } catch (error) {
                 alert('Error creating market: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
             }
         });
+    }
+
+    async showEditMarketModal(marketId) {
+        try {
+            // Load existing market data
+            const market = await this.api.getMarket(marketId);
+
+            const modal = document.createElement('div');
+            modal.className = 'admin-modal';
+
+            // Format end_date for datetime-local input
+            const endDate = new Date(market.end_date);
+            const formattedEndDate = endDate.toISOString().slice(0, 16);
+
+            modal.innerHTML = `
+                <div class="admin-modal-content">
+                    <div class="p-6 border-b border-gray-700">
+                        <h3 class="text-xl font-bold">Edit Market</h3>
+                    </div>
+                    <form id="edit-market-form" class="p-6 space-y-4">
+                        <div class="form-group">
+                            <label class="form-label">Title</label>
+                            <input type="text" name="title" required class="form-input" value="${market.title.replace(/"/g, '&quot;')}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Description</label>
+                            <textarea name="description" rows="3" class="form-input">${market.description || ''}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Category</label>
+                            <select name="category" class="form-select">
+                                <option value="Jamaican Parliament" ${market.category === 'Jamaican Parliament' ? 'selected' : ''}>Jamaican Parliament</option>
+                                <option value="Dancehall" ${market.category === 'Dancehall' ? 'selected' : ''}>Dancehall</option>
+                                <option value="Reggae" ${market.category === 'Reggae' ? 'selected' : ''}>Reggae</option>
+                                <option value="Jamaica Sports" ${market.category === 'Jamaica Sports' ? 'selected' : ''}>Jamaica Sports</option>
+                                <option value="Caribbean Cricket" ${market.category === 'Caribbean Cricket' ? 'selected' : ''}>Caribbean Cricket</option>
+                                <option value="Jamaica Business" ${market.category === 'Jamaica Business' ? 'selected' : ''}>Jamaica Business</option>
+                                <option value="JMD & Crypto" ${market.category === 'JMD & Crypto' ? 'selected' : ''}>JMD & Crypto</option>
+                                <option value="Jamaican Culture" ${market.category === 'Jamaican Culture' ? 'selected' : ''}>Jamaican Culture</option>
+                                <option value="Caribbean News" ${market.category === 'Caribbean News' ? 'selected' : ''}>Caribbean News</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Market Image</label>
+                            <div class="space-y-2">
+                                <div id="editAdminMarketImagePreview" class="w-full h-48 bg-gray-700 rounded-lg flex items-center justify-center text-gray-400 overflow-hidden">
+                                    ${market.image_url
+                                        ? `<img src="${market.image_url}" class="w-full h-full object-cover">`
+                                        : '<span>No image selected</span>'
+                                    }
+                                </div>
+                                <input type="file" id="editAdminMarketImageInput" accept="image/*"
+                                       class="block w-full text-sm text-gray-400
+                                       file:mr-4 file:py-2 file:px-4
+                                       file:rounded file:border-0
+                                       file:text-sm file:font-semibold
+                                       file:bg-green-600 file:text-white
+                                       hover:file:bg-green-700 file:cursor-pointer cursor-pointer">
+                                <p class="text-xs text-gray-400">Upload a new image or keep existing (max 5MB). Recommended: 400x200px</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="form-group">
+                                <label class="form-label">YES Price</label>
+                                <input type="number" name="yes_price" step="0.01" min="0" max="1" value="${market.yes_price}" required class="form-input">
+                                <p class="text-xs text-gray-400 mt-1">0.00 - 1.00 (50% = 0.50)</p>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">End Date</label>
+                                <input type="datetime-local" name="end_date" required value="${formattedEndDate}" class="form-input">
+                            </div>
+                        </div>
+                        <div class="flex gap-3 justify-end">
+                            <button type="button" onclick="this.closest('.admin-modal').remove()" class="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition">Cancel</button>
+                            <button type="submit" class="btn-primary">Update Market</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Handle image preview
+            const imageInput = document.getElementById('editAdminMarketImageInput');
+            const imagePreview = document.getElementById('editAdminMarketImagePreview');
+
+            imageInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                // Validate file size (5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('Image size must be less than 5MB');
+                    e.target.value = '';
+                    return;
+                }
+
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    alert('Please select an image file');
+                    e.target.value = '';
+                    return;
+                }
+
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    imagePreview.innerHTML = `<img src="${event.target.result}" class="w-full h-full object-cover">`;
+                };
+                reader.readAsDataURL(file);
+            });
+
+            // Handle form submission
+            document.getElementById('edit-market-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const submitBtn = e.target.querySelector('button[type="submit"]');
+                const originalText = submitBtn.textContent;
+
+                try {
+                    // Show loading
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<div class="spinner-glow inline-block w-4 h-4 mr-2"></div>Updating...';
+
+                    const formData = new FormData(e.target);
+                    const data = Object.fromEntries(formData);
+                    let imageUrl = market.image_url; // Keep existing image by default
+
+                    // Upload new image if selected
+                    if (imageInput.files.length > 0) {
+                        const file = imageInput.files[0];
+                        const fileExt = file.name.split('.').pop();
+                        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+                        const { data: uploadData, error: uploadError } = await this.api.db.storage
+                            .from('market-images')
+                            .upload(fileName, file, {
+                                cacheControl: '3600',
+                                upsert: false
+                            });
+
+                        if (uploadError) throw uploadError;
+
+                        // Get public URL
+                        const { data: urlData } = this.api.db.storage
+                            .from('market-images')
+                            .getPublicUrl(fileName);
+
+                        imageUrl = urlData.publicUrl;
+                    }
+
+                    const marketData = {
+                        title: data.title,
+                        description: data.description,
+                        category: data.category,
+                        image_url: imageUrl,
+                        yes_price: parseFloat(data.yes_price),
+                        no_price: 1 - parseFloat(data.yes_price),
+                        end_date: new Date(data.end_date).toISOString()
+                    };
+
+                    const { error } = await this.api.db
+                        .from('markets')
+                        .update(marketData)
+                        .eq('id', marketId);
+
+                    if (error) throw error;
+
+                    alert('Market updated successfully!');
+                    modal.remove();
+                    this.renderView('markets');
+                } catch (error) {
+                    alert('Error updating market: ' + error.message);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+            });
+        } catch (error) {
+            alert('Error loading market: ' + error.message);
+        }
     }
 
     showResolveMarketModal(marketId) {
@@ -1513,6 +2043,18 @@ class AdminPanel {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    async renderBanners(container) {
+        container.innerHTML = '<div id="admin-banners-section"></div>';
+
+        // Initialize and render the AdminBanners component
+        if (window.AdminBanners) {
+            window.adminBanners = new AdminBanners(this.api);
+            await window.adminBanners.init();
+        } else {
+            container.innerHTML = '<div class="text-center py-12 text-red-400">Banner management component not loaded</div>';
+        }
     }
 }
 

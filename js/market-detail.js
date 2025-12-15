@@ -47,6 +47,13 @@ class MarketDetailModal {
                             <h2 class="text-lg md:text-2xl font-bold leading-tight">${market.title}</h2>
                         </div>
                         <div class="flex items-center gap-1 flex-shrink-0">
+                            ${this.app.currentProfile && this.app.currentProfile.role === 'admin' ? `
+                                <button onclick="app.showEditMarketModal('${market.id}')" class="p-2 rounded-lg hover:bg-gray-700 transition touch-target" title="Edit market" style="color: #00CB97;">
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </button>
+                            ` : ''}
                             <button onclick="navigator.share ? navigator.share({title: '${market.title.replace(/'/g, "\\'")}', text: 'Check out this market on GoatMouth!', url: window.location.href + '?market=${market.id}'}) : (navigator.clipboard.writeText(window.location.href + '?market=${market.id}').then(() => alert('Link copied to clipboard!')))" class="p-2 rounded-lg hover:bg-gray-700 transition touch-target" title="Share market">
                                 <svg class="h-5 w-5" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
@@ -66,7 +73,7 @@ class MarketDetailModal {
                             </div>
                             <span class="hidden md:inline">•</span>
                         ` : ''}
-                        <span>Vol: $${parseFloat(market.total_volume).toFixed(0)}</span>
+                        <span>Vol: J$${parseFloat(market.total_volume).toFixed(0)}</span>
                         <span class="hidden md:inline">•</span>
                         <span class="hidden md:inline">${timeLeft}</span>
                         <span class="hidden md:inline">•</span>
@@ -277,7 +284,7 @@ class MarketDetailModal {
         summary.classList.remove('hidden');
         modal.querySelector('#shares-amount').textContent = shares.toFixed(2);
         modal.querySelector('#avg-cost').textContent = `${(price * 100).toFixed(1)}¢`;
-        modal.querySelector('#potential-return').textContent = `$${potentialReturn.toFixed(2)}`;
+        modal.querySelector('#potential-return').textContent = `J$${potentialReturn.toFixed(2)}`;
 
         placeBtn.disabled = false;
     }
@@ -286,7 +293,7 @@ class MarketDetailModal {
         const amount = parseFloat(this.betAmount);
         const price = this.selectedOutcome === 'yes' ? this.market.yes_price : this.market.no_price;
 
-        if (!confirm(`Confirm bet: $${amount.toFixed(2)} on ${this.selectedOutcome.toUpperCase()} @ ${(price * 100).toFixed(1)}¢?`)) {
+        if (!confirm(`Confirm bet: J$${amount.toFixed(2)} on ${this.selectedOutcome.toUpperCase()} @ ${(price * 100).toFixed(1)}¢?`)) {
             return;
         }
 

@@ -29,69 +29,93 @@
     <div class="admin-sidebar-overlay" onclick="toggleAdminSidebar()"></div>
 
     <!-- Sidebar -->
-    <aside id="admin-sidebar" class="fixed left-0 top-0 bottom-0 w-64 bg-gray-800 border-r border-gray-700">
-        <div class="p-6">
-            <!-- Logo -->
-            <div class="flex items-center gap-3 mb-8">
-                <img src="assets/mainlogo.png" alt="GoatMouth" class="logo-no-bg" style="height: 60px; width: 60px;">
+    <aside id="admin-sidebar" class="fixed left-0 top-0 bottom-0 w-64 bg-gray-800 border-r border-gray-700 flex flex-col">
+        <!-- Logo Section -->
+        <div class="p-4 border-b border-gray-700">
+            <div class="flex items-center gap-2">
+                <img src="assets/mainlogo.png" alt="GoatMouth" class="logo-no-bg" style="height: 45px; width: 45px;">
                 <div>
-                    <h1 class="text-xl font-bold">GoatMouth</h1>
-                    <p class="text-sm text-gray-400">Admin Panel</p>
+                    <h1 class="text-lg font-bold">GoatMouth</h1>
+                    <p class="text-xs text-gray-400">Admin Panel</p>
                 </div>
             </div>
-
-            <!-- Navigation -->
-            <nav class="space-y-2">
-                <a href="#" class="nav-item active" data-view="dashboard">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
-                    </svg>
-                    Dashboard
-                </a>
-                <a href="#" class="nav-item" data-view="markets">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                    </svg>
-                    Markets
-                </a>
-                <a href="#" class="nav-item" data-view="users">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-                    </svg>
-                    Users
-                </a>
-                <a href="#" class="nav-item" data-view="transactions">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                    </svg>
-                    Transactions
-                </a>
-                <a href="#" class="nav-item" data-view="messages">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                    </svg>
-                    Messages
-                    <span id="unread-badge" class="hidden ml-auto px-2 py-0.5 text-xs rounded-full font-bold" style="background-color: #00CB97; color: white;">0</span>
-                </a>
-                <a href="#" class="nav-item" data-view="voting">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    Voting
-                    <span id="pending-proposals-badge" class="hidden ml-auto px-2 py-0.5 text-xs rounded-full font-bold" style="background-color: #F2C300; color: black;">0</span>
-                </a>
-            </nav>
         </div>
 
+        <!-- Navigation - Scrollable -->
+        <nav class="flex-1 overflow-y-auto py-2 px-3">
+            <div class="space-y-1">
+                <!-- Dashboard -->
+                <a href="#" class="nav-item active" data-view="dashboard">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                    </svg>
+                    <span class="text-sm">Dashboard</span>
+                </a>
+
+                <!-- Content Section -->
+                <div class="pt-3 pb-1">
+                    <div class="text-xs font-semibold text-gray-500 uppercase px-3 mb-1">Content</div>
+                </div>
+                <a href="#" class="nav-item" data-view="markets">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                    </svg>
+                    <span class="text-sm">Markets</span>
+                </a>
+                <a href="#" class="nav-item" data-view="banners">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <span class="text-sm">Banners</span>
+                </a>
+
+                <!-- Users Section -->
+                <div class="pt-3 pb-1">
+                    <div class="text-xs font-semibold text-gray-500 uppercase px-3 mb-1">Users</div>
+                </div>
+                <a href="#" class="nav-item" data-view="users">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                    </svg>
+                    <span class="text-sm">Users</span>
+                </a>
+                <a href="#" class="nav-item" data-view="transactions">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    <span class="text-sm">Transactions</span>
+                </a>
+
+                <!-- Community Section -->
+                <div class="pt-3 pb-1">
+                    <div class="text-xs font-semibold text-gray-500 uppercase px-3 mb-1">Community</div>
+                </div>
+                <a href="#" class="nav-item" data-view="messages">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                    <span class="text-sm">Messages</span>
+                    <span id="unread-badge" class="hidden ml-auto px-1.5 py-0.5 text-xs rounded-full font-bold" style="background-color: #00CB97; color: white; font-size: 10px;">0</span>
+                </a>
+                <a href="#" class="nav-item" data-view="voting">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span class="text-sm">Voting</span>
+                    <span id="pending-proposals-badge" class="hidden ml-auto px-1.5 py-0.5 text-xs rounded-full font-bold" style="background-color: #F2C300; color: black; font-size: 10px;">0</span>
+                </a>
+            </div>
+        </nav>
+
         <!-- Bottom Actions -->
-        <div class="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-700">
-            <a href="index.html" class="flex items-center gap-2 text-gray-400 hover:text-white transition mb-3">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="p-3 border-t border-gray-700">
+            <a href="index.html" class="flex items-center gap-2 text-gray-400 hover:text-white transition mb-2 px-3 py-2 rounded hover:bg-gray-700 text-sm">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                 </svg>
                 Back to App
             </a>
-            <button id="admin-signout" class="w-full px-4 py-2 bg-red-600 rounded-lg hover:bg-red-700 transition font-semibold">
+            <button id="admin-signout" class="w-full px-3 py-2 bg-red-600 rounded-lg hover:bg-red-700 transition font-semibold text-sm">
                 Sign Out
             </button>
         </div>
@@ -141,10 +165,12 @@
     </footer>
 
     <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-client.js"></script>
     <script src="js/api.js"></script>
     <script src="js/auth-guard.js"></script>
+    <script src="js/admin-banners.js"></script>
     <script src="js/admin.js"></script>
 
     <!-- Mobile Admin Toggle -->
