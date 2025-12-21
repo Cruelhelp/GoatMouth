@@ -935,60 +935,77 @@ class GoatMouth {
                     <!-- Colored Top Bar -->
                     <div style="height: 4px; background: linear-gradient(90deg, #00CB97 0%, #00CB97 ${yesPercent}%, #ef4444 ${yesPercent}%, #ef4444 100%);"></div>
 
+                    <!-- Image Section -->
+                    ${market.image_url ? `
+                        <div style="height: 120px; background: url('${market.image_url}') center/cover; position: relative;"></div>
+                    ` : ''}
+
                     <div class="p-4">
                         <!-- Category Badge -->
                         ${market.category ? `
-                            <div class="mb-3">
-                                <span class="text-xs px-2.5 py-1 rounded-full font-semibold" style="background-color: rgba(0, 203, 151, 0.15); color: #00CB97;">${market.category}</span>
+                            <div class="mb-2">
+                                <span class="text-xs px-2 py-0.5 rounded-md font-semibold" style="background-color: rgba(0, 203, 151, 0.1); color: #00CB97; border: 1px solid rgba(0, 203, 151, 0.2);">${market.category}</span>
                             </div>
                         ` : ''}
 
                         <!-- Title -->
-                        <h3 class="text-base font-bold mb-4 leading-tight line-clamp-2" style="color: #ffffff;">${market.title}</h3>
+                        <h3 class="text-base font-bold mb-3 leading-tight line-clamp-2" style="color: #ffffff; font-family: system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;">${market.title}</h3>
 
-                        <!-- Visual Odds Display -->
-                        <div class="flex items-center justify-between mb-4">
-                            <!-- YES Side -->
-                            <div class="flex-1 text-center">
-                                <div class="mb-2">
-                                    <div class="text-3xl font-black" style="color: #00CB97;">${yesPercent}%</div>
-                                    <div class="text-xs font-semibold uppercase tracking-wider mt-1" style="color: #00CB97;">YES</div>
+                        <!-- Vertical Voting Analytics Style Bars -->
+                        <div style="margin-bottom: 12px;">
+                            <!-- Bar Chart Container -->
+                            <div style="display: flex; gap: 12px; padding: 0 16px;">
+                                <!-- YES Bar -->
+                                <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                                    <!-- Vertical Bar Area (Fixed Height) -->
+                                    <div style="width: 100%; height: 100px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative;">
+                                        <!-- Faded background track -->
+                                        <div style="position: absolute; bottom: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, rgba(0, 203, 151, 0.05) 0px, rgba(0, 203, 151, 0.05) 10px, transparent 10px, transparent 20px); border-radius: 6px; opacity: 0.3;"></div>
+                                        <!-- Active bar growing from bottom -->
+                                        <div style="width: 100%; background: linear-gradient(180deg, #00e5af 0%, #00CB97 100%); border-radius: 6px 6px 0 0; transition: all 0.5s ease; box-shadow: 0 -4px 12px rgba(0, 203, 151, 0.4); height: ${yesPercent}%; display: flex; align-items: center; justify-content: center; position: relative; z-index: 10;">
+                                            <span style="font-size: 1.1rem; font-weight: 700; color: white; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);">${yesPercent}%</span>
+                                        </div>
+                                    </div>
+                                    <!-- Label below bar -->
+                                    <span style="font-size: 0.7rem; font-weight: 600; color: #00CB97; text-transform: uppercase; letter-spacing: 0.03em;">Yes</span>
+                                </div>
+
+                                <!-- NO Bar -->
+                                <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                                    <!-- Vertical Bar Area (Fixed Height) -->
+                                    <div style="width: 100%; height: 100px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative;">
+                                        <!-- Faded background track -->
+                                        <div style="position: absolute; bottom: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, rgba(239, 68, 68, 0.05) 0px, rgba(239, 68, 68, 0.05) 10px, transparent 10px, transparent 20px); border-radius: 6px; opacity: 0.3;"></div>
+                                        <!-- Active bar growing from bottom -->
+                                        <div style="width: 100%; background: linear-gradient(180deg, #f87171 0%, #ef4444 100%); border-radius: 6px 6px 0 0; transition: all 0.5s ease; box-shadow: 0 -4px 12px rgba(239, 68, 68, 0.4); height: ${noPercent}%; display: flex; align-items: center; justify-content: center; position: relative; z-index: 10;">
+                                            <span style="font-size: 1.1rem; font-weight: 700; color: white; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);">${noPercent}%</span>
+                                        </div>
+                                    </div>
+                                    <!-- Label below bar -->
+                                    <span style="font-size: 0.7rem; font-weight: 600; color: #ef4444; text-transform: uppercase; letter-spacing: 0.03em;">No</span>
                                 </div>
                             </div>
-
-                            <!-- Divider with VS -->
-                            <div class="px-3">
-                                <div class="text-xs font-bold text-gray-500">VS</div>
-                            </div>
-
-                            <!-- NO Side -->
-                            <div class="flex-1 text-center">
-                                <div class="mb-2">
-                                    <div class="text-3xl font-black" style="color: #ef4444;">${noPercent}%</div>
-                                    <div class="text-xs font-semibold uppercase tracking-wider mt-1" style="color: #ef4444;">NO</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Animated Progress Bar -->
-                        <div class="w-full bg-gray-900 rounded-full h-2 overflow-hidden mb-4" style="box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);">
-                            <div class="h-full transition-all duration-500 ease-out"
-                                 style="width: ${yesPercent}%; background: linear-gradient(90deg, #00CB97 0%, #00e5af 100%); box-shadow: 0 0 8px rgba(0, 203, 151, 0.5);"></div>
                         </div>
 
                         <!-- Footer Info -->
-                        <div class="flex items-center justify-between text-xs">
-                            <div class="flex items-center gap-1.5 px-2 py-1 rounded-md" style="background: rgba(0, 203, 151, 0.1);">
-                                <svg class="h-3.5 w-3.5" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="flex items-center justify-between text-xs gap-2">
+                            <div class="flex items-center gap-1.5 text-gray-400">
+                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
                                 </svg>
-                                <span class="font-bold" style="color: #00CB97;">J$${parseFloat(market.total_volume).toLocaleString()}</span>
+                                <span class="font-medium text-xs">J$${parseFloat(market.total_volume/1000).toFixed(1)}K</span>
                             </div>
-                            <div class="flex items-center gap-1.5 text-gray-400">
+                            <div class="flex items-center gap-1 text-gray-400">
+                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                </svg>
+                                <span class="font-medium text-xs">${market.bettor_count || 0}</span>
+                            </div>
+                            <div class="flex items-center gap-1 text-gray-400">
                                 <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
-                                <span class="font-medium">${timeLeft}</span>
+                                <span class="font-medium text-xs">${timeLeft}</span>
                             </div>
                         </div>
                     </div>
@@ -1011,16 +1028,10 @@ class GoatMouth {
                     <!-- Image Placeholder -->
                     ${market.image_url ? `
                         <div style="height: 100px; background: url('${market.image_url}') center/cover; position: relative;">
-                            <div style="position: absolute; top: 8px; left: 8px;">
-                                ${market.category ? `<span class="text-xs px-2 py-1 rounded-full font-semibold" style="background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); color: #00CB97; border: 1px solid rgba(0, 203, 151, 0.3); font-size: 10px;">${market.category}</span>` : ''}
-                            </div>
                         </div>
                     ` : `
                         <div style="height: 100px; background: linear-gradient(135deg, #1f2937 0%, #111827 100%); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
                             <div style="position: absolute; inset: 0; opacity: 0.03; background-image: radial-gradient(circle, #00CB97 1px, transparent 1px); background-size: 15px 15px;"></div>
-                            <div style="position: absolute; top: 8px; left: 8px;">
-                                ${market.category ? `<span class="text-xs px-2 py-1 rounded-full font-semibold" style="background-color: rgba(0, 203, 151, 0.15); color: #00CB97; border: 1px solid rgba(0, 203, 151, 0.3); font-size: 10px;">${market.category}</span>` : ''}
-                            </div>
                             <svg width="60" height="60" style="transform: rotate(-90deg);">
                                 <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3"/>
                                 <circle cx="30" cy="30" r="26" fill="none" stroke="#00CB97" stroke-width="3"
@@ -1034,40 +1045,71 @@ class GoatMouth {
                     `}
 
                     <div class="p-3">
+                        <!-- Category Badge -->
+                        ${market.category ? `
+                            <div class="mb-2">
+                                <span class="text-xs px-2 py-0.5 rounded-md font-semibold" style="background-color: rgba(0, 203, 151, 0.1); color: #00CB97; border: 1px solid rgba(0, 203, 151, 0.2); font-size: 9px;">${market.category}</span>
+                            </div>
+                        ` : ''}
+
                         <!-- Title -->
-                        <h3 class="text-sm font-bold mb-2 leading-tight line-clamp-2" style="color: #ffffff; min-height: 40px;">${market.title}</h3>
+                        <h3 class="text-sm font-bold mb-2 leading-tight line-clamp-2" style="color: #ffffff; min-height: 36px; font-family: system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;">${market.title}</h3>
 
-                        <!-- Visual Odds Display -->
-                        <div class="flex items-stretch mb-2 rounded-md overflow-hidden" style="height: 50px;">
-                            <div class="flex-1 flex flex-col items-center justify-center" style="background: linear-gradient(135deg, rgba(0, 203, 151, 0.15) 0%, rgba(0, 203, 151, 0.05) 100%); border-right: 1px solid rgba(0, 203, 151, 0.2);">
-                                <div class="text-2xl font-black" style="color: #00CB97; text-shadow: 0 0 15px rgba(0, 203, 151, 0.3);">${yesPercent}%</div>
-                                <div class="text-xs font-bold uppercase" style="color: #00CB97; opacity: 0.7; font-size: 9px;">YES</div>
-                            </div>
-                            <div class="flex-1 flex flex-col items-center justify-center" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%);">
-                                <div class="text-2xl font-black" style="color: #ef4444; text-shadow: 0 0 15px rgba(239, 68, 68, 0.3);">${noPercent}%</div>
-                                <div class="text-xs font-bold uppercase" style="color: #ef4444; opacity: 0.7; font-size: 9px;">NO</div>
-                            </div>
-                        </div>
+                        <!-- Vertical Voting Analytics Style Bars -->
+                        <div style="margin-bottom: 8px;">
+                            <!-- Bar Chart Container -->
+                            <div style="display: flex; gap: 10px; padding: 0 8px;">
+                                <!-- YES Bar -->
+                                <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                                    <!-- Vertical Bar Area (Fixed Height) -->
+                                    <div style="width: 100%; height: 80px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative;">
+                                        <!-- Faded background track -->
+                                        <div style="position: absolute; bottom: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, rgba(0, 203, 151, 0.05) 0px, rgba(0, 203, 151, 0.05) 8px, transparent 8px, transparent 16px); border-radius: 5px; opacity: 0.3;"></div>
+                                        <!-- Active bar growing from bottom -->
+                                        <div style="width: 100%; background: linear-gradient(180deg, #00e5af 0%, #00CB97 100%); border-radius: 5px 5px 0 0; transition: all 0.5s ease; box-shadow: 0 -3px 10px rgba(0, 203, 151, 0.4); height: ${yesPercent}%; display: flex; align-items: center; justify-content: center; position: relative; z-index: 10;">
+                                            <span style="font-size: 0.95rem; font-weight: 700; color: white; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);">${yesPercent}%</span>
+                                        </div>
+                                    </div>
+                                    <!-- Label below bar -->
+                                    <span style="font-size: 0.65rem; font-weight: 600; color: #00CB97; text-transform: uppercase; letter-spacing: 0.02em;">Yes</span>
+                                </div>
 
-                        <!-- Progress Bar -->
-                        <div class="w-full bg-gray-900 rounded-full h-1.5 overflow-hidden mb-2" style="box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);">
-                            <div class="h-full transition-all duration-500 ease-out"
-                                 style="width: ${yesPercent}%; background: linear-gradient(90deg, #00CB97 0%, #00e5af 100%); box-shadow: 0 0 8px rgba(0, 203, 151, 0.5);"></div>
+                                <!-- NO Bar -->
+                                <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                                    <!-- Vertical Bar Area (Fixed Height) -->
+                                    <div style="width: 100%; height: 80px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative;">
+                                        <!-- Faded background track -->
+                                        <div style="position: absolute; bottom: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, rgba(239, 68, 68, 0.05) 0px, rgba(239, 68, 68, 0.05) 8px, transparent 8px, transparent 16px); border-radius: 5px; opacity: 0.3;"></div>
+                                        <!-- Active bar growing from bottom -->
+                                        <div style="width: 100%; background: linear-gradient(180deg, #f87171 0%, #ef4444 100%); border-radius: 5px 5px 0 0; transition: all 0.5s ease; box-shadow: 0 -3px 10px rgba(239, 68, 68, 0.4); height: ${noPercent}%; display: flex; align-items: center; justify-content: center; position: relative; z-index: 10;">
+                                            <span style="font-size: 0.95rem; font-weight: 700; color: white; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);">${noPercent}%</span>
+                                        </div>
+                                    </div>
+                                    <!-- Label below bar -->
+                                    <span style="font-size: 0.65rem; font-weight: 600; color: #ef4444; text-transform: uppercase; letter-spacing: 0.02em;">No</span>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Footer -->
-                        <div class="flex items-center justify-between text-xs">
-                            <div class="flex items-center gap-1 px-2 py-1 rounded" style="background: rgba(0, 203, 151, 0.1);">
-                                <svg class="h-3 w-3" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="flex items-center justify-between text-xs gap-1">
+                            <div class="flex items-center gap-0.5 text-gray-400">
+                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
                                 </svg>
-                                <span class="font-bold" style="color: #00CB97; font-size: 11px;">J$${parseFloat(market.total_volume/1000).toFixed(1)}K</span>
+                                <span class="font-medium" style="font-size: 10px;">J$${parseFloat(market.total_volume/1000).toFixed(1)}K</span>
                             </div>
-                            <div class="flex items-center gap-1 text-gray-400">
+                            <div class="flex items-center gap-0.5 text-gray-400">
+                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                </svg>
+                                <span class="font-medium" style="font-size: 10px;">${market.bettor_count || 0}</span>
+                            </div>
+                            <div class="flex items-center gap-0.5 text-gray-400">
                                 <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
-                                <span class="font-medium" style="font-size: 11px;">${timeLeft}</span>
+                                <span class="font-medium" style="font-size: 10px;">${timeLeft}</span>
                             </div>
                         </div>
                     </div>
