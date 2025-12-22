@@ -327,11 +327,11 @@ class GoatMouth {
                         <!-- Logo -->
                         ${isOnIndexPage ? `
                             <div class="flex-shrink-0 cursor-pointer" data-nav="markets">
-                                <img src="assets/mainlogo.png" alt="GoatMouth" class="mobile-logo logo-no-bg" style="height: 100px; width: 100px;">
+                                <img src="assets/official.png" alt="GoatMouth" class="mobile-logo logo-no-bg" style="height: 100px; width: 100px;">
                             </div>
                         ` : `
                             <a href="index.html" class="flex-shrink-0 cursor-pointer">
-                                <img src="assets/mainlogo.png" alt="GoatMouth" class="mobile-logo logo-no-bg" style="height: 100px; width: 100px;">
+                                <img src="assets/official.png" alt="GoatMouth" class="mobile-logo logo-no-bg" style="height: 100px; width: 100px;">
                             </a>
                         `}
 
@@ -472,11 +472,11 @@ class GoatMouth {
                 <!-- Left: Logo -->
                 ${isOnIndexPage ? `
                     <div class="flex-shrink-0 cursor-pointer" data-nav="markets">
-                        <img src="assets/mainlogo.png" alt="GoatMouth" style="height: 120px; width: 120px;" class="logo-no-bg">
+                        <img src="assets/official.png" alt="GoatMouth" style="height: 120px; width: 120px;" class="logo-no-bg">
                     </div>
                 ` : `
                     <a href="index.html" class="flex-shrink-0 cursor-pointer">
-                        <img src="assets/mainlogo.png" alt="GoatMouth" style="height: 120px; width: 120px;" class="logo-no-bg">
+                        <img src="assets/official.png" alt="GoatMouth" style="height: 120px; width: 120px;" class="logo-no-bg">
                     </a>
                 `}
 
@@ -1624,7 +1624,7 @@ class GoatMouth {
             <div class="bg-gray-800 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-gray-700">
                 <!-- Logo -->
                 <div class="text-center mb-6">
-                    <img src="assets/mainlogo.png" alt="GoatMouth" class="mx-auto mb-4 logo-no-bg" style="height: 100px; width: 100px;">
+                    <img src="assets/official.png" alt="GoatMouth" class="mx-auto mb-4 logo-no-bg" style="height: 100px; width: 100px;">
                     <h2 class="text-2xl font-bold text-white mb-2">Welcome to GoatMouth</h2>
                     <p class="text-gray-400 text-sm">Sign in or create an account to start trading</p>
                 </div>
@@ -1961,6 +1961,11 @@ class GoatMouth {
             localStorage.clear();
             sessionStorage.clear();
 
+            // Clear all cookies
+            document.cookie.split(";").forEach(function(c) {
+                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+            });
+
             // Redirect to home page
             if (window.location.pathname.includes('admin.html')) {
                 window.location.href = '/';
@@ -1969,6 +1974,9 @@ class GoatMouth {
             }
         } catch (error) {
             console.error('Sign out error:', error);
+            // Force clear everything
+            localStorage.clear();
+            sessionStorage.clear();
             window.location.reload();
         }
     }
