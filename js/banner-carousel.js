@@ -36,6 +36,11 @@ class BannerCarousel {
 
         container.innerHTML = `
             <div class="banner-carousel mb-8 relative overflow-hidden rounded-2xl" style="background: linear-gradient(135deg, #1f2937 0%, #111827 100%);">
+                <!-- Close Button -->
+                <button class="banner-close-btn" onclick="closeBanner()" title="Close banner">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+
                 <!-- Loading Spinner -->
                 <div class="banner-loading hidden absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 z-20">
                     <div class="spinner-glow"></div>
@@ -71,7 +76,23 @@ class BannerCarousel {
             </div>
         `;
 
+        // Check if banner was previously closed
+        this.checkBannerState();
+
         this.startAutoplay();
+    }
+
+    checkBannerState() {
+        const bannerClosed = localStorage.getItem('bannerClosed') === 'true';
+        if (bannerClosed) {
+            const bannerContainer = document.getElementById('banner-container');
+            const reopenContainer = document.getElementById('banner-reopen-container');
+
+            if (bannerContainer && reopenContainer) {
+                bannerContainer.classList.add('hidden');
+                reopenContainer.classList.remove('hidden');
+            }
+        }
     }
 
     renderBannerSlide(banner, index) {
@@ -81,8 +102,14 @@ class BannerCarousel {
         const imageFit = banner.image_fit || 'cover';
         const imagePosition = banner.image_position || 'center';
 
-        // Convert position values to CSS format (e.g., 'top-left' to 'top left')
-        const cssPosition = imagePosition.replace('-', ' ');
+        // Use custom position values if available, otherwise use preset position
+        let cssPosition;
+        if (imagePosition === 'custom' && banner.custom_position_x !== null && banner.custom_position_y !== null) {
+            cssPosition = `${banner.custom_position_x}% ${banner.custom_position_y}%`;
+        } else {
+            // Convert position values to CSS format (e.g., 'top-left' to 'top left')
+            cssPosition = imagePosition.replace('-', ' ');
+        }
 
         return `
             <div class="banner-slide absolute inset-0 transition-opacity duration-500 ${isActive ? 'opacity-100' : 'opacity-0'}" data-index="${index}">

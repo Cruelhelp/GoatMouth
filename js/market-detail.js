@@ -21,7 +21,8 @@ class MarketDetailModal {
         const modal = document.createElement('div');
 
         // Traditional centered modal for both mobile and desktop
-        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 modal-backdrop';
+        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-start justify-center z-50 modal-backdrop';
+        modal.style.paddingTop = '80px';
 
         modal.innerHTML = this.getHTML();
 
@@ -65,14 +66,6 @@ class MarketDetailModal {
 
                     <!-- Market Stats -->
                     <div class="flex flex-wrap items-center gap-3 text-xs md:text-sm">
-                        ${market.creator ? `
-                            <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg" style="background: rgba(0, 203, 151, 0.1);">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: #00CB97;">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                                </svg>
-                                <span style="color: #00CB97; font-weight: 600;">@${market.creator.username}</span>
-                            </div>
-                        ` : ''}
                         <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-700">
                             <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>

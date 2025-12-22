@@ -761,8 +761,10 @@ video, iframe {
 .content-wrapper {
     display: grid;
     grid-template-columns: 1fr 400px;
-    gap: 16px;
+    gap: 20px;
     align-items: start;
+    max-width: 1600px;
+    margin: 0 auto;
 }
 
 .main-column {
@@ -784,9 +786,9 @@ video, iframe {
 .updates-box {
     background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
     border: 1px solid rgba(2, 122, 64, 0.2);
-    border-radius: 10px;
-    padding: 40px 32px;
-    min-height: 450px;
+    border-radius: 28px;
+    padding: 32px 28px;
+    min-height: 320px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -802,20 +804,20 @@ video, iframe {
 .updates-header {
     display: flex;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 28px;
+    gap: 14px;
+    margin-bottom: 20px;
 }
 
 .updates-header i {
-    font-size: 32px;
+    font-size: 28px;
     color: #027A40;
     background: rgba(2, 122, 64, 0.1);
-    padding: 16px;
-    border-radius: 10px;
+    padding: 14px;
+    border-radius: 12px;
 }
 
 .updates-header h3 {
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 700;
     color: #fff;
     margin: 0;
@@ -823,25 +825,25 @@ video, iframe {
 
 .updates-description {
     color: #9ca3af;
-    font-size: 17px;
-    line-height: 1.7;
-    margin-bottom: 36px;
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 24px;
 }
 
 .updates-form {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 14px;
 }
 
 .updates-input {
     width: 100%;
-    padding: 20px 24px;
+    padding: 16px 20px;
     background: rgba(17, 24, 39, 0.8);
     border: 1px solid rgba(55, 65, 81, 0.5);
-    border-radius: 10px;
+    border-radius: 12px;
     color: #fff;
-    font-size: 17px;
+    font-size: 15px;
     outline: none;
     transition: all 0.3s ease;
 }
@@ -895,8 +897,8 @@ video, iframe {
 .live-feed-box {
     background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
     border: 1px solid rgba(2, 122, 64, 0.2);
-    border-radius: 10px;
-    padding: 24px;
+    border-radius: 28px;
+    padding: 28px;
     min-height: 500px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
     transition: all 0.3s ease;
@@ -921,11 +923,11 @@ video, iframe {
     color: #027A40;
     background: rgba(2, 122, 64, 0.1);
     padding: 14px;
-    border-radius: 10px;
+    border-radius: 12px;
 }
 
 .live-feed-header h3 {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 700;
     color: #fff;
     margin: 0;
@@ -990,7 +992,7 @@ video, iframe {
     font-size: 15px;
     font-weight: 600;
     cursor: pointer;
-    display: flex;
+    display: none;
     align-items: center;
     gap: 10px;
     box-shadow: 0 4px 20px rgba(2, 122, 64, 0.4), 0 0 0 4px rgba(2, 122, 64, 0.1);
@@ -1095,13 +1097,15 @@ video, iframe {
     padding: 28px 24px 32px;
     overflow-y: auto;
     max-height: calc(85vh - 60px);
+    display: flex;
+    flex-direction: column;
 }
 
 .updates-modal-title {
     display: flex;
     align-items: center;
     gap: 14px;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
 }
 
 .updates-modal-title i {
@@ -1133,6 +1137,16 @@ video, iframe {
     border-radius: 12px;
     padding: 20px;
     margin-bottom: 28px;
+    overflow: hidden;
+}
+
+.updates-chart::-webkit-scrollbar {
+    display: none;
+}
+
+.updates-chart {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
 .chart-header {
@@ -1162,6 +1176,16 @@ video, iframe {
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+}
+
+.chart-visual::-webkit-scrollbar {
+    display: none;
+}
+
+.chart-visual {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
 .chart-placeholder {
@@ -1255,6 +1279,7 @@ video, iframe {
     }
 
     .floating-updates-btn {
+        display: flex;
         bottom: 70px;
         right: 16px;
         padding: 12px 20px;
@@ -1332,19 +1357,149 @@ video, iframe {
 .banner-placeholder {
     width: 100%;
     margin-bottom: 24px;
-    background: linear-gradient(135deg, rgba(2, 122, 64, 0.1) 0%, rgba(2, 122, 64, 0.05) 100%);
-    border: 2px dashed rgba(2, 122, 64, 0.3);
+    margin-top: -16px;
+    background: transparent;
+    border: none;
     border-radius: 10px;
-    padding: 28px 24px;
-    min-height: 200px;
+    padding: 20px 24px;
+    min-height: 120px;
+    max-height: 140px;
     overflow: hidden;
+    position: relative;
+}
+
+.banner-close-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    color: #fff;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 1000 !important;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.banner-close-btn:hover {
+    background: rgba(0, 0, 0, 0.95);
+    border-color: #00CB97;
+    transform: scale(1.15);
+    box-shadow: 0 4px 12px rgba(0, 203, 151, 0.3);
+}
+
+.banner-close-btn i {
+    font-size: 16px;
+}
+
+/* Generic hidden utility */
+.hidden {
+    display: none !important;
+}
+
+/* Banner hidden state */
+.banner-placeholder.hidden {
+    display: none;
+    margin-bottom: 0;
+    min-height: 0;
+    max-height: 0;
+    overflow: hidden;
+}
+
+/* Reopen Banner Button */
+.banner-reopen-container {
+    margin-bottom: 24px;
+    margin-top: -16px;
+    display: flex;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.banner-reopen-container.hidden {
+    display: none;
+}
+
+.banner-reopen-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, rgba(2, 122, 64, 0.15) 0%, rgba(0, 203, 151, 0.15) 100%);
+    border: 2px solid rgba(2, 122, 64, 0.3);
+    border-radius: 12px;
+    color: #00CB97;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 203, 151, 0.1);
+}
+
+.banner-reopen-btn:hover {
+    background: linear-gradient(135deg, rgba(2, 122, 64, 0.25) 0%, rgba(0, 203, 151, 0.25) 100%);
+    border-color: #00CB97;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 203, 151, 0.2);
+}
+
+.banner-reopen-btn i {
+    font-size: 16px;
+}
+
+.reopen-text {
+    font-size: 13px;
+}
+
+@media (max-width: 768px) {
+    .banner-reopen-btn {
+        padding: 8px 16px;
+        font-size: 12px;
+    }
+
+    .banner-reopen-btn i {
+        font-size: 14px;
+    }
+
+    .reopen-text {
+        font-size: 12px;
+    }
 }
 
 .banner-content {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 16px;
     overflow: hidden;
+    min-height: 80px;
+}
+
+.banner-spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.spinner-ring {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(2, 122, 64, 0.2);
+    border-top-color: #027A40;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .banner-icon {
@@ -1370,39 +1525,46 @@ video, iframe {
 }
 
 .banner-image {
-    width: 100%;
+    width: auto;
     height: auto;
-    max-height: 300px;
+    max-height: 100px;
+    max-width: 100%;
     object-fit: contain;
     border-radius: 10px;
-    margin-bottom: 24px;
+    margin: 0 auto 24px;
     display: block;
 }
 
 .banner-placeholder img {
-    width: 100%;
+    width: auto;
     height: auto;
-    max-height: 200px;
+    max-height: 100px;
+    max-width: 100%;
     object-fit: contain;
     border-radius: 8px;
     display: block;
+    margin: 0 auto;
 }
 
 @media (max-width: 768px) {
     .banner-image {
-        max-height: 120px;
-        margin-bottom: 16px;
+        max-height: 80px;
+        margin: 0 auto 16px;
     }
 
     .banner-placeholder img {
-        max-height: 100px;
+        max-height: 70px;
         object-fit: contain;
+        margin: 0 auto;
     }
 
     .banner-placeholder {
-        max-width: 100%;
+        max-width: 90%;
+        margin-left: auto;
+        margin-right: auto;
         padding: 12px 16px;
         margin-bottom: 16px;
+        margin-top: -8px;
         min-height: 80px;
         overflow: hidden;
     }
@@ -1422,6 +1584,32 @@ video, iframe {
 
     .banner-icon {
         font-size: 24px;
+    }
+
+    /* Mobile banner close button positioning */
+    .banner-close-btn {
+        top: 6px;
+        right: 6px;
+        width: 28px;
+        height: 28px;
+        background: rgba(0, 0, 0, 0.85);
+        border: 1.5px solid rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(12px);
+        z-index: 1000 !important;
+        display: flex !important;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+    }
+
+    .banner-close-btn i {
+        font-size: 14px;
+    }
+
+    .banner-close-btn:hover,
+    .banner-close-btn:active {
+        background: rgba(0, 0, 0, 0.95);
+        border-color: #00CB97;
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(0, 203, 151, 0.4);
     }
 }
 
@@ -1797,46 +1985,49 @@ video, iframe {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 20px;
-    padding: 0 20px;
+    gap: clamp(8px, 2vw, 20px);
+    padding: 0 clamp(8px, 2vw, 20px);
     height: 48px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     position: relative;
     z-index: 90;
+    overflow: hidden;
 }
 
 .nav-section {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: clamp(4px, 1vw, 8px);
+    flex-shrink: 1;
+    white-space: nowrap;
+    min-width: 0;
 }
 
 .category-section {
     display: flex;
     align-items: center;
-    gap: 6px;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
-}
-
-.category-section::-webkit-scrollbar {
-    display: none; /* Chrome/Safari/Opera */
+    gap: clamp(3px, 0.8vw, 6px);
+    flex-shrink: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    min-width: 0;
 }
 
 .category-divider {
     color: #374151;
-    font-size: 24px;
-    margin: 0 12px;
+    font-size: clamp(18px, 2vw, 24px);
+    margin: 0 clamp(6px, 1vw, 12px);
+    flex-shrink: 0;
 }
 
 .nav-btn {
     background: transparent;
     color: #D4D4D4;
     border: none;
-    padding: 10px 20px;
+    padding: clamp(6px, 1.2vh, 10px) clamp(10px, 1.5vw, 20px);
     border-radius: 6px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: clamp(11px, 1.3vw, 14px);
     font-weight: 600;
     transition: all 0.2s;
     white-space: nowrap;
@@ -1844,11 +2035,14 @@ video, iframe {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: clamp(4px, 0.8vw, 8px);
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .nav-btn i {
-    font-size: 15px;
+    font-size: clamp(12px, 1.3vw, 15px);
+    flex-shrink: 0;
 }
 
 .nav-btn:hover {
@@ -1866,22 +2060,25 @@ video, iframe {
 .category-chip {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
+    gap: clamp(4px, 0.8vw, 8px);
+    padding: clamp(6px, 1.2vh, 10px) clamp(10px, 1.5vw, 20px);
     background: transparent;
     border: none;
     border-radius: 6px;
     color: #9ca3af;
     text-decoration: none;
-    font-size: 14px;
+    font-size: clamp(11px, 1.3vw, 14px);
     font-weight: 600;
     transition: all 0.2s;
     cursor: pointer;
     white-space: nowrap;
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .category-chip i {
-    font-size: 15px;
+    font-size: clamp(12px, 1.3vw, 15px);
+    flex-shrink: 0;
 }
 
 .category-chip:hover {
@@ -2148,7 +2345,8 @@ video, iframe {
         letter-spacing: -0.7px !important;
     }
 
-    .user-info .btn:not(:last-child) {
-        display: none !important;
+    /* Show all user buttons on mobile */
+    .user-info .btn {
+        display: flex !important;
     }
 }

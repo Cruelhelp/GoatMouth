@@ -1018,8 +1018,36 @@ class AdminPanel {
                     </div>
                     <div class="form-group">
                         <label class="form-label">Market Image (optional)</label>
+
+                        <!-- Dimension Guide for Markets -->
+                        <div class="bg-gray-700 border-l-4 border-green-500 p-3 mb-3 rounded text-sm">
+                            <div class="flex items-start gap-2">
+                                <svg class="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <div>
+                                    <p class="text-green-300 font-semibold mb-1">Recommended Image Dimensions</p>
+                                    <div class="grid grid-cols-3 gap-2 text-xs mb-2">
+                                        <div class="bg-gray-800 px-2 py-1.5 rounded">
+                                            <p class="text-gray-400">Desktop</p>
+                                            <p class="text-white font-bold">800×400px</p>
+                                        </div>
+                                        <div class="bg-gray-800 px-2 py-1.5 rounded">
+                                            <p class="text-gray-400">Mobile</p>
+                                            <p class="text-white font-bold">600×300px</p>
+                                        </div>
+                                        <div class="bg-gray-800 px-2 py-1.5 rounded">
+                                            <p class="text-gray-400">Min Size</p>
+                                            <p class="text-white font-bold">400×200px</p>
+                                        </div>
+                                    </div>
+                                    <p class="text-gray-400 text-xs"><strong class="text-green-400">Tip:</strong> Use 2:1 aspect ratio. Images below 400px wide may appear pixelated.</p>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="space-y-2">
-                            <div id="adminMarketImagePreview" class="w-full h-48 bg-gray-700 rounded-lg flex items-center justify-center text-gray-400 overflow-hidden">
+                            <div id="adminMarketImagePreview" class="relative w-full h-48 bg-gray-700 rounded-lg flex items-center justify-center text-gray-400 overflow-hidden">
                                 <span>No image selected</span>
                             </div>
                             <input type="file" id="adminMarketImageInput" accept="image/*"
@@ -1029,7 +1057,12 @@ class AdminPanel {
                                    file:text-sm file:font-semibold
                                    file:bg-green-600 file:text-white
                                    hover:file:bg-green-700 file:cursor-pointer cursor-pointer">
-                            <p class="text-xs text-gray-400">Upload an image for this market (max 5MB). Recommended: 400x200px</p>
+                            <div class="flex items-start gap-2 text-xs text-gray-400">
+                                <svg class="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span>Max file size: 5MB. Dimensions will be validated after upload. Higher resolution = better quality.</span>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
@@ -1068,10 +1101,58 @@ class AdminPanel {
                 return;
             }
 
-            // Show preview
+            // Show preview with dimension analysis
             const reader = new FileReader();
             reader.onload = (event) => {
-                imagePreview.innerHTML = `<img src="${event.target.result}" class="w-full h-full object-cover">`;
+                const img = new Image();
+                img.onload = () => {
+                    const width = img.width;
+                    const height = img.height;
+                    const aspectRatio = (width / height).toFixed(2);
+                    const fileSize = (file.size / 1024 / 1024).toFixed(2);
+
+                    // Quality check
+                    let qualityStatus = '';
+                    let statusColor = 'text-yellow-400';
+                    let statusIcon = 'ℹ';
+
+                    if (width >= 800 && height >= 400) {
+                        qualityStatus = 'Excellent quality';
+                        statusColor = 'text-green-400';
+                        statusIcon = '✓';
+                    } else if (width >= 600 && height >= 300) {
+                        qualityStatus = 'Good quality';
+                        statusColor = 'text-green-400';
+                        statusIcon = '✓';
+                    } else if (width >= 400 && height >= 200) {
+                        qualityStatus = 'Acceptable quality';
+                        statusColor = 'text-yellow-400';
+                        statusIcon = '⚠';
+                    } else {
+                        qualityStatus = 'May appear pixelated';
+                        statusColor = 'text-red-400';
+                        statusIcon = '⚠';
+                    }
+
+                    // Aspect ratio check
+                    const targetRatio = 2.0; // 2:1 ratio
+                    const ratioDiff = Math.abs(aspectRatio - targetRatio);
+                    let ratioWarning = '';
+                    if (ratioDiff > 0.3) {
+                        ratioWarning = '<div class="text-orange-400 text-xs mt-1">⚠ Image may be cropped or distorted</div>';
+                    }
+
+                    imagePreview.innerHTML = `
+                        <img src="${event.target.result}" class="w-full h-full object-cover">
+                        <div class="absolute bottom-2 right-2 bg-black bg-opacity-90 px-3 py-2 rounded-lg text-xs space-y-1 max-w-xs">
+                            <div class="text-white font-bold">${width} × ${height}px</div>
+                            <div class="text-gray-400">Ratio: ${aspectRatio}:1 • ${fileSize}MB</div>
+                            <div class="${statusColor} font-semibold">${statusIcon} ${qualityStatus}</div>
+                            ${ratioWarning}
+                        </div>
+                    `;
+                };
+                img.src = event.target.result;
             };
             reader.readAsDataURL(file);
         });
@@ -1176,8 +1257,22 @@ class AdminPanel {
                         </div>
                         <div class="form-group">
                             <label class="form-label">Market Image</label>
+
+                            <!-- Dimension Guide for Markets -->
+                            <div class="bg-gray-700 border-l-4 border-green-500 p-3 mb-3 rounded text-sm">
+                                <div class="flex items-start gap-2">
+                                    <svg class="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <div>
+                                        <p class="text-green-300 font-semibold mb-1">Recommended: 800×400px (Desktop) or 600×300px (Mobile)</p>
+                                        <p class="text-gray-400 text-xs">Min: 400×200px. Images below minimum may appear pixelated.</p>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="space-y-2">
-                                <div id="editAdminMarketImagePreview" class="w-full h-48 bg-gray-700 rounded-lg flex items-center justify-center text-gray-400 overflow-hidden">
+                                <div id="editAdminMarketImagePreview" class="relative w-full h-48 bg-gray-700 rounded-lg flex items-center justify-center text-gray-400 overflow-hidden">
                                     ${market.image_url
                                         ? `<img src="${market.image_url}" class="w-full h-full object-cover">`
                                         : '<span>No image selected</span>'
@@ -1190,7 +1285,12 @@ class AdminPanel {
                                        file:text-sm file:font-semibold
                                        file:bg-green-600 file:text-white
                                        hover:file:bg-green-700 file:cursor-pointer cursor-pointer">
-                                <p class="text-xs text-gray-400">Upload a new image or keep existing (max 5MB). Recommended: 400x200px</p>
+                                <div class="flex items-start gap-2 text-xs text-gray-400">
+                                    <svg class="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <span>Upload new image or keep existing (max 5MB). Quality checked after upload.</span>
+                                </div>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
@@ -1236,10 +1336,58 @@ class AdminPanel {
                     return;
                 }
 
-                // Show preview
+                // Show preview with dimension analysis
                 const reader = new FileReader();
                 reader.onload = (event) => {
-                    imagePreview.innerHTML = `<img src="${event.target.result}" class="w-full h-full object-cover">`;
+                    const img = new Image();
+                    img.onload = () => {
+                        const width = img.width;
+                        const height = img.height;
+                        const aspectRatio = (width / height).toFixed(2);
+                        const fileSize = (file.size / 1024 / 1024).toFixed(2);
+
+                        // Quality check
+                        let qualityStatus = '';
+                        let statusColor = 'text-yellow-400';
+                        let statusIcon = 'ℹ';
+
+                        if (width >= 800 && height >= 400) {
+                            qualityStatus = 'Excellent quality';
+                            statusColor = 'text-green-400';
+                            statusIcon = '✓';
+                        } else if (width >= 600 && height >= 300) {
+                            qualityStatus = 'Good quality';
+                            statusColor = 'text-green-400';
+                            statusIcon = '✓';
+                        } else if (width >= 400 && height >= 200) {
+                            qualityStatus = 'Acceptable quality';
+                            statusColor = 'text-yellow-400';
+                            statusIcon = '⚠';
+                        } else {
+                            qualityStatus = 'May appear pixelated';
+                            statusColor = 'text-red-400';
+                            statusIcon = '⚠';
+                        }
+
+                        // Aspect ratio check
+                        const targetRatio = 2.0; // 2:1 ratio
+                        const ratioDiff = Math.abs(aspectRatio - targetRatio);
+                        let ratioWarning = '';
+                        if (ratioDiff > 0.3) {
+                            ratioWarning = '<div class="text-orange-400 text-xs mt-1">⚠ Image may be cropped or distorted</div>';
+                        }
+
+                        imagePreview.innerHTML = `
+                            <img src="${event.target.result}" class="w-full h-full object-cover">
+                            <div class="absolute bottom-2 right-2 bg-black bg-opacity-90 px-3 py-2 rounded-lg text-xs space-y-1 max-w-xs">
+                                <div class="text-white font-bold">${width} × ${height}px</div>
+                                <div class="text-gray-400">Ratio: ${aspectRatio}:1 • ${fileSize}MB</div>
+                                <div class="${statusColor} font-semibold">${statusIcon} ${qualityStatus}</div>
+                                ${ratioWarning}
+                            </div>
+                        `;
+                    };
+                    img.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
             });

@@ -5,6 +5,12 @@ class AdminBanners {
         this.banners = [];
         this.selectedBanner = null;
         this.uploadingImage = false;
+        this.currentImageData = null; // Store current image data for dragging
+        this.isDragging = false;
+        this.dragStartX = 0;
+        this.dragStartY = 0;
+        this.currentPosX = 50; // Default center
+        this.currentPosY = 50; // Default center
     }
 
     async init() {
@@ -122,10 +128,51 @@ class AdminBanners {
                         <!-- Image Upload -->
                         <div>
                             <label class="block text-lg font-bold mb-3" style="color: #00CB97;">Upload Banner Image</label>
+
+                            <!-- Dimension Guide -->
+                            <div class="bg-gray-700 border-l-4 border-green-500 p-4 mb-4 rounded">
+                                <h4 class="font-bold text-white mb-2 flex items-center gap-2">
+                                    <svg class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    Recommended Image Dimensions
+                                </h4>
+                                <div class="space-y-2 text-sm">
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div class="bg-gray-800 p-3 rounded">
+                                            <p class="text-gray-400 text-xs mb-1">Desktop (Full Banner)</p>
+                                            <p class="text-white font-bold">1920 × 400px</p>
+                                            <p class="text-gray-500 text-xs mt-1">Ideal for carousel</p>
+                                        </div>
+                                        <div class="bg-gray-800 p-3 rounded">
+                                            <p class="text-gray-400 text-xs mb-1">Desktop (Compact)</p>
+                                            <p class="text-white font-bold">1920 × 140px</p>
+                                            <p class="text-gray-500 text-xs mt-1">Compact banner</p>
+                                        </div>
+                                        <div class="bg-gray-800 p-3 rounded">
+                                            <p class="text-gray-400 text-xs mb-1">Mobile</p>
+                                            <p class="text-white font-bold">768 × 200px</p>
+                                            <p class="text-gray-500 text-xs mt-1">Mobile optimized</p>
+                                        </div>
+                                        <div class="bg-gray-800 p-3 rounded">
+                                            <p class="text-gray-400 text-xs mb-1">Safe Zone</p>
+                                            <p class="text-white font-bold">1600 × 300px</p>
+                                            <p class="text-gray-500 text-xs mt-1">Universal fit</p>
+                                        </div>
+                                    </div>
+                                    <p class="text-gray-400 text-xs mt-3">
+                                        <strong class="text-green-400">Tip:</strong> Use landscape images with important content centered. Avoid text near edges.
+                                    </p>
+                                </div>
+                            </div>
+
                             <div class="space-y-3">
                                 ${banner?.image_url ? `
                                     <div class="relative w-full h-64 bg-gray-700 rounded-lg overflow-hidden">
                                         <img id="bannerPreview" src="${banner.image_url}" class="w-full h-full object-cover">
+                                        <div class="absolute bottom-2 right-2 bg-black bg-opacity-75 px-2 py-1 rounded text-xs text-white" id="imageDimensions">
+                                            Loading dimensions...
+                                        </div>
                                     </div>
                                 ` : `
                                     <div id="bannerPreview" class="w-full h-64 bg-gray-700 rounded-lg flex items-center justify-center text-gray-400">
@@ -143,7 +190,12 @@ class AdminBanners {
                                     file:text-sm file:font-bold
                                     file:bg-green-600 file:text-white
                                     hover:file:bg-green-700 file:cursor-pointer cursor-pointer">
-                                <p class="text-xs text-gray-400">Landscape image recommended (1920x400px). Max 5MB.</p>
+                                <div class="flex items-start gap-2 text-xs text-gray-400">
+                                    <svg class="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <span>Max file size: 5MB. Supported formats: JPG, PNG, WebP, GIF. Your image dimensions will be shown after upload.</span>
+                                </div>
                             </div>
                         </div>
 
@@ -151,7 +203,7 @@ class AdminBanners {
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-semibold mb-2">How to Fit</label>
-                                <select name="image_fit" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white font-medium">
+                                <select name="image_fit" id="imageFitSelect" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white font-medium">
                                     <option value="cover" ${banner?.image_fit === 'cover' || !banner?.image_fit ? 'selected' : ''}>Fill Frame (Crop)</option>
                                     <option value="contain" ${banner?.image_fit === 'contain' ? 'selected' : ''}>Fit Fully (No Crop)</option>
                                     <option value="fill" ${banner?.image_fit === 'fill' ? 'selected' : ''}>Stretch to Fit</option>
@@ -159,15 +211,75 @@ class AdminBanners {
                             </div>
 
                             <div>
-                                <label class="block text-sm font-semibold mb-2">Position</label>
-                                <select name="image_position" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white font-medium">
+                                <label class="block text-sm font-semibold mb-2">Quick Position</label>
+                                <select name="image_position" id="imagePositionSelect" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white font-medium">
                                     <option value="center" ${banner?.image_position === 'center' || !banner?.image_position ? 'selected' : ''}>Center</option>
                                     <option value="top" ${banner?.image_position === 'top' ? 'selected' : ''}>Top</option>
                                     <option value="bottom" ${banner?.image_position === 'bottom' ? 'selected' : ''}>Bottom</option>
                                     <option value="left" ${banner?.image_position === 'left' ? 'selected' : ''}>Left</option>
                                     <option value="right" ${banner?.image_position === 'right' ? 'selected' : ''}>Right</option>
+                                    <option value="custom">Custom (Use controls below)</option>
                                 </select>
                             </div>
+                        </div>
+
+                        <!-- Fine-Tune Position Controls (Admin Only) -->
+                        <div id="fineTuneControls" class="bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-2 border-purple-500/30 rounded-lg p-4 mt-4" style="display: none;">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2">
+                                    <svg class="h-5 w-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+                                    </svg>
+                                    <h4 class="font-bold text-purple-300">Fine-Tune Image Position</h4>
+                                </div>
+                                <span class="text-xs text-purple-400">Admin Feature</span>
+                            </div>
+
+                            <!-- Live Preview -->
+                            <div class="mb-4">
+                                <label class="block text-sm font-semibold mb-2 text-purple-200">Live Preview (Drag to adjust)</label>
+                                <div id="bannerLivePreview" class="relative w-full h-32 bg-gray-800 rounded-lg overflow-hidden border-2 border-purple-500/50 cursor-move">
+                                    <div class="absolute inset-0 flex items-center justify-center text-gray-500 text-sm">
+                                        Upload an image to preview
+                                    </div>
+                                </div>
+                                <p class="text-xs text-purple-300 mt-2">💡 Click and drag the image above to position it, or use buttons below</p>
+                            </div>
+
+                            <!-- Position Control Buttons -->
+                            <div class="grid grid-cols-5 gap-2 mb-3">
+                                <button type="button" onclick="adminBanners.adjustPosition('up')" class="col-start-3 px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm font-semibold transition flex items-center justify-center">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                                </button>
+                                <button type="button" onclick="adminBanners.adjustPosition('left')" class="col-start-2 row-start-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm font-semibold transition flex items-center justify-center">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                                </button>
+                                <button type="button" onclick="adminBanners.adjustPosition('center')" class="col-start-3 row-start-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white text-sm font-semibold transition">
+                                    Center
+                                </button>
+                                <button type="button" onclick="adminBanners.adjustPosition('right')" class="col-start-4 row-start-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm font-semibold transition flex items-center justify-center">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                </button>
+                                <button type="button" onclick="adminBanners.adjustPosition('down')" class="col-start-3 row-start-3 px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm font-semibold transition flex items-center justify-center">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </button>
+                            </div>
+
+                            <!-- Position Values Display -->
+                            <div class="grid grid-cols-2 gap-3 text-xs">
+                                <div class="bg-gray-800 p-2 rounded">
+                                    <span class="text-gray-400">Horizontal:</span>
+                                    <span id="posXDisplay" class="text-white font-bold ml-1">50%</span>
+                                </div>
+                                <div class="bg-gray-800 p-2 rounded">
+                                    <span class="text-gray-400">Vertical:</span>
+                                    <span id="posYDisplay" class="text-white font-bold ml-1">50%</span>
+                                </div>
+                            </div>
+
+                            <!-- Hidden inputs to store custom position -->
+                            <input type="hidden" name="custom_position_x" id="customPosX" value="50">
+                            <input type="hidden" name="custom_position_y" id="customPosY" value="50">
                         </div>
 
                         <!-- Optional: Advanced Settings (Collapsed) -->
@@ -219,6 +331,34 @@ class AdminBanners {
         const imageInput = document.getElementById('bannerImageInput');
         imageInput.addEventListener('change', (e) => this.handleImagePreview(e));
 
+        // Position select handling - show/hide fine-tune controls
+        const positionSelect = document.getElementById('imagePositionSelect');
+        const fineTuneControls = document.getElementById('fineTuneControls');
+        positionSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'custom') {
+                fineTuneControls.style.display = 'block';
+                // Initialize position values if editing with existing custom values
+                if (banner?.custom_position_x && banner?.custom_position_y) {
+                    this.currentPosX = banner.custom_position_x;
+                    this.currentPosY = banner.custom_position_y;
+                    this.updatePositionDisplays();
+                }
+            } else {
+                fineTuneControls.style.display = 'none';
+            }
+        });
+
+        // Initialize fine-tune controls visibility if editing with custom position
+        if (banner?.image_position === 'custom') {
+            fineTuneControls.style.display = 'block';
+            this.currentPosX = banner?.custom_position_x || 50;
+            this.currentPosY = banner?.custom_position_y || 50;
+            this.updatePositionDisplays();
+        }
+
+        // Setup drag handlers for live preview
+        this.setupDragHandlers();
+
         // Form submission
         const form = document.getElementById('bannerForm');
         form.addEventListener('submit', (e) => this.handleSubmit(e, isEdit));
@@ -247,13 +387,164 @@ class AdminBanners {
             return;
         }
 
-        // Show preview
+        // Show preview with dimensions
         const reader = new FileReader();
         reader.onload = (e) => {
-            const preview = document.getElementById('bannerPreview');
-            preview.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+            const img = new Image();
+            img.onload = () => {
+                const width = img.width;
+                const height = img.height;
+                const aspectRatio = (width / height).toFixed(2);
+                const fileSize = (file.size / 1024 / 1024).toFixed(2);
+
+                // Store image data for dragging
+                this.currentImageData = e.target.result;
+
+                // Determine if dimensions match recommendations
+                let dimensionStatus = '';
+                let statusColor = 'text-yellow-400';
+
+                if ((width === 1920 && height === 400) || (width === 1920 && height === 140)) {
+                    dimensionStatus = '✓ Perfect for Desktop';
+                    statusColor = 'text-green-400';
+                } else if (width === 768 && height === 200) {
+                    dimensionStatus = '✓ Perfect for Mobile';
+                    statusColor = 'text-green-400';
+                } else if (width >= 1600 && height >= 300 && aspectRatio >= 4) {
+                    dimensionStatus = '✓ Good dimensions';
+                    statusColor = 'text-green-400';
+                } else if (width < 1200 || height < 100) {
+                    dimensionStatus = '⚠ May be too small';
+                    statusColor = 'text-red-400';
+                } else {
+                    dimensionStatus = 'ℹ Use positioning controls';
+                    statusColor = 'text-blue-400';
+                }
+
+                // Update regular preview
+                const preview = document.getElementById('bannerPreview');
+                preview.innerHTML = `
+                    <img src="${e.target.result}" class="w-full h-full object-cover">
+                    <div class="absolute bottom-2 right-2 bg-black bg-opacity-90 px-3 py-2 rounded-lg text-xs space-y-1">
+                        <div class="text-white font-bold">${width} × ${height}px</div>
+                        <div class="text-gray-400">Ratio: ${aspectRatio}:1 • ${fileSize}MB</div>
+                        <div class="${statusColor} font-semibold">${dimensionStatus}</div>
+                    </div>
+                `;
+                preview.classList.add('relative');
+
+                // Update live preview panel for dragging
+                this.updateLivePreview();
+            };
+            img.src = e.target.result;
         };
         reader.readAsDataURL(file);
+    }
+
+    updateLivePreview() {
+        const livePreview = document.getElementById('bannerLivePreview');
+        if (!livePreview || !this.currentImageData) return;
+
+        const fitValue = document.getElementById('imageFitSelect')?.value || 'cover';
+
+        livePreview.innerHTML = `
+            <img src="${this.currentImageData}"
+                 style="
+                     width: 100%;
+                     height: 100%;
+                     object-fit: ${fitValue};
+                     object-position: ${this.currentPosX}% ${this.currentPosY}%;
+                 "
+                 class="pointer-events-none">
+        `;
+    }
+
+    setupDragHandlers() {
+        const livePreview = document.getElementById('bannerLivePreview');
+        if (!livePreview) return;
+
+        livePreview.addEventListener('mousedown', (e) => {
+            if (!this.currentImageData) return;
+
+            this.isDragging = true;
+            this.dragStartX = e.clientX;
+            this.dragStartY = e.clientY;
+            livePreview.style.cursor = 'grabbing';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!this.isDragging) return;
+
+            const deltaX = e.clientX - this.dragStartX;
+            const deltaY = e.clientY - this.dragStartY;
+
+            // Convert pixel movement to percentage (sensitivity factor)
+            const sensitivity = 0.5;
+            this.currentPosX = Math.max(0, Math.min(100, this.currentPosX + (deltaX * sensitivity)));
+            this.currentPosY = Math.max(0, Math.min(100, this.currentPosY + (deltaY * sensitivity)));
+
+            this.dragStartX = e.clientX;
+            this.dragStartY = e.clientY;
+
+            this.updateLivePreview();
+            this.updatePositionDisplays();
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (this.isDragging) {
+                this.isDragging = false;
+                const livePreview = document.getElementById('bannerLivePreview');
+                if (livePreview) livePreview.style.cursor = 'move';
+            }
+        });
+
+        // Also update preview when fit type changes
+        const fitSelect = document.getElementById('imageFitSelect');
+        if (fitSelect) {
+            fitSelect.addEventListener('change', () => {
+                if (this.currentImageData) {
+                    this.updateLivePreview();
+                }
+            });
+        }
+    }
+
+    adjustPosition(direction) {
+        const step = 5; // Move by 5% each time
+
+        switch(direction) {
+            case 'up':
+                this.currentPosY = Math.max(0, this.currentPosY - step);
+                break;
+            case 'down':
+                this.currentPosY = Math.min(100, this.currentPosY + step);
+                break;
+            case 'left':
+                this.currentPosX = Math.max(0, this.currentPosX - step);
+                break;
+            case 'right':
+                this.currentPosX = Math.min(100, this.currentPosX + step);
+                break;
+            case 'center':
+                this.currentPosX = 50;
+                this.currentPosY = 50;
+                break;
+        }
+
+        this.updateLivePreview();
+        this.updatePositionDisplays();
+    }
+
+    updatePositionDisplays() {
+        const posXDisplay = document.getElementById('posXDisplay');
+        const posYDisplay = document.getElementById('posYDisplay');
+        const customPosX = document.getElementById('customPosX');
+        const customPosY = document.getElementById('customPosY');
+
+        if (posXDisplay) posXDisplay.textContent = `${Math.round(this.currentPosX)}%`;
+        if (posYDisplay) posYDisplay.textContent = `${Math.round(this.currentPosY)}%`;
+        if (customPosX) customPosX.value = Math.round(this.currentPosX);
+        if (customPosY) customPosY.value = Math.round(this.currentPosY);
     }
 
     async handleSubmit(event, isEdit) {
@@ -282,6 +573,7 @@ class AdminBanners {
             }
 
             // Prepare banner data
+            const imagePosition = formData.get('image_position') || 'center';
             const bannerData = {
                 image_url: imageUrl,
                 title: formData.get('title') || null,
@@ -290,10 +582,19 @@ class AdminBanners {
                 link_id: null,
                 link_url: null,
                 image_fit: formData.get('image_fit') || 'cover',
-                image_position: formData.get('image_position') || 'center',
+                image_position: imagePosition,
                 order_index: parseInt(formData.get('order_index')) || 0,
                 active: true
             };
+
+            // Add custom position values if custom position is selected
+            if (imagePosition === 'custom') {
+                bannerData.custom_position_x = parseInt(formData.get('custom_position_x')) || 50;
+                bannerData.custom_position_y = parseInt(formData.get('custom_position_y')) || 50;
+            } else {
+                bannerData.custom_position_x = null;
+                bannerData.custom_position_y = null;
+            }
 
             // Create or update banner
             if (isEdit) {
@@ -401,6 +702,19 @@ class AdminBanners {
             <div class="bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                 <div class="p-6">
                     <h2 class="text-2xl font-bold mb-6">Bulk Upload Banners</h2>
+
+                    <!-- Quick Dimension Reference -->
+                    <div class="bg-blue-900 bg-opacity-30 border border-blue-500 rounded-lg p-3 mb-4 text-sm">
+                        <div class="flex items-start gap-2">
+                            <svg class="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <div>
+                                <p class="text-blue-300 font-semibold mb-1">Recommended: 1920×400px (Desktop) or 768×200px (Mobile)</p>
+                                <p class="text-blue-200 text-xs">Images will be validated after upload. Use positioning controls below to adjust fit.</p>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Drag & Drop Zone -->
                     <div id="dropZone" class="border-2 border-dashed border-gray-600 rounded-lg p-8 mb-6 text-center transition hover:border-green-500 cursor-pointer">

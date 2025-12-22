@@ -863,7 +863,15 @@ class GoatMouth {
 
             container.innerHTML = `
                 <!-- Banner Carousel (only on "all" category) -->
-                ${this.currentCategory === 'all' ? '<div id="banner-container"></div>' : ''}
+                ${this.currentCategory === 'all' ? `
+                    <div id="banner-container"></div>
+                    <div id="banner-reopen-container" class="banner-reopen-container hidden">
+                        <button class="banner-reopen-btn" onclick="reopenBanner()" title="Show banner">
+                            <i class="fa-solid fa-image"></i>
+                            <span class="reopen-text">Show Banner</span>
+                        </button>
+                    </div>
+                ` : ''}
 
                 ${this.currentProfile && this.currentProfile.role === 'admin' ? `
                     <div class="mb-6 flex justify-end">
