@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>How It Works - GoatMouth</title>
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <meta name="theme-color" content="#00CB97">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="css/output.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/mobile.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Logo Header -->
+    <div class="logo-header">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div class="hamburger" id="hamburger" title="Toggle Menu" onclick="toggleMobileSidebar()">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="logo-container">
+          <a href="index.html" style="display: flex; align-items: center; gap: 4px; text-decoration: none;">
+            <img src="assets/official.png" alt="GoatMouth Logo" class="main-logo">
+            <span class="logo-text"><span class="goat">Goat</span><span class="mouth">Mouth</span></span>
+          </a>
+        </div>
+        <!-- Search Bar in Header -->
+        <div class="header-search-container">
+          <i class="fa-solid fa-search search-icon"></i>
+          <input type="text" id="marketSearch" class="search-input" placeholder="Search GoatMouth Markets">
+        </div>
+      </div>
+      <div class="user-info">
+        <!-- Auth Loading Spinner -->
+        <div class="auth-loading" id="authLoading">
+          <div class="auth-spinner"></div>
+        </div>
+        <div class="user-badge" id="userBadge" style="display: none;">
+          <span id="currentUserName">User</span>
+          <span id="currentUserRole" class="role-badge">Member</span>
+        </div>
+        <!-- Profile and session controls -->
+        <button class="btn secondary" id="profileBtn" title="Profile" onclick="showUserProfile()" style="display: none;">
+          <i class="fa-solid fa-user"></i>
+          <span class="btn-text">Profile</span>
+        </button>
+        <button class="btn secondary logout-btn" id="logoutBtn" title="Logout" onclick="handleLogout()" style="display: none;">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          <span class="btn-text logout-text">Logout</span>
+        </button>
+        <!-- Login/Signup buttons for non-authenticated users -->
+        <div class="auth-buttons" id="authButtons" style="display: none;">
+          <button class="auth-btn login-btn" onclick="showAuthModal('login')">
+            Login
+          </button>
+          <button class="auth-btn signup-btn" onclick="showAuthModal('signup')">
+            Sign Up
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Single Unified Navigation Bar -->
+    <div class="menubar">
+      <!-- Main Navigation -->
+      <div class="nav-section">
+        <button class="nav-btn" data-nav="markets" onclick="window.location.href='index.html'"><i class="fa-solid fa-house"></i> Markets</button>
+        <button class="nav-btn" data-nav="voting" onclick="window.location.href='voting.html'"><i class="fa-solid fa-check-to-slot"></i> Voting</button>
+        <button class="nav-btn" data-nav="activity" onclick="window.location.href='index.html#activity'"><i class="fa-solid fa-chart-line"></i> Activity</button>
+        <button class="nav-btn" data-nav="leaderboard" onclick="window.location.href='index.html#leaderboard'"><i class="fa-solid fa-trophy"></i> Leaderboard</button>
+      </div>
+
+      <!-- Category Navigation (Desktop Only) -->
+      <div class="category-section desktop-only">
+        <span class="category-divider">|</span>
+        <a href="index.html" class="category-chip"><i class="fa-solid fa-chart-line"></i> All</a>
+        <a href="index.html" class="category-chip"><i class="fa-solid fa-landmark"></i> Politics</a>
+        <a href="index.html" class="category-chip"><i class="fa-solid fa-futbol"></i> Sports</a>
+        <a href="index.html" class="category-chip"><i class="fa-solid fa-dollar-sign"></i> Finance</a>
+        <a href="index.html" class="category-chip"><i class="fa-brands fa-bitcoin"></i> Crypto</a>
+        <a href="index.html" class="category-chip"><i class="fa-solid fa-microchip"></i> Tech</a>
+        <a href="index.html" class="category-chip"><i class="fa-solid fa-flask"></i> Science</a>
+      </div>
+    </div>
+
+    <!-- Hidden placeholders for JS compatibility -->
+    <div id="main-nav" style="display: none;"></div>
+    <div id="category-nav" style="display: none;"></div>
+
+    <!-- Mobile Sidebar -->
+    <div class="mobile-sidebar" id="mobileSidebar">
+        <div class="mobile-sidebar-header">
+            <h3>Market Categories</h3>
+            <button class="close-sidebar" onclick="closeMobileSidebar()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="mobile-sidebar-content">
+            <a href="index.html" class="sidebar-category-link"><i class="fa-solid fa-chart-line"></i> All Markets</a>
+            <a href="index.html" class="sidebar-category-link"><i class="fa-solid fa-landmark"></i> Politics</a>
+            <a href="index.html" class="sidebar-category-link"><i class="fa-solid fa-futbol"></i> Sports</a>
+            <a href="index.html" class="sidebar-category-link"><i class="fa-solid fa-dollar-sign"></i> Finance</a>
+            <a href="index.html" class="sidebar-category-link"><i class="fa-brands fa-bitcoin"></i> Crypto</a>
+            <a href="index.html" class="sidebar-category-link"><i class="fa-solid fa-microchip"></i> Technology</a>
+            <a href="index.html" class="sidebar-category-link"><i class="fa-solid fa-flask"></i> Science</a>
+        </div>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-16 max-w-4xl">
+        <!-- Hero Section -->
+        <div class="text-center mb-20">
+            <h1 class="text-5xl font-bold mb-4">
+                How It <span style="color: #00CB97;">Works</span>
+            </h1>
+            <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+                Predict. Trade. Win. It's that simple.
+            </p>
+        </div>
+
+        <!-- Steps Section -->
+        <div class="space-y-8 mb-20">
+            <!-- Step 1 -->
+            <div class="group relative p-8 rounded-2xl border-2 transition-all duration-300" style="border-color: rgba(0, 203, 151, 0.3); background: linear-gradient(135deg, rgba(0, 203, 151, 0.05) 0%, rgba(0, 203, 151, 0.02) 100%);">
+                <div class="flex items-start gap-6">
+                    <img src="assets/goat info.png" alt="Info" class="flex-shrink-0 w-14 h-14 opacity-90">
+                    <div class="flex-1">
+                        <h3 class="text-2xl font-bold mb-3" style="color: #00CB97;">Browse Markets</h3>
+                        <p class="text-gray-300 text-lg leading-relaxed">
+                            Check out questions about sports, politics, crypto, and more. Each market is a simple YES or NO question about what you think will happen.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="group relative p-8 rounded-2xl border-2 transition-all duration-300" style="border-color: rgba(99, 27, 221, 0.3); background: linear-gradient(135deg, rgba(99, 27, 221, 0.05) 0%, rgba(99, 27, 221, 0.02) 100%);">
+                <div class="flex items-start gap-6">
+                    <img src="assets/goat info.png" alt="Info" class="flex-shrink-0 w-14 h-14 opacity-90">
+                    <div class="flex-1">
+                        <h3 class="text-2xl font-bold mb-3" style="color: #631BDD;">Place Your Bet</h3>
+                        <p class="text-gray-300 text-lg leading-relaxed mb-4">
+                            Think something will happen? Buy YES. Don't think so? Buy NO. The market shows what everyone thinks the chances are.
+                        </p>
+                        <div class="p-5 rounded-xl" style="background: rgba(0, 0, 0, 0.3);">
+                            <p class="text-sm font-semibold mb-3" style="color: #631BDD;">Example:</p>
+                            <p class="text-white mb-2">• Market at 65% = Most people think YES</p>
+                            <p class="text-white">• Market at 35% = Most people think NO</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="group relative p-8 rounded-2xl border-2 transition-all duration-300" style="border-color: rgba(242, 195, 0, 0.3); background: linear-gradient(135deg, rgba(242, 195, 0, 0.05) 0%, rgba(242, 195, 0, 0.02) 100%);">
+                <div class="flex items-start gap-6">
+                    <img src="assets/goat info.png" alt="Info" class="flex-shrink-0 w-14 h-14 opacity-90">
+                    <div class="flex-1">
+                        <h3 class="text-2xl font-bold mb-3" style="color: #F2C300;">Watch Your Money</h3>
+                        <p class="text-gray-300 text-lg leading-relaxed">
+                            Track your bets live. If the market moves your way, your potential profit goes up. You can cash out anytime before it ends.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="group relative p-8 rounded-2xl border-2 transition-all duration-300" style="border-color: rgba(0, 203, 151, 0.3); background: linear-gradient(135deg, rgba(0, 203, 151, 0.05) 0%, rgba(0, 203, 151, 0.02) 100%);">
+                <div class="flex items-start gap-6">
+                    <img src="assets/goat info.png" alt="Info" class="flex-shrink-0 w-14 h-14 opacity-90">
+                    <div class="flex-1">
+                        <h3 class="text-2xl font-bold mb-3" style="color: #00CB97;">Get Paid</h3>
+                        <p class="text-gray-300 text-lg leading-relaxed mb-4">
+                            When the event happens, if you picked right, you get paid. Simple as that.
+                        </p>
+                        <div class="p-5 rounded-xl" style="background: rgba(0, 0, 0, 0.3);">
+                            <p class="text-sm font-semibold mb-3" style="color: #00CB97;">Real Example:</p>
+                            <p class="text-white mb-2">• You buy YES when market is at 65%</p>
+                            <p class="text-white mb-2">• You invest JMD 10,000</p>
+                            <p class="text-white mb-2">• Event happens (YES wins!)</p>
+                            <p class="font-bold mb-1" style="color: #00CB97;">• You get back: JMD 15,385</p>
+                            <p class="font-bold" style="color: #00CB97;">• Your profit: JMD 5,385 (54% return)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Info -->
+        <div class="mb-20">
+            <h2 class="text-3xl font-bold mb-10 text-center">
+                Good to <span style="color: #00CB97;">Know</span>
+            </h2>
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Info 1 -->
+                <div class="p-6 rounded-xl border-2 transition-all duration-300" style="background: rgba(0, 203, 151, 0.03); border-color: rgba(0, 203, 151, 0.2);" onmouseover="this.style.borderColor='rgba(0, 203, 151, 0.5)'" onmouseout="this.style.borderColor='rgba(0, 203, 151, 0.2)'">
+                    <h3 class="text-xl font-bold mb-3 flex items-center gap-2">
+                        <span style="color: #00CB97;">●</span>
+                        <span style="color: #00CB97;">How Prices Work</span>
+                    </h3>
+                    <p class="text-gray-300 leading-relaxed">
+                        Higher percentage = more people think it'll happen. Lower percentage = bigger win if you're right.
+                    </p>
+                </div>
+
+                <!-- Info 2 -->
+                <div class="p-6 rounded-xl border-2 transition-all duration-300" style="background: rgba(99, 27, 221, 0.03); border-color: rgba(99, 27, 221, 0.2);" onmouseover="this.style.borderColor='rgba(99, 27, 221, 0.5)'" onmouseout="this.style.borderColor='rgba(99, 27, 221, 0.2)'">
+                    <h3 class="text-xl font-bold mb-3 flex items-center gap-2">
+                        <span style="color: #631BDD;">●</span>
+                        <span style="color: #631BDD;">When It Ends</span>
+                    </h3>
+                    <p class="text-gray-300 leading-relaxed">
+                        After the event happens, we check the result and pay out the winners. Losers get nothing.
+                    </p>
+                </div>
+
+                <!-- Info 3 -->
+                <div class="p-6 rounded-xl border-2 transition-all duration-300" style="background: rgba(242, 195, 0, 0.03); border-color: rgba(242, 195, 0, 0.2);" onmouseover="this.style.borderColor='rgba(242, 195, 0, 0.5)'" onmouseout="this.style.borderColor='rgba(242, 195, 0, 0.2)'">
+                    <h3 class="text-xl font-bold mb-3 flex items-center gap-2">
+                        <span style="color: #F2C300;">●</span>
+                        <span style="color: #F2C300;">Your Balance</span>
+                    </h3>
+                    <p class="text-gray-300 leading-relaxed">
+                        New users start with JMD 150,000 play money. Use it to learn how everything works.
+                    </p>
+                </div>
+
+                <!-- Info 4 -->
+                <div class="p-6 rounded-xl border-2 transition-all duration-300" style="background: rgba(0, 203, 151, 0.03); border-color: rgba(0, 203, 151, 0.2);" onmouseover="this.style.borderColor='rgba(0, 203, 151, 0.5)'" onmouseout="this.style.borderColor='rgba(0, 203, 151, 0.2)'">
+                    <h3 class="text-xl font-bold mb-3 flex items-center gap-2">
+                        <span style="color: #00CB97;">●</span>
+                        <span style="color: #00CB97;">Risk vs Reward</span>
+                    </h3>
+                    <p class="text-gray-300 leading-relaxed">
+                        Low percentage = risky but big payout. High percentage = safer but smaller payout.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CTA Section -->
+        <div class="text-center p-12 rounded-2xl" style="background: linear-gradient(135deg, rgba(0, 203, 151, 0.1) 0%, rgba(99, 27, 221, 0.1) 100%); border: 2px solid rgba(0, 203, 151, 0.3);">
+            <h2 class="text-3xl font-bold mb-4">Ready fi Start?</h2>
+            <p class="text-xl text-gray-300 mb-8 max-w-xl mx-auto">
+                Sign up now and get JMD 150,000 play money to test your predictions!
+            </p>
+            <a href="index.html" class="inline-block px-10 py-4 rounded-xl font-bold text-lg transition text-white" style="background-color: #00CB97;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'">
+                Start Trading Now
+            </a>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="desktop-only fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 z-50" style="padding: 6px 0;">
+        <div class="w-full flex items-center justify-between text-xs text-gray-400 font-medium">
+            <!-- Left: Links -->
+            <div class="flex items-center gap-3 pl-6">
+                <span>GoatMouth © 2025</span>
+                <span style="font-size: 10px;">•</span>
+                <a href="privacy.html" class="hover:text-white transition">Privacy</a>
+                <span style="font-size: 10px;">•</span>
+                <a href="terms.html" class="hover:text-white transition">Terms</a>
+                <span style="font-size: 10px;">•</span>
+                <a href="how-it-works.html" class="hover:text-white transition">How It Works</a>
+                <span style="font-size: 10px;">•</span>
+                <a href="contact.html" class="hover:text-white transition">Contact</a>
+            </div>
+
+            <!-- Right: Social Icons -->
+            <div class="flex items-center gap-2 pr-6">
+                <a href="#" class="hover:text-white transition">
+                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                    </svg>
+                </a>
+                <a href="#" class="hover:text-white transition">
+                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/api.js"></script>
+
+    <script>
+        // Mobile Sidebar Functions
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('mobileSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
+        function closeMobileSidebar() {
+            const sidebar = document.getElementById('mobileSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+        }
+
+        // Auth Functions
+        async function handleLogout() {
+            try {
+                // Sign out from Supabase using the global client
+                if (window.supabaseClient) {
+                    await window.supabaseClient.auth.signOut();
+                }
+
+                // Clear all stored data
+                localStorage.clear();
+                sessionStorage.clear();
+
+                // Clear all cookies
+                document.cookie.split(";").forEach(function(c) {
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                });
+
+                // Redirect to home
+                window.location.href = 'index.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+                // Force logout anyway
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.href = 'index.html';
+            }
+        }
+
+        function showUserProfile() {
+            window.location.href = 'index.html#activity';
+        }
+
+        function showAuthModal(mode = 'login') {
+            window.location.href = 'index.html';
+        }
+
+        // Update header based on user authentication
+        function updateHeaderUI() {
+            const authLoading = document.getElementById('authLoading');
+            const userBadge = document.getElementById('userBadge');
+            const profileBtn = document.getElementById('profileBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const authButtons = document.getElementById('authButtons');
+            const userName = document.getElementById('currentUserName');
+
+            if (authLoading) authLoading.style.display = 'none';
+
+            // Check if user is logged in via localStorage or sessionStorage
+            const userEmail = localStorage.getItem('user_email') || sessionStorage.getItem('user_email');
+
+            if (userEmail) {
+                const displayName = userEmail.split('@')[0];
+                if (userName) userName.textContent = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+
+                if (userBadge) userBadge.style.display = 'flex';
+                if (profileBtn) profileBtn.style.display = 'inline-flex';
+                if (logoutBtn) logoutBtn.style.display = 'inline-flex';
+                if (authButtons) authButtons.style.display = 'none';
+            } else {
+                if (userBadge) userBadge.style.display = 'none';
+                if (profileBtn) profileBtn.style.display = 'none';
+                if (logoutBtn) logoutBtn.style.display = 'none';
+                if (authButtons) authButtons.style.display = 'flex';
+            }
+        }
+
+        // Check auth state on load
+        setTimeout(() => {
+            updateHeaderUI();
+        }, 100);
+    </script>
+</body>
+</html>
