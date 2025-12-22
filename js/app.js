@@ -400,6 +400,22 @@ class GoatMouth {
                                 </svg>
                                 <span class="font-semibold text-gray-300">How It Works</span>
                             </a>
+
+                            <!-- Live Feed Section (Mobile Only) -->
+                            <div class="mobile-live-feed">
+                                <div class="mobile-live-feed-header">
+                                    <i class="fa-solid fa-rss"></i>
+                                    <span class="font-semibold">Live Feed</span>
+                                </div>
+                                <div class="mobile-live-feed-content">
+                                    <div class="mobile-live-feed-placeholder">
+                                        <i class="fa-brands fa-twitter"></i>
+                                        <p>Social media feed placeholder</p>
+                                        <span>Your social media updates will appear here</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             ${this.currentProfile && this.currentProfile.role === 'admin' ? `
                                 <a href="admin.html" class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition touch-target" onclick="app.toggleMobileMenu()">
                                     <svg class="w-5 h-5" style="color: #631BDD;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -452,9 +468,11 @@ class GoatMouth {
                                 <span>More</span>
                             </button>
                         ` : `
-                            <a href="how-it-works.html" class="mobile-nav-item">
-                                <img src="assets/info.png" alt="Info">
-                                <span>Info</span>
+                            <a href="#" class="mobile-nav-item" data-nav="activity">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span>Activity</span>
                             </a>
                         `}
                     </div>
