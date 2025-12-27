@@ -11,7 +11,14 @@ class GoatMouth {
         this.bannerCarousel = null;
         this.marketOffset = 0; // For pagination
         this.marketsPerPage = 25; // 5x5 grid
+        this.viewMode = localStorage.getItem('marketViewMode') || 'grid'; // 'grid' or 'list'
         this.init();
+    }
+
+    toggleViewMode() {
+        this.viewMode = this.viewMode === 'grid' ? 'list' : 'grid';
+        localStorage.setItem('marketViewMode', this.viewMode);
+        this.renderMarkets(document.getElementById('app'));
     }
 
     detectMobile() {
@@ -64,6 +71,23 @@ class GoatMouth {
                 this.onSignOut();
             }
         });
+
+        // Check for hash navigation (e.g., #activity, #portfolio)
+        const hash = window.location.hash.substring(1);
+        if (hash && ['activity', 'portfolio', 'markets', 'voting', 'leaderboard'].includes(hash)) {
+            this.currentView = hash;
+
+            // Update active state on navigation buttons
+            setTimeout(() => {
+                document.querySelectorAll('.nav-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                const activeBtn = document.querySelector(`.nav-btn[data-nav="${hash}"]`);
+                if (activeBtn) {
+                    activeBtn.classList.add('active');
+                }
+            }, 100);
+        }
 
         // Full render (updates auth state in header and renders content)
         this.render();
@@ -252,7 +276,9 @@ class GoatMouth {
             // Auth buttons
             if (e.target.closest('[data-action="connect"]')) {
                 e.preventDefault();
-                this.showAuthModal();
+                const btn = e.target.closest('[data-action="connect"]');
+                const tab = btn.dataset.tab || 'login';
+                this.showAuthModal(tab);
             }
 
             if (e.target.closest('[data-action="signout"]')) {
@@ -344,8 +370,8 @@ class GoatMouth {
                                 </div>
                             ` : `
                                 <!-- Login & Sign Up Buttons -->
-                                <button class="px-2 py-1.5 rounded-lg font-semibold text-xs border touch-target" style="border-color: #00CB97; color: #00CB97; min-height: 32px;" data-action="connect">Login</button>
-                                <button class="px-2 py-1.5 rounded-lg font-semibold text-xs touch-target" style="background: #00CB97; color: white; min-height: 32px;" data-action="connect">Sign Up</button>
+                                <button class="px-2 py-1.5 rounded-lg font-semibold text-xs border touch-target" style="border-color: #00CB97; color: #00CB97; min-height: 32px;" data-action="connect" data-tab="login">Login</button>
+                                <button class="px-2 py-1.5 rounded-lg font-semibold text-xs touch-target" style="background: #00CB97; color: white; min-height: 32px;" data-action="connect" data-tab="signup">Sign Up</button>
                             `}
                         </div>
                     </div>
@@ -393,12 +419,6 @@ class GoatMouth {
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
                                 <span class="font-semibold" style="color: #00CB97;">Community Voting</span>
-                            </a>
-                            <a href="how-it-works.html" class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition touch-target" onclick="app.toggleMobileMenu()">
-                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                                <span class="font-semibold text-gray-300">How It Works</span>
                             </a>
 
                             <!-- Live Feed Section (Mobile Only) -->
@@ -468,12 +488,12 @@ class GoatMouth {
                                 <span>More</span>
                             </button>
                         ` : `
-                            <a href="#" class="mobile-nav-item" data-nav="activity">
+                            <button class="mobile-nav-item" onclick="openUpdatesModal()">
                                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                                 </svg>
-                                <span>Activity</span>
-                            </a>
+                                <span>Updates</span>
+                            </button>
                         `}
                     </div>
                 </nav>
@@ -650,8 +670,8 @@ class GoatMouth {
                             <img src="assets/info.png" alt="Info" class="h-9 w-9">
                             How it works
                         </a>
-                        <button class="px-8 py-4 text-lg font-bold rounded-xl transition" style="color: #00CB97;" onmouseover="this.style.backgroundColor='rgba(0, 203, 151, 0.1)'" onmouseout="this.style.backgroundColor='transparent'" data-action="connect">Log In</button>
-                        <button class="px-8 py-4 rounded-xl font-bold text-lg transition text-white" style="background-color: #00CB97;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'" data-action="connect">Sign Up</button>
+                        <button class="px-8 py-4 text-lg font-bold rounded-xl transition" style="color: #00CB97;" onmouseover="this.style.backgroundColor='rgba(0, 203, 151, 0.1)'" onmouseout="this.style.backgroundColor='transparent'" data-action="connect" data-tab="login">Log In</button>
+                        <button class="px-8 py-4 rounded-xl font-bold text-lg transition text-white" style="background-color: #00CB97;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'" data-action="connect" data-tab="signup">Sign Up</button>
                     `}
                     <button class="text-gray-300 hover:text-white transition p-3">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -666,7 +686,7 @@ class GoatMouth {
         if (this.isMobile) {
             // Mobile: Horizontal scroll with pills
             categoryNav.innerHTML = `
-                <div class="category-nav-mobile border-t border-gray-800 bg-gray-900" style="position: sticky; top: 0; z-index: 40;">
+                <div class="category-nav-mobile border-t border-gray-800 bg-gray-900" style="position: fixed; top: 124px; left: 0; right: 0; z-index: 40; width: 100%;">
                     <div class="flex gap-3 overflow-x-auto px-4 py-3" style="-webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none;">
                         <a href="#" class="mobile-card whitespace-nowrap px-4 py-2 rounded-full text-xs font-semibold transition active:scale-95 ${this.currentCategory === 'all' && this.currentView === 'markets' ? 'category-active' : ''}"
                            style="background: ${this.currentCategory === 'all' && this.currentView === 'markets' ? '#00CB97' : 'rgba(0, 203, 151, 0.1)'};
@@ -691,12 +711,11 @@ class GoatMouth {
                                 Activity
                             </a>
                         ` : ''}
-                        <a href="#" class="mobile-card whitespace-nowrap px-4 py-2 rounded-full text-xs font-semibold transition active:scale-95 ${this.currentView === 'voting' ? 'category-active' : ''}"
-                           style="background: ${this.currentView === 'voting' ? '#00CB97' : 'rgba(0, 203, 151, 0.1)'};
-                                  color: ${this.currentView === 'voting' ? 'white' : '#00CB97'};
-                                  border: 1px solid ${this.currentView === 'voting' ? '#00CB97' : 'transparent'};"
-                           data-nav="voting">
-                            Voting
+                        <a href="earn.html" class="mobile-card whitespace-nowrap px-4 py-2 rounded-full text-xs font-semibold transition active:scale-95"
+                           style="background: rgba(242, 195, 0, 0.1);
+                                  color: #F2C300;
+                                  border: 1px solid transparent;">
+                            Earn
                         </a>
                         <a href="#" class="mobile-card whitespace-nowrap px-4 py-2 rounded-full text-xs font-semibold transition active:scale-95"
                            style="background: ${this.currentCategory === 'Politics' ? '#00CB97' : 'rgba(0, 203, 151, 0.1)'};
@@ -733,12 +752,28 @@ class GoatMouth {
                                   color: ${this.currentCategory === 'Culture' ? 'white' : '#00CB97'};
                                   border: 1px solid ${this.currentCategory === 'Culture' ? '#00CB97' : 'transparent'};"
                            data-category="Culture">Culture</a>
+
+                        <!-- View Mode Toggle for Mobile -->
+                        ${this.currentView === 'markets' ? `
+                            <div class="flex gap-1 bg-gray-800 rounded-lg p-1 border border-gray-700 whitespace-nowrap">
+                                <button class="px-2 py-1 rounded ${this.viewMode === 'grid' ? 'bg-gray-700 text-white' : 'text-gray-400'} transition" onclick="if(app.viewMode !== 'grid') app.toggleViewMode()" title="Grid">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                                    </svg>
+                                </button>
+                                <button class="px-2 py-1 rounded ${this.viewMode === 'list' ? 'bg-gray-700 text-white' : 'text-gray-400'} transition" onclick="if(app.viewMode !== 'list') app.toggleViewMode()" title="List">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
                 <!-- Search Bar - Below Category Nav -->
                 <div class="px-3 py-2 bg-gray-900 border-b border-gray-800" id="mobile-search-bar" style="display: block !important; visibility: visible !important;">
                     <div class="relative">
-                        <input type="text" id="mobile-search-input" placeholder="Search markets..." class="w-full px-3 py-2.5 pl-10 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-400 focus:outline-none focus:border-green-500" style="font-size: 16px;">
+                        <input type="text" id="mobile-menu-search-input" name="mobile-menu-search" placeholder="Search markets..." class="w-full px-3 py-2.5 pl-10 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-400 focus:outline-none focus:border-green-500" style="font-size: 16px;" autocomplete="off">
                         <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
@@ -754,7 +789,8 @@ class GoatMouth {
             // Desktop: Original layout
             categoryNav.innerHTML = `
                 <div class="container mx-auto px-4 border-t border-gray-800">
-                    <div class="flex items-center justify-evenly overflow-x-auto">
+                    <div class="flex items-center justify-between overflow-x-auto">
+                        <div class="flex items-center gap-4">
                         <a href="#" class="category-link flex items-center gap-1.5 ${this.currentCategory === 'all' && this.currentView === 'markets' ? 'category-active' : ''}" data-category="all">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
@@ -781,9 +817,31 @@ class GoatMouth {
                         <a href="#" class="category-link ${this.currentCategory === 'Technology' ? 'category-active' : ''}" data-category="Technology">Tech</a>
                         <a href="#" class="category-link ${this.currentCategory === 'Science' ? 'category-active' : ''}" data-category="Science">Science</a>
                         <a href="#" class="category-link ${this.currentCategory === 'Culture' ? 'category-active' : ''}" data-category="Culture">Culture</a>
+                        </div>
+
+                        <!-- View Mode Toggle -->
+                        ${this.currentView === 'markets' ? `
+                            <div class="flex gap-1 bg-gray-800 rounded-lg p-1 border border-gray-700" style="flex-shrink: 0;">
+                                <button class="px-2 py-1.5 rounded ${this.viewMode === 'grid' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'} transition" onclick="if(app.viewMode !== 'grid') app.toggleViewMode()" title="Grid View">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                                    </svg>
+                                </button>
+                                <button class="px-2 py-1.5 rounded ${this.viewMode === 'list' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'} transition" onclick="if(app.viewMode !== 'list') app.toggleViewMode()" title="List View">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
+        }
+
+        // Show mobile navigation
+        if (this.isMobile && categoryNav) {
+            categoryNav.style.display = 'block';
         }
 
         // Load balance if authenticated
@@ -813,6 +871,23 @@ class GoatMouth {
         }
     }
 
+    async initializeBanner() {
+        // Initialize banner carousel once for all views (if not already initialized)
+        if (!this.bannerCarousel && window.BannerCarousel) {
+            const bannerContainer = document.getElementById('banner-container');
+            if (bannerContainer) {
+                this.bannerCarousel = new BannerCarousel(this);
+                await this.bannerCarousel.loadBanners();
+
+                // Only render if we have banners and container has the .banner-content child
+                const bannerContent = bannerContainer.querySelector('.banner-content');
+                if (bannerContent && this.bannerCarousel.banners && this.bannerCarousel.banners.length > 0) {
+                    this.bannerCarousel.render(bannerContainer);
+                }
+            }
+        }
+    }
+
     async renderContent() {
         const app = document.getElementById('app');
 
@@ -832,9 +907,15 @@ class GoatMouth {
             case 'voting':
                 await this.renderVoting(app);
                 break;
+            case 'leaderboard':
+                await this.renderLeaderboard(app);
+                break;
             default:
                 app.innerHTML = '<p>View not found</p>';
         }
+
+        // Initialize banner carousel once for all views (if on index.html and not already initialized)
+        await this.initializeBanner();
     }
 
     async renderMarkets(container) {
@@ -897,9 +978,9 @@ class GoatMouth {
                     </div>
                 ` : ''}
 
-                <!-- Responsive Grid Container -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-6">
-                    ${displayedMarkets.map(market => this.renderMarketCard(market)).join('')}
+                <!-- Markets Container -->
+                <div class="${this.viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5' : 'flex flex-col gap-3'} mb-6">
+                    ${displayedMarkets.map(market => this.viewMode === 'list' ? this.renderMarketListItem(market) : this.renderMarketCard(market)).join('')}
                 </div>
 
                 <!-- Pagination Controls -->
@@ -924,16 +1005,6 @@ class GoatMouth {
                     </div>
                 ` : ''}
             `;
-
-            // Initialize banner carousel (only on "all" category)
-            if (this.currentCategory === 'all') {
-                const bannerContainer = document.getElementById('banner-container');
-                if (bannerContainer && window.BannerCarousel) {
-                    this.bannerCarousel = new BannerCarousel(this);
-                    await this.bannerCarousel.loadBanners();
-                    this.bannerCarousel.render(bannerContainer);
-                }
-            }
         } catch (error) {
             container.innerHTML = `<div class="text-red-500">Error loading markets: ${error.message}</div>`;
         }
@@ -1144,6 +1215,67 @@ class GoatMouth {
         }
     }
 
+    renderMarketListItem(market) {
+        const yesPercent = (market.yes_price * 100).toFixed(0);
+        const noPercent = (market.no_price * 100).toFixed(0);
+        const timeLeft = this.getTimeLeft(market.end_date);
+
+        return `
+            <div class="bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition cursor-pointer"
+                 onclick="app.showMarketDetail('${market.id}')"
+                 style="box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+                <div class="p-4 flex items-center gap-4">
+                    <!-- Left: Market Info -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-2">
+                            ${market.category ? `
+                                <span class="text-xs px-2 py-0.5 rounded-md font-semibold" style="background-color: rgba(0, 203, 151, 0.1); color: #00CB97; border: 1px solid rgba(0, 203, 151, 0.2);">
+                                    ${market.category}
+                                </span>
+                            ` : ''}
+                            <span class="text-xs text-gray-400 flex items-center gap-1">
+                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                ${timeLeft}
+                            </span>
+                        </div>
+                        <h3 class="text-base font-bold text-white mb-2 line-clamp-2 leading-snug">
+                            ${market.title}
+                        </h3>
+                        <div class="flex items-center gap-4 text-xs text-gray-400">
+                            <span class="flex items-center gap-1">
+                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                                </svg>
+                                J$${parseFloat(market.total_volume/1000).toFixed(1)}K
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                </svg>
+                                ${market.bettor_count || 0} bettors
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Right: Probability Bars -->
+                    <div class="flex gap-6 items-center">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold mb-1" style="color: #00CB97;">${yesPercent}%</div>
+                            <div class="text-xs text-gray-400 uppercase font-semibold">Yes</div>
+                        </div>
+                        <div class="h-16 w-px bg-gray-700"></div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold mb-1 text-red-400">${noPercent}%</div>
+                            <div class="text-xs text-gray-400 uppercase font-semibold">No</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     getTimeLeft(endDate) {
         const end = new Date(endDate);
         const now = new Date();
@@ -1255,6 +1387,53 @@ class GoatMouth {
             `;
         } catch (error) {
             container.innerHTML = `<div class="text-red-500">Error loading activity: ${error.message}</div>`;
+        }
+    }
+
+    async renderLeaderboard(container) {
+        container.innerHTML = `
+            <div class="inline-loader">
+                <div class="spinner-container">
+                    <div class="spinner-glow"></div>
+                    <div class="spinner-text">Loading leaderboard...</div>
+                </div>
+            </div>
+        `;
+
+        try {
+            // Fetch top users by balance or total bets
+            const leaderboard = await this.api.getLeaderboard();
+
+            container.innerHTML = `
+                <h1 class="text-3xl font-bold mb-6">Leaderboard</h1>
+                <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                    ${leaderboard && leaderboard.length > 0 ? `
+                        <div class="space-y-4">
+                            ${leaderboard.map((user, index) => `
+                                <div class="flex items-center justify-between p-4 bg-gray-900 rounded-lg border border-gray-700">
+                                    <div class="flex items-center gap-4">
+                                        <div class="text-2xl font-bold ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-orange-400' : 'text-gray-500'}">
+                                            #${index + 1}
+                                        </div>
+                                        <div>
+                                            <div class="font-semibold">${user.username || 'Anonymous'}</div>
+                                            <div class="text-sm text-gray-400">${user.total_bets || 0} bets placed</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-xl font-bold" style="color: #00CB97;">$${(user.balance || 0).toFixed(2)}</div>
+                                        <div class="text-sm text-gray-400">Balance</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <p class="text-center text-gray-400 py-8">No leaderboard data available yet</p>
+                    `}
+                </div>
+            `;
+        } catch (error) {
+            container.innerHTML = `<div class="text-red-500">Error loading leaderboard: ${error.message}</div>`;
         }
     }
 
@@ -1642,162 +1821,233 @@ class GoatMouth {
         }
     }
 
-    showAuthModal() {
+    showAuthModal(activeTab = 'login') {
         const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
-        modal.style.backdropFilter = 'blur(4px)';
+        modal.className = 'fixed inset-0 z-50';
+        modal.style.backdropFilter = 'blur(8px)';
+        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+        modal.style.overflow = 'hidden';
         modal.innerHTML = `
-            <div class="bg-gray-800 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-gray-700">
-                <!-- Logo -->
-                <div class="text-center mb-6">
-                    <img src="assets/official.png" alt="GoatMouth" class="mx-auto mb-4 logo-no-bg" style="height: 100px; width: 100px;">
-                    <h2 class="text-2xl font-bold text-white mb-2">Welcome to GoatMouth</h2>
-                    <p class="text-gray-400 text-sm">Sign in or create an account to start trading</p>
-                </div>
-
-                <!-- Tabs -->
-                <div class="flex gap-3 mb-6">
-                    <button id="login-tab" class="auth-tab active flex-1 px-4 py-3 rounded-lg font-semibold transition">
-                        Sign In
-                    </button>
-                    <button id="signup-tab" class="auth-tab flex-1 px-4 py-3 rounded-lg font-semibold transition">
-                        Sign Up
-                    </button>
-                </div>
-
-                <!-- Error Message -->
-                <div id="auth-error" class="hidden mb-4 p-3 bg-red-900 bg-opacity-20 border border-red-500 rounded-lg text-red-400 text-sm"></div>
-
-                <!-- Login Form -->
-                <form id="login-form" class="auth-form space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Email</label>
-                        <input
-                            type="email"
-                            id="login-email"
-                            placeholder="you@example.com"
-                            required
-                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-teal-500 transition"
-                        >
+            <div class="min-h-screen flex items-start justify-center px-4" style="padding-top: 180px; padding-bottom: 32px; overflow-y: auto; max-height: 100vh;">
+                <div class="relative rounded-2xl w-full shadow-2xl overflow-hidden" style="max-width: 580px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);">
+                    <!-- Watermark Logo Background -->
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none" style="opacity: 0.04;">
+                        <img src="assets/official.png" alt="" style="width: 600px; height: 600px; object-fit: contain; transform: rotate(-15deg);">
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
-                        <div class="relative">
-                            <input
-                                type="password"
-                                id="login-password"
-                                placeholder="••••••••"
-                                required
-                                class="w-full px-4 py-3 pr-12 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-teal-500 transition"
-                            >
-                            <button type="button" class="toggle-password absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition" data-target="login-password">
-                                <svg class="h-5 w-5 eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                </svg>
-                                <svg class="h-5 w-5 eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
-                                </svg>
+
+                    <!-- Content Container -->
+                    <div class="relative z-10 p-8">
+                        <!-- Close Button -->
+                        <button id="auth-modal-close" class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-700" title="Close">
+                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+
+                        <!-- Logo & Title -->
+                        <div class="text-center mb-6">
+                            <img src="assets/official.png" alt="GoatMouth" class="mx-auto mb-4 logo-no-bg" style="height: 100px; width: 100px; filter: drop-shadow(0 0 30px rgba(0, 203, 151, 0.4));">
+                            <h2 class="text-2xl font-bold mb-1 bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">Welcome Back</h2>
+                            <p class="text-gray-400 text-xs">Sign in or create an account to start trading</p>
+                        </div>
+
+                        <!-- Tabs -->
+                        <div class="flex gap-2 mb-6 p-1 rounded-xl" style="background: rgba(0, 0, 0, 0.3);">
+                            <button id="login-tab" class="auth-tab ${activeTab === 'login' ? 'active' : ''} flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200 text-sm">
+                                Sign In
+                            </button>
+                            <button id="signup-tab" class="auth-tab ${activeTab === 'signup' ? 'active' : ''} flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200 text-sm">
+                                Sign Up
                             </button>
                         </div>
-                    </div>
-                    <button
-                        type="submit"
-                        class="w-full px-6 py-3 rounded-lg font-bold text-white transition mt-2"
-                        style="background-color: #631BDD;"
-                        onmouseover="this.style.backgroundColor='#7a2ef0'"
-                        onmouseout="this.style.backgroundColor='#631BDD'"
-                    >
-                        Sign In
-                    </button>
-                </form>
 
-                <!-- Signup Form -->
-                <form id="signup-form" class="auth-form space-y-4 hidden">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Username</label>
-                        <input
-                            type="text"
-                            id="signup-username"
-                            placeholder="your_username"
-                            required
-                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-teal-500 transition"
-                        >
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Email</label>
-                        <input
-                            type="email"
-                            id="signup-email"
-                            placeholder="you@example.com"
-                            required
-                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-teal-500 transition"
-                        >
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
-                        <div class="relative">
-                            <input
-                                type="password"
-                                id="signup-password"
-                                placeholder="••••••••"
-                                required
-                                minlength="6"
-                                class="w-full px-4 py-3 pr-12 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-teal-500 transition"
+                        <!-- Error Message -->
+                        <div id="auth-error" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
+
+                        <!-- Login Form -->
+                        <form id="login-form" class="auth-form space-y-3 ${activeTab === 'signup' ? 'hidden' : ''}">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-300 mb-1.5">Email Address</label>
+                                    <input
+                                        type="email"
+                                        id="login-email"
+                                        placeholder="Enter your email"
+                                        required
+                                        autocomplete="email"
+                                        class="w-full px-4 py-2.5 rounded-lg text-white text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                        style="background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1);"
+                                    >
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-300 mb-1.5">Password</label>
+                                    <input
+                                        type="password"
+                                        id="login-password"
+                                        placeholder="Enter your password"
+                                        required
+                                        autocomplete="current-password"
+                                        class="w-full px-4 py-2.5 rounded-lg text-white text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                        style="background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1);"
+                                    >
+                                </div>
+                            </div>
+                            <button
+                                type="submit"
+                                class="w-full px-6 py-3 rounded-lg font-bold text-white transition-all duration-200 mt-4 shadow-lg hover:shadow-xl"
+                                style="background: linear-gradient(135deg, #00CB97 0%, #00a878 100%);"
                             >
-                            <button type="button" class="toggle-password absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition" data-target="signup-password">
-                                <svg class="h-5 w-5 eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                </svg>
-                                <svg class="h-5 w-5 eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
-                                </svg>
+                                Sign In
                             </button>
-                        </div>
-                    </div>
-                    <button
-                        type="submit"
-                        class="w-full px-6 py-3 rounded-lg font-bold text-white transition mt-2"
-                        style="background-color: #00CB97;"
-                        onmouseover="this.style.backgroundColor='#00e5af'"
-                        onmouseout="this.style.backgroundColor='#00CB97'"
-                    >
-                        Sign Up
-                    </button>
-                </form>
 
-                <!-- Cancel -->
-                <button
-                    onclick="this.closest('.fixed').remove()"
-                    class="w-full mt-4 text-gray-400 hover:text-white transition text-sm"
-                >
-                    Cancel
-                </button>
+                            <!-- Divider -->
+                            <div class="relative my-4">
+                                <div class="absolute inset-0 flex items-center">
+                                    <div class="w-full border-t border-gray-600"></div>
+                                </div>
+                                <div class="relative flex justify-center text-xs">
+                                    <span class="px-2 text-gray-400" style="background: #1e293b;">OR</span>
+                                </div>
+                            </div>
+
+                            <!-- Google OAuth Button -->
+                            <button
+                                type="button"
+                                id="google-login-btn"
+                                class="w-full px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200 flex items-center justify-center gap-3 hover:shadow-lg"
+                                style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);"
+                            >
+                                <svg class="h-5 w-5" viewBox="0 0 24 24">
+                                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                                </svg>
+                                Continue with Google
+                            </button>
+                        </form>
+
+                        <!-- Signup Form -->
+                        <form id="signup-form" class="auth-form space-y-3 ${activeTab === 'login' ? 'hidden' : ''}">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div class="sm:col-span-2">
+                                    <label class="block text-xs font-semibold text-gray-300 mb-1.5">Username</label>
+                                    <input
+                                        type="text"
+                                        id="signup-username"
+                                        placeholder="Choose a username"
+                                        required
+                                        autocomplete="username"
+                                        class="w-full px-4 py-2.5 rounded-lg text-white text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                        style="background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1);"
+                                    >
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-300 mb-1.5">Email Address</label>
+                                    <input
+                                        type="email"
+                                        id="signup-email"
+                                        placeholder="Enter your email"
+                                        required
+                                        autocomplete="email"
+                                        class="w-full px-4 py-2.5 rounded-lg text-white text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                        style="background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1);"
+                                    >
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-300 mb-1.5">Password</label>
+                                    <input
+                                        type="password"
+                                        id="signup-password"
+                                        placeholder="Min 6 characters"
+                                        required
+                                        minlength="6"
+                                        autocomplete="new-password"
+                                        class="w-full px-4 py-2.5 rounded-lg text-white text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                        style="background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1);"
+                                    >
+                                </div>
+                            </div>
+                            <button
+                                type="submit"
+                                class="w-full px-6 py-3 rounded-lg font-bold text-white transition-all duration-200 mt-4 shadow-lg hover:shadow-xl"
+                                style="background: linear-gradient(135deg, #00CB97 0%, #00a878 100%);"
+                            >
+                                Create Account
+                            </button>
+
+                            <!-- Divider -->
+                            <div class="relative my-4">
+                                <div class="absolute inset-0 flex items-center">
+                                    <div class="w-full border-t border-gray-600"></div>
+                                </div>
+                                <div class="relative flex justify-center text-xs">
+                                    <span class="px-2 text-gray-400" style="background: #1e293b;">OR</span>
+                                </div>
+                            </div>
+
+                            <!-- Google OAuth Button -->
+                            <button
+                                type="button"
+                                id="google-signup-btn"
+                                class="w-full px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200 flex items-center justify-center gap-3 hover:shadow-lg"
+                                style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);"
+                            >
+                                <svg class="h-5 w-5" viewBox="0 0 24 24">
+                                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                                </svg>
+                                Sign up with Google
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
         `;
 
         document.body.appendChild(modal);
 
-        // Password toggle
-        modal.querySelectorAll('.toggle-password').forEach(button => {
-            button.addEventListener('click', () => {
-                const targetId = button.dataset.target;
-                const passwordInput = modal.querySelector(`#${targetId}`);
-                const eyeOpen = button.querySelector('.eye-open');
-                const eyeClosed = button.querySelector('.eye-closed');
+        // Prevent body scroll when modal is open
+        document.body.style.overflow = 'hidden';
 
-                if (passwordInput.type === 'password') {
-                    passwordInput.type = 'text';
-                    eyeOpen.classList.add('hidden');
-                    eyeClosed.classList.remove('hidden');
-                } else {
-                    passwordInput.type = 'password';
-                    eyeOpen.classList.remove('hidden');
-                    eyeClosed.classList.add('hidden');
-                }
-            });
+        // Responsive padding for modal
+        const modalContainer = modal.querySelector('.min-h-screen');
+        const applyResponsivePadding = () => {
+            if (window.innerWidth <= 768) {
+                // Mobile: more padding from top
+                modalContainer.style.paddingTop = '220px';
+                modalContainer.style.paddingBottom = '32px';
+            } else {
+                // Desktop
+                modalContainer.style.paddingTop = '180px';
+                modalContainer.style.paddingBottom = '32px';
+            }
+        };
+        applyResponsivePadding();
+        window.addEventListener('resize', applyResponsivePadding);
+
+        // No longer need responsive icon positioning since icons are outside inputs
+
+        // Function to close modal and cleanup
+        const closeModal = () => {
+            window.removeEventListener('resize', applyResponsivePadding);
+            document.body.style.overflow = '';
+            modal.remove();
+        };
+
+        // Close button handler
+        const closeBtn = modal.querySelector('#auth-modal-close');
+        closeBtn.addEventListener('click', closeModal);
+
+        // Click outside to close
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal || e.target.classList.contains('min-h-screen')) {
+                closeModal();
+            }
         });
+
 
         // Tab switching
         const loginTab = modal.querySelector('#login-tab');
@@ -1834,10 +2084,11 @@ class GoatMouth {
 
             try {
                 await this.api.signIn(email, password);
-                modal.remove();
+                closeModal();
                 this.init(); // Refresh app
             } catch (error) {
                 errorDiv.textContent = error.message || 'Sign in failed. Please check your credentials.';
+                errorDiv.className = 'mb-4 p-3 rounded-lg text-sm bg-red-900 bg-opacity-30 border border-red-500 text-red-300';
                 errorDiv.classList.remove('hidden');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Sign In';
@@ -1866,15 +2117,15 @@ class GoatMouth {
                 try {
                     await this.api.signIn(email, password);
                     // Success! User is now logged in
-                    modal.remove();
+                    closeModal();
                     this.init(); // Refresh app
                 } catch (signInError) {
                     // Sign in failed (probably email verification required)
                     errorDiv.textContent = 'Account created! Please check your email for verification, then sign in.';
-                    errorDiv.classList.remove('hidden', 'bg-red-900', 'border-red-500', 'text-red-400');
-                    errorDiv.classList.add('bg-green-900', 'border-green-500', 'text-green-400');
+                    errorDiv.className = 'mb-4 p-3 rounded-lg text-sm bg-green-900 bg-opacity-30 border border-green-500 text-green-300';
+                    errorDiv.classList.remove('hidden');
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'Sign Up';
+                    submitBtn.textContent = 'Create Account';
                     // Switch to login tab after 3 seconds
                     setTimeout(() => {
                         loginTab.click();
@@ -1882,11 +2133,49 @@ class GoatMouth {
                 }
             } catch (error) {
                 errorDiv.textContent = error.message || 'Sign up failed. Please try again.';
+                errorDiv.className = 'mb-4 p-3 rounded-lg text-sm bg-red-900 bg-opacity-30 border border-red-500 text-red-300';
                 errorDiv.classList.remove('hidden');
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Sign Up';
+                submitBtn.textContent = 'Create Account';
             }
         });
+
+        // Google OAuth handlers
+        const googleLoginBtn = modal.querySelector('#google-login-btn');
+        const googleSignupBtn = modal.querySelector('#google-signup-btn');
+
+        const handleGoogleAuth = async () => {
+            const errorDiv = modal.querySelector('#auth-error');
+
+            try {
+                // Clear previous errors
+                errorDiv.classList.add('hidden');
+
+                const { data, error } = await this.api.db.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: `${window.location.origin}/index.html`
+                    }
+                });
+
+                if (error) throw error;
+
+                // The user will be redirected to Google for authentication
+                // After successful auth, they'll be redirected back to the app
+            } catch (error) {
+                console.error('Google OAuth error:', error);
+                errorDiv.textContent = error.message || 'Failed to sign in with Google. Please try again.';
+                errorDiv.className = 'mb-4 p-3 rounded-lg text-sm bg-red-900 bg-opacity-30 border border-red-500 text-red-300';
+                errorDiv.classList.remove('hidden');
+            }
+        };
+
+        if (googleLoginBtn) {
+            googleLoginBtn.addEventListener('click', handleGoogleAuth);
+        }
+        if (googleSignupBtn) {
+            googleSignupBtn.addEventListener('click', handleGoogleAuth);
+        }
     }
 
     showEditProfileModal() {

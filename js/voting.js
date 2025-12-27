@@ -132,41 +132,11 @@ class VotingSystem {
     switchTab(tab) {
         this.currentTab = tab;
 
-        // Update tab styles
+        // Update tab styles (CSS handles the visual changes via .active class)
         document.querySelectorAll('.vote-tab').forEach(t => {
             t.classList.remove('active');
             if (t.dataset.tab === tab) {
                 t.classList.add('active');
-            }
-        });
-
-        // Update active styles
-        document.querySelectorAll('.vote-tab').forEach(t => {
-            if (t.dataset.tab === tab) {
-                if (tab === 'active') {
-                    t.style.background = 'rgba(0, 203, 151, 0.2)';
-                    t.style.color = '#00CB97';
-                    t.style.borderColor = 'rgba(0, 203, 151, 0.5)';
-                } else if (tab === 'approved') {
-                    t.style.background = 'rgba(99, 27, 221, 0.2)';
-                    t.style.color = '#631BDD';
-                    t.style.borderColor = 'rgba(99, 27, 221, 0.5)';
-                } else if (tab === 'rejected') {
-                    t.style.background = 'rgba(239, 68, 68, 0.2)';
-                    t.style.color = '#ef4444';
-                    t.style.borderColor = 'rgba(239, 68, 68, 0.5)';
-                }
-            } else {
-                if (t.dataset.tab === 'active') {
-                    t.style.background = 'rgba(0, 203, 151, 0.1)';
-                    t.style.borderColor = 'rgba(0, 203, 151, 0.3)';
-                } else if (t.dataset.tab === 'approved') {
-                    t.style.background = 'rgba(99, 27, 221, 0.1)';
-                    t.style.borderColor = 'rgba(99, 27, 221, 0.3)';
-                } else if (t.dataset.tab === 'rejected') {
-                    t.style.background = 'rgba(239, 68, 68, 0.1)';
-                    t.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-                }
             }
         });
 
@@ -222,7 +192,7 @@ class VotingSystem {
 
             // Render proposals
             container.innerHTML = `
-                <div class="grid grid-cols-1 gap-4">
+                <div class="proposals-grid">
                     ${proposals.map(proposal => this.renderProposalCard(proposal)).join('')}
                 </div>
             `;
@@ -301,218 +271,160 @@ class VotingSystem {
 
         const isAdmin = this.currentProfile?.role === 'admin';
 
-        const statusColors = {
-            pending: { bg: 'rgba(0, 203, 151, 0.1)', border: 'rgba(0, 203, 151, 0.3)', text: '#00CB97', glow: 'rgba(0, 203, 151, 0.2)' },
-            approved: { bg: 'rgba(99, 27, 221, 0.1)', border: 'rgba(99, 27, 221, 0.3)', text: '#631BDD', glow: 'rgba(99, 27, 221, 0.2)' },
-            rejected: { bg: 'rgba(239, 68, 68, 0.1)', border: 'rgba(239, 68, 68, 0.3)', text: '#ef4444', glow: 'rgba(239, 68, 68, 0.2)' }
+        const statusClass = {
+            pending: 'status-pending',
+            approved: 'status-approved',
+            rejected: 'status-rejected'
         };
 
-        const colors = statusColors[proposal.status] || statusColors.pending;
-
         return `
-            <div class="proposal-accordion"
-                 data-proposal-id="${proposal.id}"
-                 style="background: linear-gradient(135deg, rgba(31, 41, 55, 0.8) 0%, rgba(17, 24, 39, 0.9) 100%);
-                        border: 2px solid var(--border);
-                        border-radius: 16px;
-                        margin-bottom: 16px;
-                        transition: all 0.3s ease;
-                        cursor: pointer;
-                        position: relative;
-                        overflow: hidden;">
-
-                <!-- Accordion Header (Always Visible) -->
-                <div class="proposal-header" onclick="toggleProposal('${proposal.id}')"
-                     style="padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px;">
-
-                    <!-- Left: Title and Quick Info -->
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                            ${proposal.image_url ? `
-                                <div style="width: 60px; height: 60px; border-radius: 10px; overflow: hidden; border: 2px solid rgba(0, 203, 151, 0.3); flex-shrink: 0;">
-                                    <img src="${proposal.image_url}"
-                                         alt="${proposal.title}"
-                                         style="width: 100%; height: 100%; object-fit: cover;"
-                                         onerror="this.parentElement.innerHTML='<div style=\\'width:60px;height:60px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#00CB97 0%,#631BDD 100%);font-size:0.875rem;font-weight:700;\\'>${proposal.profiles?.username?.charAt(0).toUpperCase() || 'U'}</div>'">
-                                </div>
-                            ` : `
-                                <div style="width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; font-weight: 700; background: linear-gradient(135deg, #00CB97 0%, #631BDD 100%); flex-shrink: 0;">
-                                    ${proposal.profiles?.username?.charAt(0).toUpperCase() || 'U'}
-                                </div>
-                            `}
-                            <div style="flex: 1; min-width: 0;">
-                                <p style="font-weight: 700; font-size: 1.125rem; color: white; margin: 0; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${proposal.title}</p>
-                                <p style="font-size: 0.75rem; color: #9ca3af; margin: 4px 0 0 0;">
-                                    <i class="ri-user-line"></i> ${proposal.profiles?.username || 'Unknown'} •
-                                    <i class="ri-calendar-line"></i> ${new Date(proposal.created_at).toLocaleDateString()}
-                                    ${proposal.image_url ? ' • <i class="ri-image-line"></i>' : ''}
-                                </p>
-                            </div>
+            <div class="proposal-card proposal-card-compact" data-proposal-id="${proposal.id}">
+                <!-- Header -->
+                <div class="proposal-header" onclick="toggleProposal('${proposal.id}')">
+                    <div class="proposal-info">
+                        <div class="proposal-title">${proposal.title}</div>
+                        <div class="proposal-meta">
+                            <span><i class="ri-user-line"></i> ${proposal.profiles?.username || 'Unknown'}</span>
+                            <span><i class="ri-calendar-line"></i> ${new Date(proposal.created_at).toLocaleDateString()}</span>
+                            ${proposal.category ? `<span><i class="ri-folder-line"></i> ${proposal.category}</span>` : ''}
                         </div>
                     </div>
 
-                    <!-- Right: Quick Stats and Expand Icon -->
-                    <div style="display: flex; align-items: center; gap: 16px; flex-shrink: 0;">
-                        <!-- Vote Count -->
-                        <div style="display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: rgba(0, 203, 151, 0.1); border-radius: 10px; border: 1px solid rgba(0, 203, 151, 0.3);">
-                            <div style="text-align: center;">
-                                <i class="ri-thumb-up-fill" style="color: #00CB97; font-size: 1.25rem;"></i>
-                                <p style="margin: 0; font-size: 0.875rem; font-weight: 700; color: white;">${yesVotes}</p>
+                    <div class="proposal-stats">
+                        <div class="vote-count">
+                            <div class="vote-col">
+                                <i class="ri-thumb-up-fill" style="color: var(--green);"></i>
+                                <div class="count">${yesVotes}</div>
                             </div>
-                            <div style="width: 1px; height: 24px; background: rgba(255, 255, 255, 0.1);"></div>
-                            <div style="text-align: center;">
-                                <i class="ri-thumb-down-fill" style="color: #ef4444; font-size: 1.25rem;"></i>
-                                <p style="margin: 0; font-size: 0.875rem; font-weight: 700; color: white;">${noVotes}</p>
+                            <div style="width: 1px; height: 32px; background: rgba(255, 255, 255, 0.1);"></div>
+                            <div class="vote-col">
+                                <i class="ri-thumb-down-fill" style="color: var(--red);"></i>
+                                <div class="count">${noVotes}</div>
                             </div>
                         </div>
 
-                        <!-- Status Badge -->
-                        <span style="padding: 6px 16px; border-radius: 10px; font-size: 0.75rem; font-weight: 700; background: ${colors.bg}; color: ${colors.text}; border: 2px solid ${colors.border};">
-                            ${proposal.status.toUpperCase()}
-                        </span>
+                        <div class="status-badge ${statusClass[proposal.status] || 'status-pending'}">
+                            ${proposal.status}
+                        </div>
 
-                        <!-- Expand Icon -->
-                        <div class="expand-icon" style="transition: transform 0.3s ease;">
-                            <svg style="width: 28px; height: 28px; color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="expand-icon">
+                            <svg style="width: 20px; height: 20px; color: var(--green);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
                             </svg>
                         </div>
                     </div>
                 </div>
 
-                <!-- Accordion Content (Expandable) -->
-                <div class="proposal-content" style="display: none; border-top: 2px solid var(--border); padding: 24px;">
+                <!-- Content -->
+                <div class="proposal-content">
                     ${proposal.image_url ? `
-                        <!-- Market Image -->
-                        <div style="margin-bottom: 24px;">
-                            <div style="border-radius: 12px; overflow: hidden; border: 2px solid rgba(0, 203, 151, 0.3); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
-                                <img src="${proposal.image_url}"
-                                     alt="${proposal.title}"
-                                     style="width: 100%; height: auto; max-height: 400px; object-fit: cover; display: block;"
-                                     onerror="this.parentElement.style.display='none'">
-                            </div>
+                        <div style="margin-bottom: 2rem; border-radius: 12px; overflow: hidden; border: 2px solid rgba(0, 203, 151, 0.2);">
+                            <img src="${proposal.image_url}" alt="${proposal.title}" style="width: 100%; max-height: 400px; object-fit: cover; display: block;">
                         </div>
                     ` : ''}
 
-                    <!-- Description -->
-                    <div style="margin-bottom: 24px;">
-                        <h4 style="color: #00CB97; font-weight: 700; font-size: 0.875rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
-                            <i class="ri-file-text-line"></i> Description
-                        </h4>
-                        <p style="color: #d1d5db; font-size: 0.9375rem; line-height: 1.6; margin: 0;">${proposal.description}</p>
-                    </div>
+                    <div class="proposal-description">${proposal.description}</div>
 
-                    ${proposal.category ? `
-                        <div style="margin-bottom: 24px;">
-                            <span style="padding: 6px 14px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; background: rgba(242, 195, 0, 0.2); color: #F2C300; border: 1px solid rgba(242, 195, 0, 0.3);">
-                                <i class="ri-folder-line"></i> ${proposal.category}
-                            </span>
-                        </div>
-                    ` : ''}
-
-                    <!-- Voting Section with Chart -->
-                    <div style="background: rgba(17, 24, 39, 0.5); border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid rgba(55, 65, 81, 1);">
-                        <h4 style="color: #00CB97; font-weight: 700; font-size: 0.875rem; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <!-- Voting Chart -->
+                    <div class="vote-chart">
+                        <h4 style="color: var(--green); font-weight: 700; font-size: 0.9375rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.5px;">
                             <i class="ri-bar-chart-line"></i> Voting Analytics
                         </h4>
 
-                        <!-- Vote Distribution Chart -->
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px;">
-                            <!-- YES Column -->
-                            <div style="text-align: center;">
-                                <div style="height: 120px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative;">
-                                    <div style="width: 60%; background: linear-gradient(180deg, #00CB97 0%, #00e5af 100%); border-radius: 8px 8px 0 0; transition: all 0.5s ease; box-shadow: 0 -4px 12px rgba(0, 203, 151, 0.4); height: ${totalVotes > 0 ? Math.max((yesVotes / totalVotes) * 100, 5) : 5}%; min-height: 30px; display: flex; align-items: center; justify-content: center;">
-                                        <span style="font-size: 1.25rem; font-weight: 700; color: white;">${yesVotes}</span>
+                        <div class="chart-bars">
+                            <div class="chart-bar">
+                                <div class="bar-container">
+                                    <div class="bar bar-yes" style="height: ${totalVotes > 0 ? Math.max((yesVotes / totalVotes) * 100, 10) : 10}%;">
+                                        ${yesVotes}
                                     </div>
                                 </div>
-                                <div style="margin-top: 8px; padding: 8px; background: rgba(0, 203, 151, 0.1); border-radius: 8px; border: 1px solid rgba(0, 203, 151, 0.3);">
-                                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                        <i class="ri-thumb-up-fill" style="color: #00CB97; font-size: 1.125rem;"></i>
-                                        <span style="font-weight: 700; color: #00CB97;">YES</span>
+                                <div class="bar-label bar-label-yes">
+                                    <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.375rem;">
+                                        <i class="ri-thumb-up-fill" style="color: var(--green); font-size: 1.25rem;"></i>
+                                        <span style="font-weight: 700; color: var(--green);">YES</span>
                                     </div>
-                                    <p style="margin: 4px 0 0 0; font-size: 1.125rem; font-weight: 700; color: white;">${yesPercent}%</p>
+                                    <p style="margin: 0; font-size: 1.5rem; font-weight: 800; color: white;">${yesPercent}%</p>
                                 </div>
                             </div>
 
-                            <!-- NO Column -->
-                            <div style="text-align: center;">
-                                <div style="height: 120px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative;">
-                                    <div style="width: 60%; background: linear-gradient(180deg, #ef4444 0%, #f87171 100%); border-radius: 8px 8px 0 0; transition: all 0.5s ease; box-shadow: 0 -4px 12px rgba(239, 68, 68, 0.4); height: ${totalVotes > 0 ? Math.max(((totalVotes - yesVotes) / totalVotes) * 100, 5) : 5}%; min-height: 30px; display: flex; align-items: center; justify-content: center;">
-                                        <span style="font-size: 1.25rem; font-weight: 700; color: white;">${noVotes}</span>
+                            <div class="chart-bar">
+                                <div class="bar-container">
+                                    <div class="bar bar-no" style="height: ${totalVotes > 0 ? Math.max((noVotes / totalVotes) * 100, 10) : 10}%;">
+                                        ${noVotes}
                                     </div>
                                 </div>
-                                <div style="margin-top: 8px; padding: 8px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3);">
-                                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                        <i class="ri-thumb-down-fill" style="color: #ef4444; font-size: 1.125rem;"></i>
-                                        <span style="font-weight: 700; color: #ef4444;">NO</span>
+                                <div class="bar-label bar-label-no">
+                                    <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.375rem;">
+                                        <i class="ri-thumb-down-fill" style="color: var(--red); font-size: 1.25rem;"></i>
+                                        <span style="font-weight: 700; color: var(--red);">NO</span>
                                     </div>
-                                    <p style="margin: 4px 0 0 0; font-size: 1.125rem; font-weight: 700; color: white;">${100 - yesPercent}%</p>
+                                    <p style="margin: 0; font-size: 1.5rem; font-weight: 800; color: white;">${100 - yesPercent}%</p>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Total Votes Summary -->
-                        <div style="text-align: center; padding: 12px; background: rgba(0, 203, 151, 0.05); border-radius: 8px; border: 1px solid rgba(0, 203, 151, 0.2);">
-                            <p style="margin: 0; color: #9ca3af; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Total Votes</p>
-                            <p style="margin: 4px 0 0 0; font-size: 1.5rem; font-weight: 700; color: white;">${totalVotes}</p>
+                        <div class="total-votes">
+                            <div class="total-votes-label">Total Votes</div>
+                            <div class="total-votes-value">${totalVotes}</div>
                         </div>
                     </div>
 
-                    <!-- Action Buttons -->
-                    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+                    <!-- Vote Buttons -->
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
                         ${this.currentUser && proposal.status === 'pending' ? `
-                            <button style="flex: 1; min-width: 140px; padding: 14px 24px; border-radius: 12px; font-size: 0.9375rem; font-weight: 700; transition: all 0.2s; background: ${userVote?.vote === 'yes' ? 'linear-gradient(135deg, #00CB97 0%, #00e5af 100%)' : 'rgba(0, 203, 151, 0.15)'}; color: ${userVote?.vote === 'yes' ? 'white' : '#00CB97'}; border: 2px solid rgba(0, 203, 151, 0.3); box-shadow: ${userVote?.vote === 'yes' ? '0 4px 12px rgba(0, 203, 151, 0.4)' : 'none'}; ${userVote?.vote === 'yes' ? 'box-shadow: 0 0 0 4px rgba(0, 203, 151, 0.2);' : ''}"
+                            <button class="btn-primary btn-vote-yes ${userVote?.vote === 'yes' ? 'voted' : ''}"
                                     data-action="vote-yes"
                                     data-proposal-id="${proposal.id}"
                                     ${userVote ? 'disabled' : ''}
-                                    onclick="event.stopPropagation();"
-                                    onmouseover="if(!this.disabled) { this.style.background='linear-gradient(135deg, #00CB97 0%, #00e5af 100%)'; this.style.color='white'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0, 203, 151, 0.4)'; }"
-                                    onmouseout="if(!this.disabled) { this.style.background='rgba(0, 203, 151, 0.15)'; this.style.color='#00CB97'; this.style.transform='translateY(0)'; this.style.boxShadow='none'; }">
-                                <i class="ri-thumb-up-fill" style="font-size: 1.25rem;"></i> Vote YES
+                                    onclick="event.stopPropagation();">
+                                <i class="ri-thumb-up-fill" style="font-size: 1.25rem;"></i>
+                                <span>Vote YES</span>
                             </button>
-                            <button style="flex: 1; min-width: 140px; padding: 14px 24px; border-radius: 12px; font-size: 0.9375rem; font-weight: 700; transition: all 0.2s; background: ${userVote?.vote === 'no' ? 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)' : 'rgba(239, 68, 68, 0.15)'}; color: ${userVote?.vote === 'no' ? 'white' : '#ef4444'}; border: 2px solid rgba(239, 68, 68, 0.3); box-shadow: ${userVote?.vote === 'no' ? '0 4px 12px rgba(239, 68, 68, 0.4)' : 'none'}; ${userVote?.vote === 'no' ? 'box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);' : ''}"
+                            <button class="btn-primary btn-vote-no ${userVote?.vote === 'no' ? 'voted' : ''}"
                                     data-action="vote-no"
                                     data-proposal-id="${proposal.id}"
                                     ${userVote ? 'disabled' : ''}
-                                    onclick="event.stopPropagation();"
-                                    onmouseover="if(!this.disabled) { this.style.background='linear-gradient(135deg, #ef4444 0%, #f87171 100%)'; this.style.color='white'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(239, 68, 68, 0.4)'; }"
-                                    onmouseout="if(!this.disabled) { this.style.background='rgba(239, 68, 68, 0.15)'; this.style.color='#ef4444'; this.style.transform='translateY(0)'; this.style.boxShadow='none'; }">
-                                <i class="ri-thumb-down-fill" style="font-size: 1.25rem;"></i> Vote NO
+                                    onclick="event.stopPropagation();">
+                                <i class="ri-thumb-down-fill" style="font-size: 1.25rem;"></i>
+                                <span>Vote NO</span>
                             </button>
                         ` : !this.currentUser && proposal.status === 'pending' ? `
-                            <div style="flex: 1; padding: 14px 24px; border-radius: 12px; text-align: center; background: #1f2937; border: 2px solid #374151;">
-                                <p style="color: #9ca3af; margin: 0;"><i class="ri-lock-line" style="font-size: 1.25rem;"></i> <a href="index.html" style="color: #14b8a6; text-decoration: underline; font-weight: 700;">Sign in</a> to vote on this proposal</p>
+                            <div style="grid-column: 1 / -1; padding: 1.5rem; border-radius: 12px; text-align: center; background: rgba(255, 255, 255, 0.03); border: 2px solid rgba(55, 65, 81, 0.5);">
+                                <i class="ri-lock-line" style="font-size: 2rem; color: var(--green); display: block; margin-bottom: 0.75rem;"></i>
+                                <p style="color: #d1d5db; margin: 0;">
+                                    <a href="index.html" style="color: var(--green); text-decoration: none; font-weight: 700; border-bottom: 2px solid var(--green);">Sign in</a> to vote on this proposal
+                                </p>
                             </div>
                         ` : ''}
                     </div>
 
-                    <!-- Secondary Actions -->
-                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                        <button style="padding: 12px 20px; border-radius: 10px; font-size: 0.875rem; font-weight: 700; transition: all 0.2s; background: rgba(242, 195, 0, 0.15); color: #F2C300; border: 1px solid rgba(242, 195, 0, 0.3);"
+                    <!-- Comments and Admin Actions -->
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <button style="padding: 0.875rem 1.5rem; border-radius: 10px; font-weight: 700; font-size: 0.9375rem; transition: all 0.3s; background: linear-gradient(135deg, rgba(242, 195, 0, 0.12) 0%, rgba(242, 195, 0, 0.05) 100%); color: var(--yellow); border: 2px solid rgba(242, 195, 0, 0.25);"
                                 data-action="show-comments"
                                 data-proposal-id="${proposal.id}"
                                 onclick="event.stopPropagation();"
-                                onmouseover="this.style.background='rgba(242, 195, 0, 0.25)'; this.style.borderColor='#F2C300';"
-                                onmouseout="this.style.background='rgba(242, 195, 0, 0.15)'; this.style.borderColor='rgba(242, 195, 0, 0.3)';">
-                            <i class="ri-chat-3-line" style="font-size: 1.125rem;"></i> ${commentsCount} Comments
+                                onmouseover="this.style.borderColor='var(--yellow)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(242, 195, 0, 0.2)';"
+                                onmouseout="this.style.borderColor='rgba(242, 195, 0, 0.25)'; this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                            <i class="ri-chat-3-line"></i> ${commentsCount} Comments
                         </button>
 
                         ${isAdmin && proposal.status === 'pending' ? `
-                            <button style="padding: 12px 20px; border-radius: 10px; font-size: 0.875rem; font-weight: 700; transition: all 0.2s; background: rgba(99, 27, 221, 0.2); color: #631BDD; border: 1px solid rgba(99, 27, 221, 0.3);"
+                            <button style="padding: 0.875rem 1.5rem; border-radius: 10px; font-weight: 700; font-size: 0.9375rem; transition: all 0.3s; background: linear-gradient(135deg, rgba(99, 27, 221, 0.15) 0%, rgba(99, 27, 221, 0.05) 100%); color: var(--purple); border: 2px solid rgba(99, 27, 221, 0.3);"
                                     data-action="approve-proposal"
                                     data-proposal-id="${proposal.id}"
                                     onclick="event.stopPropagation();"
-                                    onmouseover="this.style.background='rgba(99, 27, 221, 0.3)'; this.style.borderColor='#631BDD';"
-                                    onmouseout="this.style.background='rgba(99, 27, 221, 0.2)'; this.style.borderColor='rgba(99, 27, 221, 0.3)';">
-                                <i class="ri-check-double-line" style="font-size: 1.125rem;"></i> Approve & Go Live
+                                    onmouseover="this.style.borderColor='var(--purple)'; this.style.transform='translateY(-2px)';"
+                                    onmouseout="this.style.borderColor='rgba(99, 27, 221, 0.3)'; this.style.transform='translateY(0)';">
+                                <i class="ri-check-double-line"></i> Approve
                             </button>
-                            <button style="padding: 12px 20px; border-radius: 10px; font-size: 0.875rem; font-weight: 700; transition: all 0.2s; background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);"
+                            <button style="padding: 0.875rem 1.5rem; border-radius: 10px; font-weight: 700; font-size: 0.9375rem; transition: all 0.3s; background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%); color: var(--red); border: 2px solid rgba(239, 68, 68, 0.3);"
                                     data-action="reject-proposal"
                                     data-proposal-id="${proposal.id}"
                                     onclick="event.stopPropagation();"
-                                    onmouseover="this.style.background='rgba(239, 68, 68, 0.3)'; this.style.borderColor='#ef4444';"
-                                    onmouseout="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.borderColor='rgba(239, 68, 68, 0.3)';">
-                                <i class="ri-close-circle-line" style="font-size: 1.125rem;"></i> Reject Proposal
+                                    onmouseover="this.style.borderColor='var(--red)'; this.style.transform='translateY(-2px)';"
+                                    onmouseout="this.style.borderColor='rgba(239, 68, 68, 0.3)'; this.style.transform='translateY(0)';">
+                                <i class="ri-close-circle-line"></i> Reject
                             </button>
                         ` : ''}
                     </div>
@@ -990,28 +902,13 @@ function handleImageUpload(input) {
     reader.readAsDataURL(file);
 }
 
-// Global function to toggle proposal accordion
+// Global function to toggle proposal card
 function toggleProposal(proposalId) {
-    const accordion = document.querySelector(`[data-proposal-id="${proposalId}"]`);
-    if (!accordion) return;
+    const card = document.querySelector(`[data-proposal-id="${proposalId}"]`);
+    if (!card) return;
 
-    const content = accordion.querySelector('.proposal-content');
-    const expandIcon = accordion.querySelector('.expand-icon');
-    const isExpanded = content.style.display !== 'none';
-
-    if (isExpanded) {
-        // Collapse
-        content.style.display = 'none';
-        expandIcon.style.transform = 'rotate(0deg)';
-        accordion.style.borderColor = 'var(--border)';
-        accordion.style.boxShadow = 'none';
-    } else {
-        // Expand
-        content.style.display = 'block';
-        expandIcon.style.transform = 'rotate(180deg)';
-        accordion.style.borderColor = '#00CB97';
-        accordion.style.boxShadow = '0 8px 24px rgba(0, 203, 151, 0.2)';
-    }
+    // Toggle expanded class (CSS handles the visual changes)
+    card.classList.toggle('expanded');
 }
 
 // Initialize voting system when DOM is ready (only on standalone voting.html page)

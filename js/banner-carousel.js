@@ -47,7 +47,7 @@ class BannerCarousel {
                 </div>
 
                 <!-- Banner Container -->
-                <div class="banner-slides relative" style="height: ${isMobile ? '200px' : '400px'};">
+                <div class="banner-slides relative" style="height: ${isMobile ? '100px' : '400px'};">
                     ${this.banners.map((banner, index) => this.renderBannerSlide(banner, index)).join('')}
                 </div>
 
@@ -99,17 +99,17 @@ class BannerCarousel {
         const isActive = index === this.currentIndex;
         const isMobile = window.innerWidth <= 768;
 
-        const imageFit = banner.image_fit || 'cover';
-        const imagePosition = banner.image_position || 'center';
+        let imageFit = banner.image_fit || 'cover';
 
-        // Use custom position values if available, otherwise use preset position
-        let cssPosition;
-        if (imagePosition === 'custom' && banner.custom_position_x !== null && banner.custom_position_y !== null) {
-            cssPosition = `${banner.custom_position_x}% ${banner.custom_position_y}%`;
-        } else {
-            // Convert position values to CSS format (e.g., 'top-left' to 'top left')
-            cssPosition = imagePosition.replace('-', ' ');
+        // Optimize image fit for mobile's thinner banner
+        if (isMobile && imageFit === 'cover') {
+            imageFit = '100% 100%'; // Stretch to fill on mobile for better visibility
         }
+
+        // Always use custom position values (default to center if not set)
+        const posX = banner.custom_position_x !== null && banner.custom_position_x !== undefined ? banner.custom_position_x : 50;
+        const posY = banner.custom_position_y !== null && banner.custom_position_y !== undefined ? banner.custom_position_y : 50;
+        const cssPosition = `${posX}% ${posY}%`;
 
         return `
             <div class="banner-slide absolute inset-0 transition-opacity duration-500 ${isActive ? 'opacity-100' : 'opacity-0'}" data-index="${index}">

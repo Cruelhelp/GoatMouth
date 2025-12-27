@@ -43,14 +43,30 @@ class GoatMouthAPI {
     }
 
     async getProfile(userId) {
-        const { data, error } = await this.db
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
+        try {
+            const { data, error } = await this.db
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .maybeSingle();
 
-        if (error) throw error;
-        return data;
+            if (error) {
+                console.error('Profile fetch error:', {
+                    message: error.message,
+                    details: error.details,
+                    hint: error.hint,
+                    code: error.code,
+                    userId: userId
+                });
+                // Return null instead of throwing for missing profiles
+                if (error.code === 'PGRST116') return null;
+                throw error;
+            }
+            return data;
+        } catch (err) {
+            console.error('Profile fetch exception:', err);
+            return null;
+        }
     }
 
     // ============ MARKETS ============
@@ -481,6 +497,33 @@ class GoatMouthAPI {
         };
 
         return stats;
+    }
+
+    async getLeaderboard(limit = 10) {
+        const { data, error } = await this.db
+            .from('profiles')
+            .select('id, username, balance, created_at')
+            .order('balance', { ascending: false })
+            .limit(limit);
+
+        if (error) throw error;
+
+        // Fetch bet counts for each user
+        const usersWithBets = await Promise.all(
+            data.map(async (user) => {
+                const { count } = await this.db
+                    .from('bets')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_id', user.id);
+
+                return {
+                    ...user,
+                    total_bets: count || 0
+                };
+            })
+        );
+
+        return usersWithBets;
     }
 
     // ============ REAL-TIME ============

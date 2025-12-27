@@ -26,68 +26,66 @@ class AdminPanel {
     }
 
     attachListeners() {
-        // Navigation
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                const view = item.dataset.view;
-                this.switchView(view);
-            });
-        });
-
         // Sign out
         document.getElementById('admin-signout').addEventListener('click', async () => {
-            await this.api.signOut();
-            window.location.href = 'index.html';
+            try {
+                await this.api.signOut();
+
+                // Clear all stored data
+                localStorage.clear();
+                sessionStorage.clear();
+
+                // Clear all cookies
+                document.cookie.split(";").forEach(function(c) {
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                });
+
+                // Redirect using replace to prevent back button
+                window.location.replace('index.html');
+            } catch (error) {
+                console.error('Logout error:', error);
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.replace('index.html');
+            }
         });
     }
 
     switchView(view) {
         this.currentView = view;
 
-        // Update navigation active state
-        document.querySelectorAll('.nav-item').forEach(item => {
-            if (item.dataset.view === view) {
-                item.classList.add('active');
-            } else {
-                item.classList.remove('active');
-            }
-        });
-
-        // Update header
-        const titles = {
-            dashboard: 'Dashboard',
-            markets: 'Markets',
-            users: 'Users',
-            transactions: 'Transactions',
-            messages: 'Messages',
-            voting: 'Voting Management',
-            banners: 'Banner Management'
-        };
-
-        document.getElementById('view-title').textContent = titles[view];
-        const subtitle = document.getElementById('view-subtitle');
-        if (subtitle) subtitle.style.display = 'none';
-
         // Render view content
         this.renderView(view);
     }
 
     async renderView(view) {
-        const container = document.getElementById('admin-content');
-        container.innerHTML = `
-            <div class="inline-loader">
-                <div class="spinner-container">
-                    <div class="spinner-glow"></div>
-                    <div class="spinner-text">Loading...</div>
+        // Map view to container ID
+        const containerMap = {
+            'dashboard': null, // Dashboard updates stats directly
+            'markets': 'admin-content-markets',
+            'users': 'admin-content-users',
+            'transactions': 'admin-content-transactions',
+            'messages': 'admin-content-messages',
+            'voting': 'admin-content-voting',
+            'banners': 'admin-content-banners'
+        };
+
+        const containerId = containerMap[view];
+        const container = containerId ? document.getElementById(containerId) : null;
+
+        if (container) {
+            container.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div>Loading...</div>
                 </div>
-            </div>
-        `;
+            `;
+        }
 
         try {
             switch (view) {
                 case 'dashboard':
-                    await this.renderDashboard(container);
+                    await this.renderDashboard();
                     break;
                 case 'markets':
                     await this.renderMarkets(container);
@@ -109,11 +107,13 @@ class AdminPanel {
                     break;
             }
         } catch (error) {
-            container.innerHTML = `<div class="text-center py-12 text-red-400">Error: ${error.message}</div>`;
+            if (container) {
+                container.innerHTML = `<div class="text-center py-12" style="color: var(--error);">Error: ${error.message}</div>`;
+            }
         }
     }
 
-    async renderDashboard(container) {
+    async renderDashboard() {
         const [marketStats, userStats, transactions, allMarkets, contactMessages, proposals] = await Promise.all([
             this.api.getMarketStats(),
             this.api.getUserStats(),
@@ -125,11 +125,44 @@ class AdminPanel {
 
         // Calculate additional stats
         const activeMarkets = allMarkets.filter(m => m.status === 'active').length;
-        const closedMarkets = allMarkets.filter(m => m.status === 'closed').length;
-        const resolvedMarkets = allMarkets.filter(m => m.status === 'resolved').length;
         const unreadMessages = contactMessages?.length || 0;
         const pendingProposals = proposals?.count || 0;
 
+        // Update stat cards
+        const statUsers = document.getElementById('stat-users');
+        const statMarkets = document.getElementById('stat-markets');
+        const statTransactions = document.getElementById('stat-transactions');
+        const statMessages = document.getElementById('stat-messages');
+
+        if (statUsers) statUsers.textContent = userStats.total || 0;
+        if (statMarkets) statMarkets.textContent = activeMarkets || 0;
+        if (statTransactions) statTransactions.textContent = transactions?.length || 0;
+        if (statMessages) statMessages.textContent = unreadMessages;
+
+        // Update badges
+        const unreadBadge = document.getElementById('unread-badge');
+        const proposalsBadge = document.getElementById('pending-proposals-badge');
+
+        if (unreadBadge) {
+            if (unreadMessages > 0) {
+                unreadBadge.textContent = unreadMessages;
+                unreadBadge.classList.remove('hidden');
+            } else {
+                unreadBadge.classList.add('hidden');
+            }
+        }
+
+        if (proposalsBadge) {
+            if (pendingProposals > 0) {
+                proposalsBadge.textContent = pendingProposals;
+                proposalsBadge.classList.remove('hidden');
+            } else {
+                proposalsBadge.classList.add('hidden');
+            }
+        }
+
+        // For backward compatibility, keep the old rendering code but skip it
+        /* OLD DASHBOARD CODE REMOVED - Now using stat cards in HTML
         container.innerHTML = `
             <!-- Main Stats Grid (Clickable) -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -352,9 +385,8 @@ class AdminPanel {
                 </div>
             </div>
         `;
-
-        // Initialize charts after DOM is updated
-        this.initDashboardCharts(activeMarkets, closedMarkets, resolvedMarkets, allMarkets);
+        */
+        // OLD DASHBOARD CODE END - Stats now update directly in HTML
     }
 
     initDashboardCharts(activeMarkets, closedMarkets, resolvedMarkets, allMarkets) {
@@ -367,7 +399,7 @@ class AdminPanel {
                     labels: ['Active', 'Closed', 'Resolved'],
                     datasets: [{
                         data: [activeMarkets, closedMarkets, resolvedMarkets],
-                        backgroundColor: ['#00CB97', '#FFC107', '#631BDD'],
+                        backgroundColor: ['#027A40', '#FFC107', '#631BDD'],
                         borderColor: '#1f2937',
                         borderWidth: 3
                     }]
@@ -402,8 +434,8 @@ class AdminPanel {
                     datasets: [{
                         label: 'Volume ($)',
                         data: Object.values(categories),
-                        backgroundColor: '#00CB97',
-                        borderColor: '#00e5af',
+                        backgroundColor: '#027A40',
+                        borderColor: '#00CB97',
                         borderWidth: 2,
                         borderRadius: 6
                     }]
@@ -434,46 +466,74 @@ class AdminPanel {
         const markets = await this.api.getMarkets();
 
         container.innerHTML = `
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-bold">All Markets</h3>
-                <button onclick="adminPanel.showCreateMarketModal()" class="btn-primary">
-                    + Create Market
+            <div class="flex justify-between items-center mb-6" style="flex-wrap: wrap; gap: 12px;">
+                <h3 class="text-xl font-bold" style="color: var(--fg);">All Markets (${markets.length})</h3>
+                <button onclick="adminPanel.showCreateMarketModal()" class="btn" style="background: var(--accent); color: white;">
+                    <i class="fa-solid fa-plus"></i> Create Market
                 </button>
             </div>
 
-            <div class="bg-gray-800 rounded-lg overflow-hidden">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>Category</th>
-                            <th>Status</th>
-                            <th>Volume</th>
-                            <th>End Date</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${markets.map(market => `
-                            <tr>
-                                <td class="font-semibold">${market.title}</td>
-                                <td><span class="text-sm text-gray-400">${market.category || 'N/A'}</span></td>
-                                <td><span class="badge badge-${market.status}">${market.status}</span></td>
-                                <td>J$${parseFloat(market.total_volume || 0).toFixed(0)}</td>
-                                <td class="text-sm text-gray-400">${new Date(market.end_date).toLocaleDateString()}</td>
-                                <td>
-                                    <div class="flex gap-2">
-                                        <button onclick="adminPanel.showEditMarketModal('${market.id}')" class="btn-secondary btn-sm" style="background-color: #00CB97; color: white;">Edit</button>
-                                        ${market.status === 'active' ? `
-                                            <button onclick="adminPanel.showResolveMarketModal('${market.id}')" class="btn-secondary btn-sm">Resolve</button>
-                                        ` : ''}
-                                        <button onclick="adminPanel.deleteMarket('${market.id}')" class="btn-danger btn-sm">Delete</button>
-                                    </div>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+            <!-- Markets Grid View -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+                ${markets.length > 0 ? markets.map(market => `
+                    <div class="card" style="padding: 0; overflow: hidden; transition: all 0.3s ease; cursor: pointer;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 24px rgba(0,0,0,0.3)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+                        <!-- Market Image -->
+                        ${market.image_url ? `
+                            <div style="width: 100%; height: 180px; overflow: hidden; background: var(--bg3);">
+                                <img src="${market.image_url}" alt="${this.escapeHtml(market.title)}"
+                                     style="width: 100%; height: 100%; object-fit: cover;"
+                                     onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'display: flex; align-items: center; justify-content: center; height: 100%; color: var(--muted);\'><i class=\'fa-solid fa-image\' style=\'font-size: 48px; opacity: 0.3;\'></i></div>';">
+                            </div>
+                        ` : `
+                            <div style="width: 100%; height: 180px; background: linear-gradient(135deg, var(--bg3) 0%, var(--bg2) 100%); display: flex; align-items: center; justify-content: center;">
+                                <i class="fa-solid fa-chart-simple" style="font-size: 48px; color: var(--accent); opacity: 0.3;"></i>
+                            </div>
+                        `}
+
+                        <!-- Market Info -->
+                        <div style="padding: 16px;">
+                            <h3 style="color: var(--fg); font-size: 16px; font-weight: 700; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.4;" title="${this.escapeHtml(market.title)}">
+                                ${this.escapeHtml(market.title)}
+                            </h3>
+
+                            <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+                                <span class="badge badge-${market.status}">${market.status}</span>
+                                <span style="color: var(--muted); font-size: 12px;">${market.category || 'Uncategorized'}</span>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; padding: 12px; background: var(--bg3); border-radius: 6px;">
+                                <div>
+                                    <div style="font-size: 11px; color: var(--muted); text-transform: uppercase;">Volume</div>
+                                    <div style="font-size: 16px; font-weight: 700; color: var(--accent);">J$${parseFloat(market.total_volume || 0).toFixed(0)}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 11px; color: var(--muted); text-transform: uppercase;">End Date</div>
+                                    <div style="font-size: 12px; font-weight: 600; color: var(--fg);">${new Date(market.end_date).toLocaleDateString()}</div>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div style="display: flex; gap: 8px;">
+                                <button onclick="event.stopPropagation(); adminPanel.showEditMarketModal('${market.id}')" class="btn" style="flex: 1; background: var(--accent); color: white; padding: 8px 12px; font-size: 12px;" title="Edit">
+                                    <i class="fa-solid fa-edit"></i> Edit
+                                </button>
+                                ${market.status === 'active' ? `
+                                    <button onclick="event.stopPropagation(); adminPanel.showResolveMarketModal('${market.id}')" class="btn" style="background: var(--info); color: white; padding: 8px; font-size: 12px; min-width: 40px;" title="Resolve">
+                                        <i class="fa-solid fa-check"></i>
+                                    </button>
+                                ` : ''}
+                                <button onclick="event.stopPropagation(); adminPanel.deleteMarket('${market.id}')" class="btn danger" style="background: var(--error); color: white; padding: 8px; font-size: 12px; min-width: 40px;" title="Delete">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('') : `
+                    <div class="card" style="grid-column: 1/-1; text-align: center; padding: 60px 20px;">
+                        <i class="fa-solid fa-chart-simple" style="font-size: 64px; opacity: 0.2; color: var(--muted); display: block; margin-bottom: 16px;"></i>
+                        <p style="color: var(--muted); font-size: 16px;">No markets found</p>
+                    </div>
+                `}
             </div>
         `;
     }
@@ -489,64 +549,38 @@ class AdminPanel {
 
         container.innerHTML = `
             <!-- Stats Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div class="bg-gray-800 rounded-xl border-2 border-gray-700 p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-gray-400 mb-1">Total Users</p>
-                            <p class="text-3xl font-bold" style="color: #00CB97;">${totalUsers}</p>
-                        </div>
-                        <svg class="w-12 h-12 opacity-20" style="color: #00CB97;" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
-                        </svg>
-                    </div>
+            <div class="stats-grid mb-6">
+                <div class="stat-card">
+                    <h3>Total Users</h3>
+                    <div class="value">${totalUsers}</div>
+                    <div class="label">Registered users</div>
                 </div>
 
-                <div class="bg-gray-800 rounded-xl border-2 border-gray-700 p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-gray-400 mb-1">Admins</p>
-                            <p class="text-3xl font-bold" style="color: #631BDD;">${adminCount}</p>
-                        </div>
-                        <svg class="w-12 h-12 opacity-20" style="color: #631BDD;" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                        </svg>
-                    </div>
+                <div class="stat-card">
+                    <h3>Admins</h3>
+                    <div class="value" style="color: var(--info);">${adminCount}</div>
+                    <div class="label">Admin accounts</div>
                 </div>
 
-                <div class="bg-gray-800 rounded-xl border-2 border-gray-700 p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-gray-400 mb-1">Total Balance</p>
-                            <p class="text-3xl font-bold" style="color: #FFC107;">J$${totalBalance.toFixed(2)}</p>
-                        </div>
-                        <svg class="w-12 h-12 opacity-20" style="color: #FFC107;" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
-                        </svg>
-                    </div>
+                <div class="stat-card">
+                    <h3>Total Balance</h3>
+                    <div class="value" style="color: var(--warning);">J$${totalBalance.toFixed(2)}</div>
+                    <div class="label">Cumulative balance</div>
                 </div>
 
-                <div class="bg-gray-800 rounded-xl border-2 border-gray-700 p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-gray-400 mb-1">Avg Balance</p>
-                            <p class="text-3xl font-bold text-white">J$${avgBalance.toFixed(2)}</p>
-                        </div>
-                        <svg class="w-12 h-12 opacity-20 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                        </svg>
-                    </div>
+                <div class="stat-card">
+                    <h3>Avg Balance</h3>
+                    <div class="value">J$${avgBalance.toFixed(2)}</div>
+                    <div class="label">Per user</div>
                 </div>
             </div>
 
             <!-- Search and Filter -->
-            <div class="mb-6 flex gap-4">
-                <div class="flex-1">
-                    <input type="text" id="user-search" placeholder="Search by username or email..."
-                        class="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-xl text-white focus:border-teal-500 focus:outline-none">
+            <div class="mb-6 flex gap-4" style="flex-wrap: wrap;">
+                <div class="flex-1" style="min-width: 250px;">
+                    <input type="text" id="user-search" placeholder="Search by username or email..." style="width: 100%;">
                 </div>
-                <select id="role-filter" class="px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-xl text-white focus:border-teal-500 focus:outline-none">
+                <select id="role-filter" style="min-width: 150px;">
                     <option value="all">All Roles</option>
                     <option value="user">Users Only</option>
                     <option value="admin">Admins Only</option>
@@ -583,12 +617,13 @@ class AdminPanel {
 
     renderUsersTable(users) {
         if (users.length === 0) {
-            return `<div class="text-center py-12 text-gray-400">No users found</div>`;
+            return `<div class="text-center py-12" style="color: var(--muted);">No users found</div>`;
         }
 
         return `
-            <div class="bg-gray-800 rounded-xl border-2 border-gray-700 overflow-hidden">
-                <table class="w-full">
+            <div class="card">
+                <div class="table-container">
+                    <table style="width: 100%;">
                     <thead class="bg-gray-900">
                         <tr class="text-left text-sm">
                             <th class="px-6 py-4 font-semibold text-gray-400">User</th>
@@ -676,12 +711,13 @@ class AdminPanel {
                         `).join('')}
                     </tbody>
                 </table>
+                </div>
             </div>
         `;
     }
 
     getUserColor(username) {
-        const colors = ['#00CB97', '#631BDD', '#FFC107', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6'];
+        const colors = ['#1a4d2e', '#4caf50', '#ff9800', '#2196f3', '#10B981', '#F59E0B', '#8B5CF6'];
         let hash = 0;
         for (let i = 0; i < username.length; i++) {
             hash = username.charCodeAt(i) + ((hash << 5) - hash);
@@ -958,28 +994,30 @@ class AdminPanel {
 
         container.innerHTML = `
             <div class="bg-gray-800 rounded-lg overflow-hidden">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>User</th>
-                            <th>Type</th>
-                            <th>Amount</th>
-                            <th>Balance After</th>
-                            <th>Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${transactions.map(tx => `
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
                             <tr>
-                                <td class="font-semibold">${tx.profiles?.username || 'Unknown'}</td>
-                                <td><span class="badge badge-${tx.type}">${tx.type}</span></td>
-                                <td class="font-semibold">J$${parseFloat(tx.amount).toFixed(2)}</td>
-                                <td class="text-sm text-gray-400">J$${parseFloat(tx.balance_after).toFixed(2)}</td>
-                                <td class="text-sm text-gray-400">${new Date(tx.created_at).toLocaleString()}</td>
+                                <th>User</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Balance After</th>
+                                <th>Date</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            ${transactions.map(tx => `
+                                <tr>
+                                    <td class="font-semibold">${tx.profiles?.username || 'Unknown'}</td>
+                                    <td><span class="badge badge-${tx.type}">${tx.type}</span></td>
+                                    <td class="font-semibold">J$${parseFloat(tx.amount).toFixed(2)}</td>
+                                    <td class="text-sm text-gray-400">J$${parseFloat(tx.balance_after).toFixed(2)}</td>
+                                    <td class="text-sm text-gray-400">${new Date(tx.created_at).toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `;
     }
@@ -1545,31 +1583,35 @@ class AdminPanel {
             badge.classList.add('hidden');
         }
 
-        // Status filter tabs
-        const statuses = [
-            { value: 'all', label: 'All', color: '#6B7280' },
-            { value: 'new', label: 'New', color: '#00CB97' },
-            { value: 'read', label: 'Read', color: '#631BDD' },
-            { value: 'replied', label: 'Replied', color: '#3B82F6' },
-            { value: 'resolved', label: 'Resolved', color: '#10B981' },
-            { value: 'archived', label: 'Archived', color: '#6B7280' }
-        ];
+        const newCount = messages.filter(m => m.status === 'new').length;
+        const readCount = messages.filter(m => m.status === 'read').length;
+        const repliedCount = messages.filter(m => m.status === 'replied').length;
+        const resolvedCount = messages.filter(m => m.status === 'resolved').length;
 
         container.innerHTML = `
-            <div class="mb-6">
-                <div class="flex gap-2 overflow-x-auto pb-2">
-                    ${statuses.map(s => `
-                        <button class="status-filter px-4 py-2 rounded-lg font-semibold text-sm whitespace-nowrap transition ${s.value === 'all' ? 'active' : ''}"
-                            data-status="${s.value}"
-                            style="border: 2px solid ${s.color}; ${s.value === 'all' ? `background-color: ${s.color}; color: white;` : `color: ${s.color};`}">
-                            ${s.label}
-                            ${s.value !== 'all' ? `<span class="ml-1">(${messages.filter(m => m.status === s.value).length})</span>` : ''}
-                        </button>
-                    `).join('')}
+            <!-- Filter Tabs -->
+            <div class="mb-6" style="overflow-x: auto;">
+                <div class="flex gap-2" style="min-width: fit-content; padding-bottom: 8px;">
+                    <button class="status-filter active" data-status="all" style="background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap;">
+                        All Messages <span class="badge" style="background: rgba(255,255,255,0.2); margin-left: 8px;">${messages.length}</span>
+                    </button>
+                    <button class="status-filter" data-status="new" style="background: var(--bg3); color: var(--fg); border: 2px solid var(--success); padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap;">
+                        <i class="fa-solid fa-envelope"></i> New <span class="badge badge-success" style="margin-left: 8px;">${newCount}</span>
+                    </button>
+                    <button class="status-filter" data-status="read" style="background: var(--bg3); color: var(--fg); border: 2px solid var(--info); padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap;">
+                        <i class="fa-solid fa-eye"></i> Read <span class="badge badge-info" style="margin-left: 8px;">${readCount}</span>
+                    </button>
+                    <button class="status-filter" data-status="replied" style="background: var(--bg3); color: var(--fg); border: 2px solid var(--warning); padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap;">
+                        <i class="fa-solid fa-reply"></i> Replied <span class="badge badge-warning" style="margin-left: 8px;">${repliedCount}</span>
+                    </button>
+                    <button class="status-filter" data-status="resolved" style="background: var(--bg3); color: var(--fg); border: 2px solid var(--muted); padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap;">
+                        <i class="fa-solid fa-check-circle"></i> Resolved <span class="badge" style="background: var(--muted); margin-left: 8px;">${resolvedCount}</span>
+                    </button>
                 </div>
             </div>
 
-            <div id="messages-list" class="space-y-4">
+            <!-- Messages List -->
+            <div id="messages-list" style="display: grid; gap: 16px;">
                 ${this.renderMessagesList(messages)}
             </div>
         `;
@@ -1583,13 +1625,11 @@ class AdminPanel {
                 // Update active button
                 container.querySelectorAll('.status-filter').forEach(b => {
                     b.classList.remove('active');
-                    const color = statuses.find(s => s.value === b.dataset.status).color;
-                    b.style.backgroundColor = '';
-                    b.style.color = color;
+                    b.style.background = 'var(--bg3)';
+                    b.style.color = 'var(--fg)';
                 });
                 btn.classList.add('active');
-                const color = statuses.find(s => s.value === status).color;
-                btn.style.backgroundColor = color;
+                btn.style.background = 'var(--accent)';
                 btn.style.color = 'white';
 
                 // Update list
@@ -2207,7 +2247,7 @@ class AdminPanel {
 }
 
 // Initialize on load
-const adminPanel = new AdminPanel();
+window.adminPanel = new AdminPanel();
 document.addEventListener('DOMContentLoaded', () => {
-    adminPanel.init();
+    window.adminPanel.init();
 });

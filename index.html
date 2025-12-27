@@ -12,9 +12,9 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="stylesheet" href="css/output.css?v=3.6">
-    <link rel="stylesheet" href="css/styles.css?v=3.6">
-    <link rel="stylesheet" href="css/mobile.css?v=3.6">
+    <link rel="stylesheet" href="css/output.css?v=4.2">
+    <link rel="stylesheet" href="css/styles.css?v=4.2">
+    <link rel="stylesheet" href="css/mobile.css?v=4.2">
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
 </head>
@@ -76,7 +76,8 @@
       <!-- Main Navigation -->
       <div class="nav-section">
         <button class="nav-btn active" data-nav="markets" onclick="navigateAndSetActive('markets')"><i class="fa-solid fa-house"></i> Markets</button>
-        <button class="nav-btn" data-nav="voting" onclick="navigateAndSetActive('voting')"><i class="fa-solid fa-check-to-slot"></i> Voting</button>
+        <a href="voting.html" class="nav-btn desktop-only"><i class="fa-solid fa-check-circle"></i> Voting</a>
+        <a href="earn.html" class="nav-btn"><i class="fa-solid fa-coins"></i> Earn</a>
         <button class="nav-btn" data-nav="activity" onclick="navigateAndSetActive('activity')"><i class="fa-solid fa-chart-line"></i> Activity</button>
         <button class="nav-btn" data-nav="leaderboard" onclick="navigateAndSetActive('leaderboard')"><i class="fa-solid fa-trophy"></i> Leaderboard</button>
       </div>
@@ -105,6 +106,20 @@
         <a href="#" class="category-chip" data-category="Science" onclick="selectCategory(event, 'Science')">
           <i class="fa-solid fa-flask"></i> Science
         </a>
+        <span class="category-divider">|</span>
+        <!-- View Mode Toggle -->
+        <div id="viewModeToggle" class="flex gap-1 bg-gray-800 rounded-lg p-1 border border-gray-700" style="margin-left: auto;">
+          <button id="gridViewBtn" class="px-2 py-1.5 rounded bg-gray-700 text-white transition" onclick="setViewMode('grid')" title="Grid View">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+            </svg>
+          </button>
+          <button id="listViewBtn" class="px-2 py-1.5 rounded text-gray-400 hover:text-white transition" onclick="setViewMode('list')" title="List View">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -148,6 +163,14 @@
             <a href="#" class="sidebar-category-link" data-category="Science" onclick="selectCategory(event, 'Science')">
                 <i class="fa-solid fa-flask"></i>
                 Science
+            </a>
+
+            <!-- Separator -->
+            <div style="border-top: 1px solid rgba(55, 65, 81, 0.5); margin: 16px 0;"></div>
+
+            <a href="how-it-works.html" class="sidebar-category-link">
+                <i class="fa-solid fa-circle-info"></i>
+                How It Works
             </a>
         </div>
     </div>
@@ -196,13 +219,13 @@
                 <div class="updates-box">
                     <div>
                         <div class="updates-header">
-                            <i class="fa-solid fa-envelope"></i>
+                            <i class="fa-solid fa-bell"></i>
                             <h3>Get daily updates</h3>
                         </div>
                         <p class="updates-description">We'll send you an email every day with what's moving on GoatMouth</p>
                     </div>
                     <div class="updates-form">
-                        <input type="email" class="updates-input" placeholder="Enter your email">
+                        <input type="email" id="sidebar-email-input" name="sidebar-email" class="updates-input" placeholder="Enter your email" autocomplete="email">
                         <button class="updates-button">
                             <i class="fa-solid fa-paper-plane"></i>
                             Get updates
@@ -228,49 +251,30 @@
         </div>
     </main>
 
-    <!-- Floating Get Updates Button -->
-    <button class="floating-updates-btn" onclick="openUpdatesModal()">
-        <i class="fa-solid fa-envelope"></i>
-        <span>Get Updates</span>
-    </button>
+    <!-- Floating button removed - Updates now in mobile nav -->
 
     <!-- Updates Bottom Sheet Modal -->
     <div class="updates-modal-overlay" id="updatesModalOverlay" onclick="closeUpdatesModal()"></div>
     <div class="updates-modal" id="updatesModal">
         <div class="updates-modal-header">
             <div class="updates-modal-drag-handle"></div>
-            <button class="updates-modal-close" onclick="closeUpdatesModal()">
+            <button class="updates-modal-close" onclick="closeUpdatesModal()" style="overflow: hidden;">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
-        <div class="updates-modal-content">
-            <div class="updates-modal-title">
-                <i class="fa-solid fa-chart-line"></i>
-                <h2>Get Daily Market Updates</h2>
+        <div class="updates-modal-content" style="padding: 1.5rem;">
+            <div class="updates-modal-title" style="margin-bottom: 0.75rem;">
+                <i class="fa-solid fa-bell"></i>
+                <h2 style="font-size: 1.25rem;">Get Daily Updates</h2>
             </div>
-            <p class="updates-modal-description">Stay ahead with daily insights on what's moving on GoatMouth. Get market trends, top predictions, and exclusive analysis delivered to your inbox.</p>
-
-            <!-- Chart Placeholder -->
-            <div class="updates-chart">
-                <div class="chart-header">
-                    <span class="chart-title">Market Activity Trends</span>
-                    <span class="chart-period">Last 7 Days</span>
-                </div>
-                <div class="chart-visual">
-                    <canvas id="updatesChart"></canvas>
-                    <div class="chart-placeholder">
-                        <i class="fa-solid fa-chart-area" style="font-size: 48px; color: rgba(2, 122, 64, 0.3);"></i>
-                        <p style="color: #9ca3af; font-size: 14px; margin-top: 12px;">Daily market activity visualization</p>
-                    </div>
-                </div>
-            </div>
+            <p class="updates-modal-description" style="font-size: 0.875rem; margin-bottom: 1.25rem;">Get market trends and predictions delivered to your inbox.</p>
 
             <!-- Email Form -->
             <div class="updates-modal-form">
-                <input type="email" class="updates-modal-input" placeholder="Enter your email address">
+                <input type="email" id="modal-email-input" name="modal-email" class="updates-modal-input" placeholder="Enter your email address" style="margin-bottom: 0.75rem;" autocomplete="email">
                 <button class="updates-modal-button">
                     <i class="fa-solid fa-paper-plane"></i>
-                    Subscribe to Updates
+                    Subscribe
                 </button>
             </div>
         </div>
@@ -311,13 +315,14 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-client.js"></script>
+    <script src="js/toast.js"></script>
     <script src="js/api.js"></script>
     <script src="js/auth-guard.js"></script>
     <script src="js/market-detail.js"></script>
     <script src="js/mobile-search.js"></script>
-    <script src="js/banner-carousel.js?v=3.6">
+    <script src="js/banner-carousel.js?v=4.2">
     <script src="js/voting.js"></script>
-    <script src="js/app.js?v=3.6"></script>
+    <script src="js/app.js?v=4.2"></script>
 
     <!-- Mobile Sidebar Script -->
     <script>
@@ -334,6 +339,35 @@
             sidebar.classList.remove('active');
             overlay.classList.remove('active');
         }
+
+        // View Mode Toggle Functions
+        function setViewMode(mode) {
+            if (window.app && app.viewMode !== mode) {
+                app.toggleViewMode();
+            }
+            updateViewModeButtons(mode);
+        }
+
+        function updateViewModeButtons(mode) {
+            const gridBtn = document.getElementById('gridViewBtn');
+            const listBtn = document.getElementById('listViewBtn');
+
+            if (gridBtn && listBtn) {
+                if (mode === 'grid') {
+                    gridBtn.className = 'px-2 py-1.5 rounded bg-gray-700 text-white transition';
+                    listBtn.className = 'px-2 py-1.5 rounded text-gray-400 hover:text-white transition';
+                } else {
+                    gridBtn.className = 'px-2 py-1.5 rounded text-gray-400 hover:text-white transition';
+                    listBtn.className = 'px-2 py-1.5 rounded bg-gray-700 text-white transition';
+                }
+            }
+        }
+
+        // Initialize view mode on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedMode = localStorage.getItem('marketViewMode') || 'grid';
+            updateViewModeButtons(savedMode);
+        });
 
         // Banner Close/Reopen Functions
         function closeBanner() {
@@ -374,6 +408,34 @@
                     reopenContainer.classList.remove('hidden');
                 }
             }
+
+            // Listen for banner updates from admin panel (cross-tab)
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'bannerUpdateTrigger' && window.bannerCarousel) {
+                    console.log('Banner update detected from admin panel, reloading...');
+                    window.bannerCarousel.loadBanners().then(() => {
+                        const container = document.getElementById('banner-container');
+                        if (container) {
+                            window.bannerCarousel.render(container);
+                            console.log('✓ Banners reloaded and refreshed on main site');
+                        }
+                    });
+                }
+            });
+
+            // Also listen for same-page updates
+            window.addEventListener('bannersUpdated', () => {
+                if (window.bannerCarousel) {
+                    console.log('Banner update detected (same page), reloading...');
+                    window.bannerCarousel.loadBanners().then(() => {
+                        const container = document.getElementById('banner-container');
+                        if (container) {
+                            window.bannerCarousel.render(container);
+                            console.log('✓ Banners reloaded');
+                        }
+                    });
+                }
+            });
         });
 
         function navigateAndSetActive(view) {
@@ -437,14 +499,14 @@
                     document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
                 });
 
-                // Reload page to fresh state
-                window.location.href = '/';
+                // Reload page to fresh state - use window.location.replace to prevent back button
+                window.location.replace(window.location.origin + '/index.html');
             } catch (error) {
                 console.error('Logout error:', error);
                 // Force logout anyway
                 localStorage.clear();
                 sessionStorage.clear();
-                window.location.href = '/';
+                window.location.replace(window.location.origin + '/index.html');
             }
         }
 
@@ -485,13 +547,6 @@
 
                 // Restore body scroll
                 document.body.style.overflow = '';
-            }
-        }
-
-        function closeBanner() {
-            const banner = document.getElementById('banner-container');
-            if (banner) {
-                banner.style.display = 'none';
             }
         }
 
@@ -568,41 +623,84 @@
             setTimeout(updateHeaderUI, 1000);
         });
 
-        // Search functionality
+        // Search functionality with debouncing and visual feedback
         const searchInput = document.getElementById('marketSearch');
         if (searchInput) {
+            let searchTimeout;
+
+            // Add clear button functionality
+            const createClearButton = () => {
+                const clearBtn = document.createElement('button');
+                clearBtn.innerHTML = '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+                clearBtn.style.cssText = 'position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #9ca3af; cursor: pointer; padding: 4px; border-radius: 4px; display: none; transition: all 0.2s;';
+                clearBtn.onmouseover = () => clearBtn.style.color = '#00CB97';
+                clearBtn.onmouseout = () => clearBtn.style.color = '#9ca3af';
+                clearBtn.onclick = () => {
+                    searchInput.value = '';
+                    clearBtn.style.display = 'none';
+                    if (window.app) window.app.renderMarkets();
+                };
+                searchInput.parentElement.style.position = 'relative';
+                searchInput.parentElement.appendChild(clearBtn);
+                return clearBtn;
+            };
+
+            const clearBtn = createClearButton();
+
             searchInput.addEventListener('input', (e) => {
                 const searchTerm = e.target.value.toLowerCase().trim();
 
-                if (window.app && window.app.markets) {
-                    // Filter markets based on search term
-                    if (searchTerm === '') {
-                        // Show all markets if search is empty
-                        window.app.renderMarkets();
-                    } else {
-                        // Filter markets by title or description
-                        const filteredMarkets = window.app.markets.filter(market => {
-                            const title = (market.title || '').toLowerCase();
-                            const description = (market.description || '').toLowerCase();
-                            const category = (market.category || '').toLowerCase();
+                // Show/hide clear button
+                clearBtn.style.display = searchTerm ? 'block' : 'none';
 
-                            return title.includes(searchTerm) ||
-                                   description.includes(searchTerm) ||
-                                   category.includes(searchTerm);
-                        });
+                // Clear previous timeout
+                clearTimeout(searchTimeout);
 
-                        // Render filtered markets
-                        window.app.renderMarkets(filteredMarkets);
+                // Debounce search (250ms)
+                searchTimeout = setTimeout(() => {
+                    if (window.app && window.app.markets) {
+                        if (searchTerm === '') {
+                            // Show all markets if search is empty
+                            window.app.renderMarkets();
+                        } else {
+                            // Filter markets by title, description, or category
+                            const filteredMarkets = window.app.markets.filter(market => {
+                                const title = (market.title || '').toLowerCase();
+                                const description = (market.description || '').toLowerCase();
+                                const category = (market.category || '').toLowerCase();
+
+                                return title.includes(searchTerm) ||
+                                       description.includes(searchTerm) ||
+                                       category.includes(searchTerm);
+                            });
+
+                            // Render filtered markets
+                            window.app.renderMarkets(filteredMarkets);
+
+                            // Show count in console for debugging
+                            console.log(`Found ${filteredMarkets.length} markets matching "${searchTerm}"`);
+                        }
                     }
-                }
+                }, 250);
             });
 
             // Clear search when category is selected
             const originalSelectCategory = window.selectCategory;
             window.selectCategory = function(event, category) {
                 searchInput.value = '';
+                clearBtn.style.display = 'none';
                 originalSelectCategory(event, category);
             };
+
+            // Clear on Escape key
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    searchInput.value = '';
+                    clearBtn.style.display = 'none';
+                    searchInput.blur();
+                    if (window.app) window.app.renderMarkets();
+                }
+            });
         }
     </script>
 </body>

@@ -199,87 +199,121 @@ class AdminBanners {
                             </div>
                         </div>
 
-                        <!-- Image Positioning Controls -->
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-semibold mb-2">How to Fit</label>
-                                <select name="image_fit" id="imageFitSelect" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white font-medium">
-                                    <option value="cover" ${banner?.image_fit === 'cover' || !banner?.image_fit ? 'selected' : ''}>Fill Frame (Crop)</option>
-                                    <option value="contain" ${banner?.image_fit === 'contain' ? 'selected' : ''}>Fit Fully (No Crop)</option>
-                                    <option value="fill" ${banner?.image_fit === 'fill' ? 'selected' : ''}>Stretch to Fit</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-semibold mb-2">Quick Position</label>
-                                <select name="image_position" id="imagePositionSelect" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white font-medium">
-                                    <option value="center" ${banner?.image_position === 'center' || !banner?.image_position ? 'selected' : ''}>Center</option>
-                                    <option value="top" ${banner?.image_position === 'top' ? 'selected' : ''}>Top</option>
-                                    <option value="bottom" ${banner?.image_position === 'bottom' ? 'selected' : ''}>Bottom</option>
-                                    <option value="left" ${banner?.image_position === 'left' ? 'selected' : ''}>Left</option>
-                                    <option value="right" ${banner?.image_position === 'right' ? 'selected' : ''}>Right</option>
-                                    <option value="custom">Custom (Use controls below)</option>
-                                </select>
-                            </div>
+                        <!-- Image Fit Control -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold mb-2">How to Fit Image</label>
+                            <select name="image_fit" id="imageFitSelect" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white font-medium">
+                                <option value="cover" ${banner?.image_fit === 'cover' || !banner?.image_fit ? 'selected' : ''}>Fill Frame (Crop if needed)</option>
+                                <option value="contain" ${banner?.image_fit === 'contain' ? 'selected' : ''}>Fit Fully (No Crop)</option>
+                                <option value="fill" ${banner?.image_fit === 'fill' ? 'selected' : ''}>Stretch to Fit</option>
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1">Recommended: Fill Frame (Crop if needed)</p>
                         </div>
 
-                        <!-- Fine-Tune Position Controls (Admin Only) -->
-                        <div id="fineTuneControls" class="bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-2 border-purple-500/30 rounded-lg p-4 mt-4" style="display: none;">
-                            <div class="flex items-center justify-between mb-3">
+                        <!-- Custom Position Controls (Main Feature) -->
+                        <div id="fineTuneControls" class="bg-gradient-to-r from-green-900/20 to-emerald-900/20 border-2 border-green-500/40 rounded-lg p-5">
+                            <div class="flex items-center justify-between mb-4">
                                 <div class="flex items-center gap-2">
-                                    <svg class="h-5 w-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+                                    <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
                                     </svg>
-                                    <h4 class="font-bold text-purple-300">Fine-Tune Image Position</h4>
+                                    <h4 class="font-bold text-green-300 text-lg">Position Your Banner</h4>
                                 </div>
-                                <span class="text-xs text-purple-400">Admin Feature</span>
+                                <span class="text-xs bg-green-600 text-white px-2 py-1 rounded font-semibold">Primary Tool</span>
                             </div>
 
                             <!-- Live Preview -->
                             <div class="mb-4">
-                                <label class="block text-sm font-semibold mb-2 text-purple-200">Live Preview (Drag to adjust)</label>
-                                <div id="bannerLivePreview" class="relative w-full h-32 bg-gray-800 rounded-lg overflow-hidden border-2 border-purple-500/50 cursor-move">
+                                <label class="block text-sm font-semibold mb-2 text-green-200">
+                                    <span class="flex items-center gap-2">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                        </svg>
+                                        Live Preview - Drag to Position
+                                    </span>
+                                </label>
+                                <div id="bannerLivePreview" class="relative w-full h-40 bg-gray-800 rounded-lg overflow-hidden border-2 border-green-500/50 cursor-move hover:border-green-400 transition-colors shadow-lg">
                                     <div class="absolute inset-0 flex items-center justify-center text-gray-500 text-sm">
-                                        Upload an image to preview
+                                        <div class="text-center">
+                                            <svg class="mx-auto h-12 w-12 mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                            </svg>
+                                            <p>Upload an image to preview positioning</p>
+                                        </div>
                                     </div>
                                 </div>
-                                <p class="text-xs text-purple-300 mt-2">💡 Click and drag the image above to position it, or use buttons below</p>
+                                <div class="flex items-start gap-2 mt-2 text-xs text-green-300 bg-green-900/20 p-2 rounded">
+                                    <svg class="h-4 w-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <span>Click and drag the image to position it perfectly, or use the directional buttons below</span>
+                                </div>
                             </div>
 
-                            <!-- Position Control Buttons -->
-                            <div class="grid grid-cols-5 gap-2 mb-3">
-                                <button type="button" onclick="adminBanners.adjustPosition('up')" class="col-start-3 px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm font-semibold transition flex items-center justify-center">
-                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
-                                </button>
-                                <button type="button" onclick="adminBanners.adjustPosition('left')" class="col-start-2 row-start-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm font-semibold transition flex items-center justify-center">
-                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                                </button>
-                                <button type="button" onclick="adminBanners.adjustPosition('center')" class="col-start-3 row-start-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white text-sm font-semibold transition">
-                                    Center
-                                </button>
-                                <button type="button" onclick="adminBanners.adjustPosition('right')" class="col-start-4 row-start-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm font-semibold transition flex items-center justify-center">
-                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                                </button>
-                                <button type="button" onclick="adminBanners.adjustPosition('down')" class="col-start-3 row-start-3 px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm font-semibold transition flex items-center justify-center">
-                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                                </button>
+                            <!-- Quick Preset Buttons -->
+                            <div class="mb-4">
+                                <label class="block text-sm font-semibold mb-2 text-green-200">Quick Presets</label>
+                                <div class="grid grid-cols-5 gap-2">
+                                    <button type="button" onclick="adminBanners.adjustPosition('top')" class="col-span-1 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-xs font-semibold transition">
+                                        Top
+                                    </button>
+                                    <button type="button" onclick="adminBanners.adjustPosition('center')" class="col-span-3 px-3 py-2 bg-green-600 hover:bg-green-700 rounded text-white text-sm font-bold transition shadow-md">
+                                        <svg class="inline h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        Center
+                                    </button>
+                                    <button type="button" onclick="adminBanners.adjustPosition('bottom')" class="col-span-1 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-xs font-semibold transition">
+                                        Bottom
+                                    </button>
+                                    <button type="button" onclick="adminBanners.adjustPosition('left')" class="col-span-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-xs font-semibold transition">
+                                        Left
+                                    </button>
+                                    <button type="button" onclick="adminBanners.adjustPosition('right')" class="col-span-3 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-xs font-semibold transition">
+                                        Right
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Fine Adjustment Buttons -->
+                            <div class="mb-4">
+                                <label class="block text-sm font-semibold mb-2 text-green-200">Fine Adjustments</label>
+                                <div class="grid grid-cols-5 gap-2">
+                                    <button type="button" onclick="adminBanners.adjustPosition('up')" class="col-start-3 px-3 py-2 bg-green-600 hover:bg-green-700 rounded text-white text-sm font-semibold transition flex items-center justify-center shadow-sm" title="Move Up">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                                    </button>
+                                    <button type="button" onclick="adminBanners.adjustPosition('left')" class="col-start-2 row-start-2 px-3 py-2 bg-green-600 hover:bg-green-700 rounded text-white text-sm font-semibold transition flex items-center justify-center shadow-sm" title="Move Left">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                                    </button>
+                                    <button type="button" onclick="adminBanners.adjustPosition('reset')" class="col-start-3 row-start-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white text-xs font-semibold transition shadow-sm" title="Reset to Center">
+                                        <svg class="h-4 w-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                    </button>
+                                    <button type="button" onclick="adminBanners.adjustPosition('right')" class="col-start-4 row-start-2 px-3 py-2 bg-green-600 hover:bg-green-700 rounded text-white text-sm font-semibold transition flex items-center justify-center shadow-sm" title="Move Right">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                    </button>
+                                    <button type="button" onclick="adminBanners.adjustPosition('down')" class="col-start-3 row-start-3 px-3 py-2 bg-green-600 hover:bg-green-700 rounded text-white text-sm font-semibold transition flex items-center justify-center shadow-sm" title="Move Down">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </button>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-2 text-center">Each click moves the image by 5%</p>
                             </div>
 
                             <!-- Position Values Display -->
-                            <div class="grid grid-cols-2 gap-3 text-xs">
-                                <div class="bg-gray-800 p-2 rounded">
-                                    <span class="text-gray-400">Horizontal:</span>
-                                    <span id="posXDisplay" class="text-white font-bold ml-1">50%</span>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="bg-gray-800 p-3 rounded-lg border border-gray-700">
+                                    <span class="text-gray-400 text-xs block mb-1">Horizontal Position</span>
+                                    <span id="posXDisplay" class="text-green-400 font-bold text-lg">50%</span>
                                 </div>
-                                <div class="bg-gray-800 p-2 rounded">
-                                    <span class="text-gray-400">Vertical:</span>
-                                    <span id="posYDisplay" class="text-white font-bold ml-1">50%</span>
+                                <div class="bg-gray-800 p-3 rounded-lg border border-gray-700">
+                                    <span class="text-gray-400 text-xs block mb-1">Vertical Position</span>
+                                    <span id="posYDisplay" class="text-green-400 font-bold text-lg">50%</span>
                                 </div>
                             </div>
 
                             <!-- Hidden inputs to store custom position -->
-                            <input type="hidden" name="custom_position_x" id="customPosX" value="50">
-                            <input type="hidden" name="custom_position_y" id="customPosY" value="50">
+                            <input type="hidden" name="custom_position_x" id="customPosX" value="${banner?.custom_position_x || 50}">
+                            <input type="hidden" name="custom_position_y" id="customPosY" value="${banner?.custom_position_y || 50}">
                         </div>
 
                         <!-- Optional: Advanced Settings (Collapsed) -->
@@ -331,28 +365,15 @@ class AdminBanners {
         const imageInput = document.getElementById('bannerImageInput');
         imageInput.addEventListener('change', (e) => this.handleImagePreview(e));
 
-        // Position select handling - show/hide fine-tune controls
-        const positionSelect = document.getElementById('imagePositionSelect');
-        const fineTuneControls = document.getElementById('fineTuneControls');
-        positionSelect.addEventListener('change', (e) => {
-            if (e.target.value === 'custom') {
-                fineTuneControls.style.display = 'block';
-                // Initialize position values if editing with existing custom values
-                if (banner?.custom_position_x && banner?.custom_position_y) {
-                    this.currentPosX = banner.custom_position_x;
-                    this.currentPosY = banner.custom_position_y;
-                    this.updatePositionDisplays();
-                }
-            } else {
-                fineTuneControls.style.display = 'none';
-            }
-        });
-
-        // Initialize fine-tune controls visibility if editing with custom position
-        if (banner?.image_position === 'custom') {
-            fineTuneControls.style.display = 'block';
-            this.currentPosX = banner?.custom_position_x || 50;
-            this.currentPosY = banner?.custom_position_y || 50;
+        // Initialize position values if editing existing banner
+        if (banner?.custom_position_x !== null && banner?.custom_position_x !== undefined) {
+            this.currentPosX = banner.custom_position_x;
+            this.currentPosY = banner.custom_position_y;
+            this.updatePositionDisplays();
+        } else {
+            // Default to center
+            this.currentPosX = 50;
+            this.currentPosY = 50;
             this.updatePositionDisplays();
         }
 
@@ -513,6 +534,7 @@ class AdminBanners {
         const step = 5; // Move by 5% each time
 
         switch(direction) {
+            // Fine adjustments
             case 'up':
                 this.currentPosY = Math.max(0, this.currentPosY - step);
                 break;
@@ -525,9 +547,20 @@ class AdminBanners {
             case 'right':
                 this.currentPosX = Math.min(100, this.currentPosX + step);
                 break;
+
+            // Quick presets
             case 'center':
+            case 'reset':
                 this.currentPosX = 50;
                 this.currentPosY = 50;
+                break;
+            case 'top':
+                this.currentPosX = 50;
+                this.currentPosY = 0;
+                break;
+            case 'bottom':
+                this.currentPosX = 50;
+                this.currentPosY = 100;
                 break;
         }
 
@@ -572,8 +605,7 @@ class AdminBanners {
                 throw new Error('Image is required');
             }
 
-            // Prepare banner data
-            const imagePosition = formData.get('image_position') || 'center';
+            // Prepare banner data with custom positioning
             const bannerData = {
                 image_url: imageUrl,
                 title: formData.get('title') || null,
@@ -582,34 +614,45 @@ class AdminBanners {
                 link_id: null,
                 link_url: null,
                 image_fit: formData.get('image_fit') || 'cover',
-                image_position: imagePosition,
+                image_position: 'custom', // Always use custom positioning now
                 order_index: parseInt(formData.get('order_index')) || 0,
-                active: true
+                active: true,
+                custom_position_x: parseInt(formData.get('custom_position_x')) || 50,
+                custom_position_y: parseInt(formData.get('custom_position_y')) || 50
             };
-
-            // Add custom position values if custom position is selected
-            if (imagePosition === 'custom') {
-                bannerData.custom_position_x = parseInt(formData.get('custom_position_x')) || 50;
-                bannerData.custom_position_y = parseInt(formData.get('custom_position_y')) || 50;
-            } else {
-                bannerData.custom_position_x = null;
-                bannerData.custom_position_y = null;
-            }
 
             // Create or update banner
             if (isEdit) {
-                const { error } = await this.api.db
+                const { data, error } = await this.api.db
                     .from('banners')
                     .update(bannerData)
-                    .eq('id', this.selectedBanner.id);
+                    .eq('id', this.selectedBanner.id)
+                    .select();
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Banner update error details:', {
+                        message: error.message,
+                        details: error.details,
+                        hint: error.hint,
+                        code: error.code
+                    });
+                    throw error;
+                }
             } else {
-                const { error } = await this.api.db
+                const { data, error } = await this.api.db
                     .from('banners')
-                    .insert([bannerData]);
+                    .insert([bannerData])
+                    .select();
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Banner insert error details:', {
+                        message: error.message,
+                        details: error.details,
+                        hint: error.hint,
+                        code: error.code
+                    });
+                    throw error;
+                }
             }
 
             // Reload and re-render
@@ -785,40 +828,7 @@ class AdminBanners {
 
         let selectedFiles = [];
 
-        // Prevent default drag behaviors
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            });
-        });
-
-        // Highlight drop zone when dragging over
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => {
-                dropZone.classList.add('border-green-500', 'bg-gray-700');
-            });
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => {
-                dropZone.classList.remove('border-green-500', 'bg-gray-700');
-            });
-        });
-
-        // Handle dropped files
-        dropZone.addEventListener('drop', (e) => {
-            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-            handleFiles(files);
-        });
-
-        // Handle file input change
-        fileInput.addEventListener('change', (e) => {
-            const files = Array.from(e.target.files);
-            handleFiles(files);
-        });
-
-        // File handling function
+        // File handling function (defined first)
         const handleFiles = (files) => {
             if (files.length === 0) return;
 
@@ -869,6 +879,39 @@ class AdminBanners {
                 `;
             }).join('');
         };
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+
+        // Highlight drop zone when dragging over
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.add('border-green-500', 'bg-gray-700');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove('border-green-500', 'bg-gray-700');
+            });
+        });
+
+        // Handle dropped files
+        dropZone.addEventListener('drop', (e) => {
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            handleFiles(files);
+        });
+
+        // Handle file input change
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            handleFiles(files);
+        });
 
         // Store files in instance variable for later access
         this.bulkFiles = selectedFiles;
