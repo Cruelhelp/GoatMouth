@@ -64,6 +64,7 @@ class AdminPanel {
             'dashboard': null, // Dashboard updates stats directly
             'markets': 'admin-content-markets',
             'users': 'admin-content-users',
+            'activity': 'admin-content-activity',
             'transactions': 'admin-content-transactions',
             'messages': 'admin-content-messages',
             'voting': 'admin-content-voting',
@@ -93,6 +94,9 @@ class AdminPanel {
                 case 'users':
                     await this.renderUsers(container);
                     break;
+                case 'activity':
+                    await this.renderActivity(container);
+                    break;
                 case 'transactions':
                     await this.renderTransactions(container);
                     break;
@@ -117,10 +121,51 @@ class AdminPanel {
         const [marketStats, userStats, transactions, allMarkets, contactMessages, proposals] = await Promise.all([
             this.api.getMarketStats(),
             this.api.getUserStats(),
-            this.api.getAllTransactions({ limit: 10 }),
+            this.api.getAllTransactions({ limit: 50 }), // Increased for activity feed
             this.api.getMarkets(),
             this.api.getContactMessages({ status: 'new' }),
-            window.supabaseClient.from('proposals').select('*', { count: 'exact' }).eq('status', 'pending')
+            window.supabaseClient.from('proposals').select('*', { count: 'exact' }).eq('status', 'pending').then(r => r).catch(() => ({ count: 0 }))
+        ]);
+
+        // Fetch additional data for comprehensive activity feed
+        // Note: Some queries may fail with 400 errors if foreign key relationships don't exist in the database
+        // These are non-critical and won't break the dashboard functionality
+        const [recentBets, recentMarkets, recentComments, recentUsers, recentProposals] = await Promise.all([
+            window.supabaseClient
+                .from('bets')
+                .select('*, user:profiles!bets_user_id_fkey(username), market:markets(title)')
+                .order('created_at', { ascending: false })
+                .limit(20)
+                .then(r => r)
+                .catch(() => ({ data: [], error: null })),
+            window.supabaseClient
+                .from('markets')
+                .select('*, creator:profiles!markets_created_by_fkey(username)')
+                .order('created_at', { ascending: false })
+                .limit(10)
+                .then(r => r)
+                .catch(() => ({ data: [], error: null })),
+            window.supabaseClient
+                .from('comments')
+                .select('*, user:profiles!comments_user_id_fkey(username), market:markets(title)')
+                .order('created_at', { ascending: false })
+                .limit(15)
+                .then(r => r)
+                .catch(() => ({ data: [], error: null })),
+            window.supabaseClient
+                .from('profiles')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(10)
+                .then(r => r)
+                .catch(() => ({ data: [], error: null })),
+            window.supabaseClient
+                .from('proposals')
+                .select('*, user:profiles!proposals_user_id_fkey(username)')
+                .order('created_at', { ascending: false })
+                .limit(10)
+                .then(r => r)
+                .catch(() => ({ data: [], error: null }))
         ]);
 
         // Calculate additional stats
@@ -158,6 +203,187 @@ class AdminPanel {
                 proposalsBadge.classList.remove('hidden');
             } else {
                 proposalsBadge.classList.add('hidden');
+            }
+        }
+
+        // Combine all activities into unified feed
+        const allActivities = [];
+
+        // Add bets
+        if (recentBets?.data) {
+            recentBets.data.forEach(bet => {
+                allActivities.push({
+                    type: 'bet',
+                    created_at: bet.created_at,
+                    user: bet.user?.username || 'Unknown',
+                    data: bet
+                });
+            });
+        }
+
+        // Add new markets
+        if (recentMarkets?.data) {
+            recentMarkets.data.forEach(market => {
+                allActivities.push({
+                    type: 'market_created',
+                    created_at: market.created_at,
+                    user: market.creator?.username || 'Unknown',
+                    data: market
+                });
+            });
+        }
+
+        // Add comments
+        if (recentComments?.data) {
+            recentComments.data.forEach(comment => {
+                allActivities.push({
+                    type: 'comment',
+                    created_at: comment.created_at,
+                    user: comment.user?.username || 'Unknown',
+                    data: comment
+                });
+            });
+        }
+
+        // Add new users
+        if (recentUsers?.data) {
+            recentUsers.data.forEach(user => {
+                allActivities.push({
+                    type: 'user_joined',
+                    created_at: user.created_at,
+                    user: user.username,
+                    data: user
+                });
+            });
+        }
+
+        // Add proposals
+        if (recentProposals?.data) {
+            recentProposals.data.forEach(proposal => {
+                allActivities.push({
+                    type: 'proposal',
+                    created_at: proposal.created_at,
+                    user: proposal.user?.username || 'Unknown',
+                    data: proposal
+                });
+            });
+        }
+
+        // Add transactions (payouts, deposits, withdrawals)
+        if (transactions) {
+            transactions.forEach(tx => {
+                if (tx.type !== 'bet') { // Bets are already included from bets table
+                    allActivities.push({
+                        type: tx.type,
+                        created_at: tx.created_at,
+                        user: tx.user?.username || 'Unknown',
+                        data: tx
+                    });
+                }
+            });
+        }
+
+        // Sort by date (most recent first)
+        allActivities.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        // Limit to most recent 25 items
+        const recentActivities = allActivities.slice(0, 25);
+
+        // Render activity feed
+        const activityList = document.getElementById('activity-list');
+        if (activityList) {
+            if (recentActivities.length === 0) {
+                activityList.innerHTML = `
+                    <div style="text-align: center; padding: 32px; color: var(--muted);">
+                        <p>No recent activity</p>
+                    </div>
+                `;
+            } else {
+                activityList.innerHTML = recentActivities.map(activity => {
+                    const date = new Date(activity.created_at);
+                    const timeAgo = this.getTimeAgo(date);
+
+                    let typeIcon, typeColor, typeText, description;
+
+                    switch (activity.type) {
+                        case 'bet':
+                            typeIcon = 'fa-chart-line';
+                            typeColor = '#00CB97';
+                            typeText = 'Bet Placed';
+                            description = `${activity.data.outcome?.toUpperCase()} on "${activity.data.market?.title || 'Unknown Market'}" - J$${parseFloat(activity.data.amount).toFixed(2)}`;
+                            break;
+                        case 'market_created':
+                            typeIcon = 'fa-plus-circle';
+                            typeColor = '#631BDD';
+                            typeText = 'Market Created';
+                            description = activity.data.title;
+                            break;
+                        case 'comment':
+                            typeIcon = 'fa-comment';
+                            typeColor = '#027A40';
+                            typeText = 'Comment Posted';
+                            description = `On "${activity.data.market?.title || 'Unknown Market'}"`;
+                            break;
+                        case 'user_joined':
+                            typeIcon = 'fa-user-plus';
+                            typeColor = '#F2C300';
+                            typeText = 'New Member';
+                            description = `@${activity.user} joined GoatMouth`;
+                            break;
+                        case 'proposal':
+                            typeIcon = 'fa-lightbulb';
+                            typeColor = '#00e5af';
+                            typeText = 'Proposal Created';
+                            description = activity.data.title || activity.data.market_question;
+                            break;
+                        case 'payout':
+                            typeIcon = 'fa-trophy';
+                            typeColor = '#F2C300';
+                            typeText = 'Payout';
+                            description = `Won J$${parseFloat(activity.data.amount).toFixed(2)}`;
+                            break;
+                        case 'deposit':
+                            typeIcon = 'fa-arrow-down';
+                            typeColor = '#027A40';
+                            typeText = 'Deposit';
+                            description = `+J$${parseFloat(activity.data.amount).toFixed(2)}`;
+                            break;
+                        case 'withdrawal':
+                            typeIcon = 'fa-arrow-up';
+                            typeColor = '#ef4444';
+                            typeText = 'Withdrawal';
+                            description = `-J$${parseFloat(Math.abs(activity.data.amount)).toFixed(2)}`;
+                            break;
+                        default:
+                            typeIcon = 'fa-circle-info';
+                            typeColor = '#9333ea';
+                            typeText = activity.type;
+                            description = activity.data.description || '';
+                    }
+
+                    return `
+                        <div class="activity-item" style="border-left: 3px solid ${typeColor};">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <i class="fa-solid ${typeIcon}" style="color: ${typeColor}; font-size: 18px;"></i>
+                                <div style="flex: 1;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                        <strong style="color: var(--text-primary);">${typeText}</strong>
+                                        <span style="color: var(--muted); font-size: 13px;">${timeAgo}</span>
+                                    </div>
+                                    <div style="color: var(--muted); font-size: 14px; margin-bottom: 2px;">
+                                        <i class="fa-solid fa-user" style="font-size: 12px; margin-right: 4px;"></i>
+                                        ${activity.user}
+                                    </div>
+                                    ${description ? `
+                                        <div style="color: var(--muted); font-size: 13px; margin-top: 4px;">
+                                            ${description}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
             }
         }
 
@@ -636,7 +862,7 @@ class AdminPanel {
                     </thead>
                     <tbody class="divide-y divide-gray-700">
                         ${users.map(user => `
-                            <tr class="hover:bg-gray-750 transition">
+                            <tr class="hover:bg-gray-750 transition user-row" data-user-id="${user.id}" onclick="if(window.innerWidth <= 768) adminPanel.showMobileUserActions('${user.id}', '${this.escapeHtml(user.username)}', '${user.role}', ${user.balance}, ${user.id === this.currentProfile.id})">
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-3">
                                         <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white" style="background-color: ${this.getUserColor(user.username)};">
@@ -666,45 +892,53 @@ class AdminPanel {
                                     <span class="text-sm text-gray-400">${new Date(user.created_at).toLocaleDateString()}</span>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <div class="flex gap-2">
+                                    <div style="display: flex; gap: 6px; align-items: center;">
+                                        <!-- View Details -->
                                         <button onclick="adminPanel.showUserDetailsModal('${user.id}')"
-                                            class="px-3 py-1.5 text-xs font-semibold rounded-lg transition hover:bg-gray-700"
-                                            style="border: 2px solid #00CB97; color: #00CB97;" title="View Details">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                            </svg>
+                                            class="user-action-btn"
+                                            style="background: var(--accent); color: white;"
+                                            title="View Details">
+                                            <i class="fa-solid fa-eye"></i>
                                         </button>
+
                                         ${user.id !== this.currentProfile.id ? `
+                                            <!-- Edit Balance -->
                                             <button onclick="adminPanel.showEditBalanceModal('${user.id}', ${user.balance})"
-                                                class="px-3 py-1.5 text-xs font-semibold rounded-lg transition hover:bg-gray-700"
-                                                style="border: 2px solid #FFC107; color: #FFC107;" title="Edit Balance">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                                </svg>
+                                                class="user-action-btn"
+                                                style="background: #FFC107; color: #1a1a1a;"
+                                                title="Edit Balance">
+                                                <i class="fa-solid fa-coins"></i>
                                             </button>
+
+                                            <!-- Toggle Role (Promote/Demote) -->
                                             <button onclick="adminPanel.toggleUserRole('${user.id}', '${user.role}')"
-                                                class="px-3 py-1.5 text-xs font-semibold rounded-lg transition hover:bg-gray-700"
-                                                style="border: 2px solid #631BDD; color: #631BDD;" title="Toggle Role">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                                                </svg>
+                                                class="user-action-btn"
+                                                style="background: ${user.role === 'admin' ? '#3B82F6' : '#631BDD'}; color: white;"
+                                                title="${user.role === 'admin' ? 'Demote to User' : 'Promote to Admin'}">
+                                                <i class="fa-solid ${user.role === 'admin' ? 'fa-user' : 'fa-user-shield'}"></i>
                                             </button>
-                                            <button onclick="adminPanel.sendMessageToUser('${user.id}', '${this.escapeHtml(user.username)}')"
-                                                class="px-3 py-1.5 text-xs font-semibold rounded-lg transition hover:bg-gray-700"
-                                                style="border: 2px solid #3B82F6; color: #3B82F6;" title="Send Message">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                                                </svg>
-                                            </button>
-                                            <button onclick="adminPanel.deleteUser('${user.id}', '${this.escapeHtml(user.username)}')"
-                                                class="px-3 py-1.5 text-xs font-semibold rounded-lg transition hover:bg-red-900"
-                                                style="border: 2px solid #EF4444; color: #EF4444;" title="Delete User">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                </svg>
-                                            </button>
-                                        ` : ''}
+
+                                            <!-- More Actions Dropdown -->
+                                            <div style="position: relative; display: inline-block;">
+                                                <button onclick="event.stopPropagation(); this.nextElementSibling.classList.toggle('show-dropdown')"
+                                                    class="user-action-btn"
+                                                    style="background: var(--bg3); color: var(--fg);"
+                                                    title="More Actions">
+                                                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                                                </button>
+                                                <div class="user-dropdown-menu">
+                                                    <button onclick="adminPanel.sendMessageToUser('${user.id}', '${this.escapeHtml(user.username)}'); this.closest('.user-dropdown-menu').classList.remove('show-dropdown')">
+                                                        <i class="fa-solid fa-envelope"></i>
+                                                        Send Message
+                                                    </button>
+                                                    <button onclick="adminPanel.deleteUser('${user.id}', '${this.escapeHtml(user.username)}'); this.closest('.user-dropdown-menu').classList.remove('show-dropdown')"
+                                                        style="color: #EF4444;">
+                                                        <i class="fa-solid fa-trash"></i>
+                                                        Delete User
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ` : '<span style="color: var(--muted); font-size: 12px; font-style: italic;">Current User</span>'}
                                     </div>
                                 </td>
                             </tr>
@@ -725,6 +959,114 @@ class AdminPanel {
         return colors[Math.abs(hash) % colors.length];
     }
 
+    showMobileUserActions(userId, username, role, balance, isCurrentUser) {
+        // Prevent default row click behavior
+        event.stopPropagation();
+
+        // Remove any existing mobile action modals
+        const existingModal = document.querySelector('.mobile-user-actions-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Create modal
+        const modal = document.createElement('div');
+        modal.className = 'mobile-user-actions-modal';
+        modal.innerHTML = `
+            <div class="mobile-user-actions-overlay" onclick="this.parentElement.remove()"></div>
+            <div class="mobile-user-actions-content">
+                <div class="mobile-user-actions-header">
+                    <div class="mobile-user-avatar" style="background-color: ${this.getUserColor(username)};">
+                        ${username.charAt(0).toUpperCase()}
+                    </div>
+                    <div class="mobile-user-info">
+                        <h3>${this.escapeHtml(username)}</h3>
+                        <p>${role === 'admin' ? 'Administrator' : 'User'} • J$${parseFloat(balance).toFixed(2)}</p>
+                    </div>
+                    <button class="mobile-user-actions-close" onclick="this.closest('.mobile-user-actions-modal').remove()">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="mobile-user-actions-list">
+                    ${!isCurrentUser ? `
+                        <button class="mobile-user-action-item" onclick="adminPanel.showUserDetailsModal('${userId}'); document.querySelector('.mobile-user-actions-modal').remove();">
+                            <div class="mobile-user-action-icon" style="background: var(--accent);">
+                                <i class="fa-solid fa-eye"></i>
+                            </div>
+                            <div class="mobile-user-action-text">
+                                <strong>View Details</strong>
+                                <span>See full user information</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-right mobile-user-action-arrow"></i>
+                        </button>
+
+                        <button class="mobile-user-action-item" onclick="adminPanel.showEditBalanceModal('${userId}', ${balance}); document.querySelector('.mobile-user-actions-modal').remove();">
+                            <div class="mobile-user-action-icon" style="background: #FFC107;">
+                                <i class="fa-solid fa-coins"></i>
+                            </div>
+                            <div class="mobile-user-action-text">
+                                <strong>Edit Balance</strong>
+                                <span>Update user's balance</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-right mobile-user-action-arrow"></i>
+                        </button>
+
+                        <button class="mobile-user-action-item" onclick="adminPanel.toggleUserRole('${userId}', '${role}'); document.querySelector('.mobile-user-actions-modal').remove();">
+                            <div class="mobile-user-action-icon" style="background: ${role === 'admin' ? '#3B82F6' : '#631BDD'};">
+                                <i class="fa-solid ${role === 'admin' ? 'fa-user' : 'fa-user-shield'}"></i>
+                            </div>
+                            <div class="mobile-user-action-text">
+                                <strong>${role === 'admin' ? 'Demote to User' : 'Promote to Admin'}</strong>
+                                <span>Change user role</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-right mobile-user-action-arrow"></i>
+                        </button>
+
+                        <button class="mobile-user-action-item" onclick="adminPanel.sendMessageToUser('${userId}', '${this.escapeHtml(username)}'); document.querySelector('.mobile-user-actions-modal').remove();">
+                            <div class="mobile-user-action-icon" style="background: #3B82F6;">
+                                <i class="fa-solid fa-envelope"></i>
+                            </div>
+                            <div class="mobile-user-action-text">
+                                <strong>Send Message</strong>
+                                <span>Send a message to this user</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-right mobile-user-action-arrow"></i>
+                        </button>
+
+                        <button class="mobile-user-action-item danger" onclick="adminPanel.deleteUser('${userId}', '${this.escapeHtml(username)}'); document.querySelector('.mobile-user-actions-modal').remove();">
+                            <div class="mobile-user-action-icon" style="background: #EF4444;">
+                                <i class="fa-solid fa-trash"></i>
+                            </div>
+                            <div class="mobile-user-action-text">
+                                <strong>Delete User</strong>
+                                <span>Permanently remove this user</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-right mobile-user-action-arrow"></i>
+                        </button>
+                    ` : `
+                        <div class="mobile-user-action-item disabled">
+                            <div class="mobile-user-action-icon" style="background: var(--accent);">
+                                <i class="fa-solid fa-user"></i>
+                            </div>
+                            <div class="mobile-user-action-text">
+                                <strong>Current User</strong>
+                                <span>You cannot modify your own account</span>
+                            </div>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Trigger animation
+        setTimeout(() => {
+            modal.classList.add('active');
+        }, 10);
+    }
+
     async showUserDetailsModal(userId) {
         try {
             const [profile, positions, transactions] = await Promise.all([
@@ -734,12 +1076,12 @@ class AdminPanel {
             ]);
 
             const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 overflow-y-auto';
+            modal.className = 'admin-modal-overlay';
             modal.innerHTML = `
                 <div class="bg-gray-800 rounded-2xl border-2 border-gray-700 p-8 max-w-4xl w-full my-8">
                     <div class="flex items-center justify-between mb-6">
                         <h2 class="text-3xl font-bold" style="color: #00CB97;">User Details</h2>
-                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white">
+                        <button onclick="this.closest('.admin-modal-overlay').remove()" class="text-gray-400 hover:text-white">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
@@ -818,7 +1160,7 @@ class AdminPanel {
                     </div>
 
                     <div class="mt-6 flex justify-end">
-                        <button onclick="this.closest('.fixed').remove()"
+                        <button onclick="this.closest('.admin-modal-overlay').remove()"
                             class="px-6 py-3 rounded-xl font-bold transition"
                             style="background-color: #00CB97; color: white;">
                             Close
@@ -835,7 +1177,7 @@ class AdminPanel {
 
     showEditBalanceModal(userId, currentBalance) {
         const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50';
+        modal.className = 'admin-modal-overlay';
         modal.innerHTML = `
             <div class="bg-gray-800 rounded-2xl border-2 border-gray-700 p-8 max-w-md w-full">
                 <h2 class="text-2xl font-bold mb-4" style="color: #FFC107;">Edit User Balance</h2>
@@ -862,7 +1204,7 @@ class AdminPanel {
                         <button type="submit" class="flex-1 px-6 py-3 rounded-xl font-bold transition" style="background-color: #FFC107; color: #1a1a1a;">
                             Update Balance
                         </button>
-                        <button type="button" onclick="this.closest('.fixed').remove()"
+                        <button type="button" onclick="this.closest('.admin-modal-overlay').remove()"
                             class="px-6 py-3 rounded-xl font-bold border-2 transition" style="border-color: #6B7280; color: #6B7280;">
                             Cancel
                         </button>
@@ -908,7 +1250,7 @@ class AdminPanel {
 
     sendMessageToUser(userId, username) {
         const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50';
+        modal.className = 'admin-modal-overlay';
         modal.innerHTML = `
             <div class="bg-gray-800 rounded-2xl border-2 border-gray-700 p-8 max-w-2xl w-full">
                 <h2 class="text-2xl font-bold mb-4" style="color: #3B82F6;">Send Message to ${this.escapeHtml(username)}</h2>
@@ -942,7 +1284,7 @@ class AdminPanel {
                         <button type="submit" class="flex-1 px-6 py-3 rounded-xl font-bold transition" style="background-color: #3B82F6; color: white;">
                             Send Message
                         </button>
-                        <button type="button" onclick="this.closest('.fixed').remove()"
+                        <button type="button" onclick="this.closest('.admin-modal-overlay').remove()"
                             class="px-6 py-3 rounded-xl font-bold border-2 transition" style="border-color: #6B7280; color: #6B7280;">
                             Cancel
                         </button>
@@ -969,24 +1311,250 @@ class AdminPanel {
         });
     }
 
+    showDeleteUserModal(userId, username) {
+        // Close mobile modal if open
+        const mobileModal = document.querySelector('.mobile-user-actions-modal');
+        if (mobileModal) {
+            mobileModal.remove();
+        }
+
+        const modal = document.createElement('div');
+        modal.className = 'delete-user-modal';
+        modal.innerHTML = `
+            <div class="delete-user-overlay" onclick="this.parentElement.remove()"></div>
+            <div class="delete-user-content">
+                <div class="delete-user-header">
+                    <div class="delete-user-icon">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <h2>Delete User Account</h2>
+                    <p>This action cannot be undone</p>
+                </div>
+
+                <div class="delete-user-body">
+                    <div class="delete-user-info">
+                        <div class="delete-user-avatar" style="background-color: ${this.getUserColor(username)};">
+                            ${username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <h3>${this.escapeHtml(username)}</h3>
+                            <p>User Account</p>
+                        </div>
+                    </div>
+
+                    <div class="delete-warning-box">
+                        <h4><i class="fa-solid fa-circle-exclamation"></i> Warning</h4>
+                        <p>Deleting this user will permanently remove:</p>
+                        <ul>
+                            <li><i class="fa-solid fa-user"></i> User account and profile</li>
+                            <li><i class="fa-solid fa-chart-line"></i> All market positions</li>
+                            <li><i class="fa-solid fa-money-bill-transfer"></i> All transaction history</li>
+                            <li><i class="fa-solid fa-comments"></i> All comments and activity</li>
+                            <li><i class="fa-solid fa-database"></i> All associated data</li>
+                        </ul>
+                    </div>
+
+                    <div class="delete-confirmation">
+                        <label for="delete-confirm-input">
+                            Type <strong>${this.escapeHtml(username)}</strong> to confirm deletion:
+                        </label>
+                        <input
+                            type="text"
+                            id="delete-confirm-input"
+                            placeholder="Enter username"
+                            autocomplete="off"
+                            spellcheck="false"
+                        >
+                        <div id="delete-error-msg" class="delete-error-msg" style="display: none;">
+                            <i class="fa-solid fa-circle-xmark"></i> Username does not match
+                        </div>
+                    </div>
+                </div>
+
+                <div class="delete-user-footer">
+                    <button class="delete-cancel-btn" onclick="this.closest('.delete-user-modal').remove()">
+                        <i class="fa-solid fa-xmark"></i>
+                        Cancel
+                    </button>
+                    <button class="delete-confirm-btn" id="delete-confirm-btn" disabled>
+                        <i class="fa-solid fa-trash"></i>
+                        Delete User
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Trigger animation
+        setTimeout(() => {
+            modal.classList.add('active');
+        }, 10);
+
+        // Handle input validation
+        const input = modal.querySelector('#delete-confirm-input');
+        const confirmBtn = modal.querySelector('#delete-confirm-btn');
+        const errorMsg = modal.querySelector('#delete-error-msg');
+
+        input.addEventListener('input', () => {
+            if (input.value === username) {
+                confirmBtn.disabled = false;
+                confirmBtn.classList.add('enabled');
+                errorMsg.style.display = 'none';
+            } else {
+                confirmBtn.disabled = true;
+                confirmBtn.classList.remove('enabled');
+            }
+        });
+
+        // Handle deletion
+        confirmBtn.addEventListener('click', async () => {
+            if (input.value !== username) {
+                errorMsg.style.display = 'flex';
+                input.classList.add('error');
+                return;
+            }
+
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Deleting...';
+
+            try {
+                await this.api.deleteUser(userId);
+                modal.remove();
+                this.renderView('users');
+                this.showSuccessToast(`User "${username}" has been deleted`);
+            } catch (error) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fa-solid fa-trash"></i> Delete User';
+                errorMsg.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> ${error.message}`;
+                errorMsg.style.display = 'flex';
+            }
+        });
+
+        // Focus input
+        setTimeout(() => input.focus(), 300);
+    }
+
+    showSuccessToast(message) {
+        // Simple toast notification
+        const toast = document.createElement('div');
+        toast.className = 'success-toast';
+        toast.innerHTML = `
+            <i class="fa-solid fa-circle-check"></i>
+            ${message}
+        `;
+        document.body.appendChild(toast);
+
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
     async deleteUser(userId, username) {
-        if (!confirm(`Are you sure you want to DELETE user "${username}"?\n\nThis will permanently remove:\n• User account\n• All positions\n• All transactions\n• All data\n\nThis action CANNOT be undone!`)) {
-            return;
-        }
+        // Show modal instead of using confirm/prompt
+        this.showDeleteUserModal(userId, username);
+    }
 
-        const confirmText = prompt(`Type "${username}" to confirm deletion:`);
-        if (confirmText !== username) {
-            alert('Username did not match. Deletion cancelled.');
-            return;
-        }
+    showAdminProfileModal() {
+        const profile = this.currentProfile;
+        if (!profile) return;
 
-        try {
-            await this.api.deleteUser(userId);
-            this.renderView('users');
-            alert(`User "${username}" has been deleted.`);
-        } catch (error) {
-            alert('Error deleting user: ' + error.message);
-        }
+        const modal = document.createElement('div');
+        modal.className = 'admin-modal-overlay';
+        modal.innerHTML = `
+            <div class="bg-gray-800 rounded-2xl border-2 border-gray-700 max-w-md w-full">
+                <!-- Header -->
+                <div class="p-6 border-b-2 border-gray-700" style="background: linear-gradient(135deg, var(--accent) 0%, #0f3a23 100%);">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-2xl font-bold text-white">
+                            <i class="fa-solid fa-user-shield"></i> Admin Profile
+                        </h2>
+                        <button onclick="this.closest('.admin-modal-overlay').remove()" class="text-white hover:text-gray-300 transition">
+                            <i class="fa-solid fa-xmark text-2xl"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-20 h-20 rounded-full flex items-center justify-center font-bold text-white text-3xl" style="background-color: ${this.getUserColor(profile.username)};">
+                            ${profile.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-white">${this.escapeHtml(profile.username)}</h3>
+                            <p class="text-sm text-gray-200">Administrator</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Body -->
+                <div class="p-6 space-y-4">
+                    <!-- Email -->
+                    <div class="bg-gray-900 rounded-xl p-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <i class="fa-solid fa-envelope text-gray-400"></i>
+                            <span class="text-sm text-gray-400 font-semibold uppercase">Email</span>
+                        </div>
+                        <p class="text-white font-medium">${this.escapeHtml(profile.email || 'Not set')}</p>
+                    </div>
+
+                    <!-- User ID -->
+                    <div class="bg-gray-900 rounded-xl p-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <i class="fa-solid fa-id-card text-gray-400"></i>
+                            <span class="text-sm text-gray-400 font-semibold uppercase">User ID</span>
+                        </div>
+                        <p class="text-white font-mono text-sm">${profile.id}</p>
+                    </div>
+
+                    <!-- Balance -->
+                    <div class="bg-gray-900 rounded-xl p-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <i class="fa-solid fa-wallet text-gray-400"></i>
+                            <span class="text-sm text-gray-400 font-semibold uppercase">Balance</span>
+                        </div>
+                        <p class="text-2xl font-bold" style="color: #00CB97;">J$${parseFloat(profile.balance || 0).toFixed(2)}</p>
+                    </div>
+
+                    <!-- Role -->
+                    <div class="bg-gray-900 rounded-xl p-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <i class="fa-solid fa-shield-halved text-gray-400"></i>
+                            <span class="text-sm text-gray-400 font-semibold uppercase">Role</span>
+                        </div>
+                        <span class="px-4 py-2 rounded-lg font-bold text-sm inline-block" style="background: #631BDD; color: white;">
+                            <i class="fa-solid fa-user-shield"></i> ADMINISTRATOR
+                        </span>
+                    </div>
+
+                    <!-- Account Created -->
+                    <div class="bg-gray-900 rounded-xl p-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <i class="fa-solid fa-calendar-plus text-gray-400"></i>
+                            <span class="text-sm text-gray-400 font-semibold uppercase">Account Created</span>
+                        </div>
+                        <p class="text-white font-medium">${new Date(profile.created_at).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })}</p>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="p-6 border-t-2 border-gray-700 flex gap-3">
+                    <button onclick="window.location.href='index.html'" class="flex-1 px-4 py-3 rounded-xl font-semibold transition" style="background: var(--accent); color: white;">
+                        <i class="fa-solid fa-home"></i> Go to App
+                    </button>
+                    <button onclick="document.getElementById('admin-signout').click(); this.closest('.admin-modal-overlay').remove();" class="flex-1 px-4 py-3 rounded-xl font-semibold border-2 transition" style="border-color: #EF4444; color: #EF4444;">
+                        <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
     }
 
     async renderTransactions(container) {
@@ -1589,59 +2157,76 @@ class AdminPanel {
         const resolvedCount = messages.filter(m => m.status === 'resolved').length;
 
         container.innerHTML = `
-            <!-- Filter Tabs -->
-            <div class="mb-6" style="overflow-x: auto;">
-                <div class="flex gap-2" style="min-width: fit-content; padding-bottom: 8px;">
-                    <button class="status-filter active" data-status="all" style="background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap;">
-                        All Messages <span class="badge" style="background: rgba(255,255,255,0.2); margin-left: 8px;">${messages.length}</span>
-                    </button>
-                    <button class="status-filter" data-status="new" style="background: var(--bg3); color: var(--fg); border: 2px solid var(--success); padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap;">
-                        <i class="fa-solid fa-envelope"></i> New <span class="badge badge-success" style="margin-left: 8px;">${newCount}</span>
-                    </button>
-                    <button class="status-filter" data-status="read" style="background: var(--bg3); color: var(--fg); border: 2px solid var(--info); padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap;">
-                        <i class="fa-solid fa-eye"></i> Read <span class="badge badge-info" style="margin-left: 8px;">${readCount}</span>
-                    </button>
-                    <button class="status-filter" data-status="replied" style="background: var(--bg3); color: var(--fg); border: 2px solid var(--warning); padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap;">
-                        <i class="fa-solid fa-reply"></i> Replied <span class="badge badge-warning" style="margin-left: 8px;">${repliedCount}</span>
-                    </button>
-                    <button class="status-filter" data-status="resolved" style="background: var(--bg3); color: var(--fg); border: 2px solid var(--muted); padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap;">
-                        <i class="fa-solid fa-check-circle"></i> Resolved <span class="badge" style="background: var(--muted); margin-left: 8px;">${resolvedCount}</span>
-                    </button>
+            <!-- Stats Overview -->
+            <div class="message-stats-grid">
+                <div class="message-stat-card" data-status="all">
+                    <i class="fa-solid fa-inbox"></i>
+                    <div class="stat-number">${messages.length}</div>
+                    <div class="stat-label">Total</div>
+                </div>
+                <div class="message-stat-card" data-status="new" style="border-color: var(--success);">
+                    <i class="fa-solid fa-envelope" style="color: var(--success);"></i>
+                    <div class="stat-number" style="color: var(--success);">${newCount}</div>
+                    <div class="stat-label">New</div>
+                </div>
+                <div class="message-stat-card" data-status="read" style="border-color: var(--info);">
+                    <i class="fa-solid fa-eye" style="color: var(--info);"></i>
+                    <div class="stat-number" style="color: var(--info);">${readCount}</div>
+                    <div class="stat-label">Read</div>
+                </div>
+                <div class="message-stat-card" data-status="replied" style="border-color: var(--warning);">
+                    <i class="fa-solid fa-reply" style="color: var(--warning);"></i>
+                    <div class="stat-number" style="color: var(--warning);">${repliedCount}</div>
+                    <div class="stat-label">Replied</div>
+                </div>
+                <div class="message-stat-card" data-status="resolved" style="border-color: var(--muted);">
+                    <i class="fa-solid fa-check-circle" style="color: var(--muted);"></i>
+                    <div class="stat-number" style="color: var(--muted);">${resolvedCount}</div>
+                    <div class="stat-label">Resolved</div>
                 </div>
             </div>
 
             <!-- Messages List -->
-            <div id="messages-list" style="display: grid; gap: 16px;">
+            <div id="messages-list" class="messages-container">
                 ${this.renderMessagesList(messages)}
             </div>
         `;
 
-        // Attach filter listeners
-        container.querySelectorAll('.status-filter').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const status = btn.dataset.status;
+        // Attach stat card click listeners for filtering
+        container.querySelectorAll('.message-stat-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const status = card.dataset.status;
                 const filteredMessages = status === 'all' ? messages : messages.filter(m => m.status === status);
 
-                // Update active button
-                container.querySelectorAll('.status-filter').forEach(b => {
-                    b.classList.remove('active');
-                    b.style.background = 'var(--bg3)';
-                    b.style.color = 'var(--fg)';
-                });
-                btn.classList.add('active');
-                btn.style.background = 'var(--accent)';
-                btn.style.color = 'white';
+                // Update active state
+                container.querySelectorAll('.message-stat-card').forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
 
                 // Update list
                 document.getElementById('messages-list').innerHTML = this.renderMessagesList(filteredMessages);
             });
         });
+
+        // Set initial active state
+        container.querySelector('.message-stat-card[data-status="all"]').classList.add('active');
     }
 
     renderMessagesList(messages) {
         if (messages.length === 0) {
-            return `<div class="text-center py-12 text-gray-400">No messages found</div>`;
+            return `
+                <div style="text-align: center; padding: 60px 20px; color: var(--muted);">
+                    <i class="fa-solid fa-inbox" style="font-size: 64px; opacity: 0.2; margin-bottom: 16px;"></i>
+                    <p style="font-size: 16px;">No messages found</p>
+                </div>
+            `;
         }
+
+        const priorityIcons = {
+            urgent: 'fa-circle-exclamation',
+            high: 'fa-arrow-up',
+            normal: 'fa-minus',
+            low: 'fa-arrow-down'
+        };
 
         const priorityColors = {
             urgent: '#EF4444',
@@ -1659,87 +2244,123 @@ class AdminPanel {
         };
 
         return messages.map(msg => {
-            const date = new Date(msg.created_at).toLocaleString();
+            const date = new Date(msg.created_at);
+            const timeAgo = this.getTimeAgo(date);
             const username = msg.profiles?.username || 'Unknown User';
             const userEmail = msg.email;
 
             return `
-                <div class="bg-gray-800 rounded-xl border-2 border-gray-700 p-6 hover:border-gray-600 transition">
+                <div class="message-card">
                     <!-- Header -->
-                    <div class="flex items-start justify-between mb-4">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-3 mb-2">
-                                <h3 class="text-lg font-bold text-white">${this.escapeHtml(msg.subject)}</h3>
-                                <span class="px-3 py-1 text-xs font-bold rounded-full" style="background-color: ${statusColors[msg.status]}20; color: ${statusColors[msg.status]}; border: 1px solid ${statusColors[msg.status]};">
-                                    ${msg.status.toUpperCase()}
+                    <div class="message-header">
+                        <div class="message-title-row">
+                            <h3 class="message-subject">${this.escapeHtml(msg.subject)}</h3>
+                            <div class="message-badges">
+                                <span class="message-badge" style="background: ${statusColors[msg.status]}20; color: ${statusColors[msg.status]}; border-color: ${statusColors[msg.status]};">
+                                    ${msg.status}
                                 </span>
-                                <span class="px-3 py-1 text-xs font-bold rounded-full" style="background-color: ${priorityColors[msg.priority]}20; color: ${priorityColors[msg.priority]}; border: 1px solid ${priorityColors[msg.priority]};">
-                                    ${msg.priority.toUpperCase()} PRIORITY
+                                <span class="message-badge" style="background: ${priorityColors[msg.priority]}20; color: ${priorityColors[msg.priority]}; border-color: ${priorityColors[msg.priority]};">
+                                    <i class="fa-solid ${priorityIcons[msg.priority]}"></i>
+                                    ${msg.priority}
                                 </span>
                             </div>
-                            <div class="text-sm text-gray-400">
-                                From: <span class="font-semibold text-white">${this.escapeHtml(msg.name)}</span>
-                                ${msg.user_id ? `(${this.escapeHtml(username)})` : '(Guest)'}
-                                • <a href="mailto:${this.escapeHtml(userEmail)}" class="hover:underline" style="color: #00CB97;">${this.escapeHtml(userEmail)}</a>
-                                • ${date}
+                        </div>
+                        <div class="message-meta">
+                            <div>
+                                <i class="fa-solid fa-user"></i>
+                                <strong>${this.escapeHtml(msg.name)}</strong>
+                                ${msg.user_id ? `<span class="text-muted">(${this.escapeHtml(username)})</span>` : '<span class="text-muted">(Guest)</span>'}
+                            </div>
+                            <div>
+                                <i class="fa-solid fa-envelope"></i>
+                                <a href="mailto:${this.escapeHtml(userEmail)}" style="color: var(--accent);">${this.escapeHtml(userEmail)}</a>
+                            </div>
+                            <div>
+                                <i class="fa-solid fa-clock"></i>
+                                ${timeAgo}
                             </div>
                         </div>
                     </div>
 
                     <!-- Message Body -->
-                    <div class="bg-gray-900 rounded-lg p-4 mb-4">
-                        <p class="text-gray-300 whitespace-pre-wrap">${this.escapeHtml(msg.message)}</p>
+                    <div class="message-body">
+                        <p>${this.escapeHtml(msg.message)}</p>
                     </div>
 
                     ${msg.admin_notes ? `
-                        <div class="bg-purple-900 bg-opacity-20 border-2 border-purple-500 rounded-lg p-4 mb-4">
-                            <p class="text-sm font-semibold mb-1" style="color: #631BDD;">Admin Notes:</p>
-                            <p class="text-gray-300 text-sm whitespace-pre-wrap">${this.escapeHtml(msg.admin_notes)}</p>
+                        <div class="message-notes">
+                            <i class="fa-solid fa-note-sticky"></i>
+                            <strong>Admin Notes:</strong>
+                            <p>${this.escapeHtml(msg.admin_notes)}</p>
                         </div>
                     ` : ''}
 
                     <!-- Actions -->
-                    <div class="flex gap-2 flex-wrap">
+                    <div class="message-actions">
                         ${msg.status === 'new' ? `
-                            <button onclick="adminPanel.updateMessageStatus('${msg.id}', 'read')"
-                                class="px-4 py-2 rounded-lg font-semibold text-sm transition"
-                                style="background-color: #631BDD; color: white;">
-                                Mark as Read
+                            <button onclick="adminPanel.updateMessageStatus('${msg.id}', 'read')" class="message-action-btn" style="background: #631BDD;">
+                                <i class="fa-solid fa-eye"></i>
+                                <span>Read</span>
                             </button>
                         ` : ''}
                         ${msg.status !== 'replied' && msg.status !== 'resolved' ? `
-                            <button onclick="adminPanel.showReplyModal('${msg.id}', '${this.escapeHtml(userEmail)}', '${this.escapeHtml(msg.name)}', ${msg.user_id ? `'${msg.user_id}'` : 'null'})"
-                                class="px-4 py-2 rounded-lg font-semibold text-sm transition"
-                                style="background-color: #00CB97; color: white;">
-                                Reply via Email
+                            <button onclick="adminPanel.showReplyModal('${msg.id}', '${this.escapeHtml(userEmail)}', '${this.escapeHtml(msg.name)}', ${msg.user_id ? `'${msg.user_id}'` : 'null'})" class="message-action-btn" style="background: var(--accent);">
+                                <i class="fa-solid fa-reply"></i>
+                                <span>Reply</span>
                             </button>
                         ` : ''}
                         ${msg.status !== 'resolved' ? `
-                            <button onclick="adminPanel.updateMessageStatus('${msg.id}', 'resolved')"
-                                class="px-4 py-2 rounded-lg font-semibold text-sm transition"
-                                style="background-color: #10B981; color: white;">
-                                Mark Resolved
+                            <button onclick="adminPanel.updateMessageStatus('${msg.id}', 'resolved')" class="message-action-btn" style="background: #10B981;">
+                                <i class="fa-solid fa-check"></i>
+                                <span>Resolve</span>
                             </button>
                         ` : ''}
-                        <button onclick="adminPanel.showNotesModal('${msg.id}', ${msg.admin_notes ? `'${this.escapeHtml(msg.admin_notes)}'` : 'null'})"
-                            class="px-4 py-2 rounded-lg font-semibold text-sm border-2 transition"
-                            style="border-color: #6B7280; color: #6B7280;">
-                            ${msg.admin_notes ? 'Edit Notes' : 'Add Notes'}
-                        </button>
-                        <button onclick="adminPanel.updateMessageStatus('${msg.id}', 'archived')"
-                            class="px-4 py-2 rounded-lg font-semibold text-sm border-2 transition"
-                            style="border-color: #6B7280; color: #6B7280;">
-                            Archive
-                        </button>
-                        <button onclick="adminPanel.deleteMessage('${msg.id}')"
-                            class="px-4 py-2 rounded-lg font-semibold text-sm border-2 transition hover:bg-red-900 hover:border-red-500"
-                            style="border-color: #EF4444; color: #EF4444;">
-                            Delete
-                        </button>
+
+                        <!-- More Actions Dropdown -->
+                        <div class="message-dropdown-wrapper">
+                            <button onclick="event.stopPropagation(); this.nextElementSibling.classList.toggle('show-dropdown')" class="message-action-btn" style="background: var(--bg3);">
+                                <i class="fa-solid fa-ellipsis-vertical"></i>
+                                <span>More</span>
+                            </button>
+                            <div class="message-dropdown-menu">
+                                <button onclick="adminPanel.showNotesModal('${msg.id}', ${msg.admin_notes ? `'${this.escapeHtml(msg.admin_notes)}'` : 'null'}); this.closest('.message-dropdown-menu').classList.remove('show-dropdown')">
+                                    <i class="fa-solid fa-note-sticky"></i>
+                                    ${msg.admin_notes ? 'Edit Notes' : 'Add Notes'}
+                                </button>
+                                <button onclick="adminPanel.updateMessageStatus('${msg.id}', 'archived'); this.closest('.message-dropdown-menu').classList.remove('show-dropdown')">
+                                    <i class="fa-solid fa-box-archive"></i>
+                                    Archive
+                                </button>
+                                <button onclick="adminPanel.deleteMessage('${msg.id}'); this.closest('.message-dropdown-menu').classList.remove('show-dropdown')" style="color: #EF4444;">
+                                    <i class="fa-solid fa-trash"></i>
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
         }).join('');
+    }
+
+    getTimeAgo(date) {
+        const seconds = Math.floor((new Date() - date) / 1000);
+        const intervals = {
+            year: 31536000,
+            month: 2592000,
+            week: 604800,
+            day: 86400,
+            hour: 3600,
+            minute: 60
+        };
+
+        for (const [unit, secondsInUnit] of Object.entries(intervals)) {
+            const interval = Math.floor(seconds / secondsInUnit);
+            if (interval >= 1) {
+                return `${interval} ${unit}${interval > 1 ? 's' : ''} ago`;
+            }
+        }
+        return 'Just now';
     }
 
     async updateMessageStatus(messageId, newStatus) {
@@ -1753,7 +2374,7 @@ class AdminPanel {
 
     showReplyModal(messageId, email, name, userId) {
         const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50';
+        modal.className = 'admin-modal-overlay';
         modal.innerHTML = `
             <div class="bg-gray-800 rounded-2xl border-2 border-gray-700 p-8 max-w-2xl w-full">
                 <h2 class="text-2xl font-bold mb-4" style="color: #00CB97;">Reply to ${this.escapeHtml(name)}</h2>
@@ -1788,7 +2409,7 @@ class AdminPanel {
                         <button type="submit" class="flex-1 px-6 py-3 rounded-xl font-bold transition" style="background-color: #00CB97; color: white;">
                             Send Reply
                         </button>
-                        <button type="button" onclick="this.closest('.fixed').remove()"
+                        <button type="button" onclick="this.closest('.admin-modal-overlay').remove()"
                             class="px-6 py-3 rounded-xl font-bold border-2 transition" style="border-color: #6B7280; color: #6B7280;">
                             Cancel
                         </button>
@@ -1832,7 +2453,7 @@ class AdminPanel {
 
     showNotesModal(messageId, currentNotes) {
         const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50';
+        modal.className = 'admin-modal-overlay';
         modal.innerHTML = `
             <div class="bg-gray-800 rounded-2xl border-2 border-gray-700 p-8 max-w-2xl w-full">
                 <h2 class="text-2xl font-bold mb-4" style="color: #631BDD;">Admin Notes</h2>
@@ -1849,7 +2470,7 @@ class AdminPanel {
                         <button type="submit" class="flex-1 px-6 py-3 rounded-xl font-bold transition" style="background-color: #631BDD; color: white;">
                             Save Notes
                         </button>
-                        <button type="button" onclick="this.closest('.fixed').remove()"
+                        <button type="button" onclick="this.closest('.admin-modal-overlay').remove()"
                             class="px-6 py-3 rounded-xl font-bold border-2 transition" style="border-color: #6B7280; color: #6B7280;">
                             Cancel
                         </button>
@@ -1905,6 +2526,7 @@ class AdminPanel {
         }
 
         // Calculate statistics
+        const totalCount = proposals.length;
         const pendingCount = proposals.filter(p => p.status === 'pending').length;
         const approvedCount = proposals.filter(p => p.status === 'approved').length;
         const rejectedCount = proposals.filter(p => p.status === 'rejected').length;
@@ -1922,99 +2544,52 @@ class AdminPanel {
             <div class="mb-6">
                 <h3 class="text-xl font-bold mb-4">Voting Management</h3>
 
-                <!-- Statistics Cards -->
-                <div class="grid grid-cols-3 gap-4 mb-6">
-                    <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-gray-400 text-sm">Pending Review</p>
-                                <p class="text-3xl font-bold text-yellow-400">${pendingCount}</p>
-                            </div>
-                            <svg class="h-12 w-12 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
+                <!-- Statistics Cards (Clickable Filters) -->
+                <div class="voting-stats-grid">
+                    <div class="voting-stat-card" data-status="all">
+                        <div class="voting-stat-icon">
+                            <i class="fa-solid fa-poll"></i>
                         </div>
+                        <div class="voting-stat-value">${totalCount}</div>
+                        <div class="voting-stat-label">Total Proposals</div>
                     </div>
-                    <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-gray-400 text-sm">Approved & Live</p>
-                                <p class="text-3xl font-bold text-green-400">${approvedCount}</p>
-                            </div>
-                            <svg class="h-12 w-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
+                    <div class="voting-stat-card" data-status="pending">
+                        <div class="voting-stat-icon text-yellow-400">
+                            <i class="fa-solid fa-clock"></i>
                         </div>
+                        <div class="voting-stat-value text-yellow-400">${pendingCount}</div>
+                        <div class="voting-stat-label">Pending Review</div>
                     </div>
-                    <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-gray-400 text-sm">Rejected</p>
-                                <p class="text-3xl font-bold text-red-400">${rejectedCount}</p>
-                            </div>
-                            <svg class="h-12 w-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
+                    <div class="voting-stat-card" data-status="approved">
+                        <div class="voting-stat-icon text-green-400">
+                            <i class="fa-solid fa-circle-check"></i>
                         </div>
+                        <div class="voting-stat-value text-green-400">${approvedCount}</div>
+                        <div class="voting-stat-label">Approved & Live</div>
                     </div>
-                </div>
-
-                <!-- Filter Tabs -->
-                <div class="flex gap-2 mb-4">
-                    <button class="status-filter px-4 py-2 rounded-lg font-semibold transition"
-                            data-status="all"
-                            style="background-color: #00CB97; color: white;">
-                        All (${proposals.length})
-                    </button>
-                    <button class="status-filter px-4 py-2 rounded-lg font-semibold transition"
-                            data-status="pending"
-                            style="background-color: rgba(242, 195, 0, 0.2); color: #F2C300;">
-                        Pending (${pendingCount})
-                    </button>
-                    <button class="status-filter px-4 py-2 rounded-lg font-semibold transition"
-                            data-status="approved"
-                            style="background-color: rgba(16, 185, 129, 0.2); color: #10B981;">
-                        Approved (${approvedCount})
-                    </button>
-                    <button class="status-filter px-4 py-2 rounded-lg font-semibold transition"
-                            data-status="rejected"
-                            style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444;">
-                        Rejected (${rejectedCount})
-                    </button>
+                    <div class="voting-stat-card" data-status="rejected">
+                        <div class="voting-stat-icon text-red-400">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                        </div>
+                        <div class="voting-stat-value text-red-400">${rejectedCount}</div>
+                        <div class="voting-stat-label">Rejected</div>
+                    </div>
                 </div>
             </div>
 
-            <div id="proposals-list" class="space-y-4">
+            <div id="proposals-list" class="proposals-list">
                 ${this.renderProposalsList(proposals)}
             </div>
         `;
 
-        // Attach filter listeners
-        container.querySelectorAll('.status-filter').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const status = btn.dataset.status;
+        // Attach filter listeners to stat cards
+        container.querySelectorAll('.voting-stat-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const status = card.dataset.status;
 
                 // Update active state
-                container.querySelectorAll('.status-filter').forEach(b => {
-                    if (b === btn) {
-                        b.style.backgroundColor = '#00CB97';
-                        b.style.color = 'white';
-                    } else {
-                        const originalStatus = b.dataset.status;
-                        if (originalStatus === 'pending') {
-                            b.style.backgroundColor = 'rgba(242, 195, 0, 0.2)';
-                            b.style.color = '#F2C300';
-                        } else if (originalStatus === 'approved') {
-                            b.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
-                            b.style.color = '#10B981';
-                        } else if (originalStatus === 'rejected') {
-                            b.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
-                            b.style.color = '#ef4444';
-                        } else {
-                            b.style.backgroundColor = 'rgba(0, 203, 151, 0.2)';
-                            b.style.color = '#00CB97';
-                        }
-                    }
+                container.querySelectorAll('.voting-stat-card').forEach(c => {
+                    c.classList.toggle('active', c === card);
                 });
 
                 // Filter proposals
@@ -2023,8 +2598,20 @@ class AdminPanel {
                     : proposals.filter(p => p.status === status);
 
                 document.getElementById('proposals-list').innerHTML = this.renderProposalsList(filteredProposals);
+
+                // Re-attach dropdown listeners
+                this.attachProposalDropdownListeners();
             });
         });
+
+        // Set first card as active by default
+        const firstCard = container.querySelector('.voting-stat-card');
+        if (firstCard) {
+            firstCard.classList.add('active');
+        }
+
+        // Attach dropdown listeners
+        this.attachProposalDropdownListeners();
     }
 
     renderProposalsList(proposals) {
@@ -2039,101 +2626,122 @@ class AdminPanel {
             const commentCount = proposal.proposal_comments.length;
             const yesPercent = totalVotes > 0 ? Math.round((yesVotes / totalVotes) * 100) : 0;
 
-            const statusColors = {
-                pending: { bg: '#F2C300', text: 'black' },
-                approved: { bg: '#10B981', text: 'white' },
-                rejected: { bg: '#ef4444', text: 'white' }
-            };
-
-            const status = statusColors[proposal.status];
+            const statusBadge = {
+                pending: { class: 'proposal-status-pending', label: 'PENDING' },
+                approved: { class: 'proposal-status-approved', label: 'APPROVED' },
+                rejected: { class: 'proposal-status-rejected', label: 'REJECTED' }
+            }[proposal.status];
 
             return `
-                <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-                    <div class="flex items-start justify-between mb-4">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-3 mb-2">
-                                ${proposal.image_url ? `
-                                    <img src="${proposal.image_url}" alt="${proposal.title}"
-                                         class="w-16 h-16 rounded-lg object-cover border-2 border-gray-600">
-                                ` : ''}
-                                <div>
-                                    <h4 class="text-xl font-bold text-white">${proposal.title}</h4>
-                                    <p class="text-sm text-gray-400">
-                                        By ${proposal.profiles?.username || 'Unknown'} •
-                                        ${new Date(proposal.created_at).toLocaleDateString()} •
-                                        ${commentCount} comments
-                                    </p>
-                                </div>
+                <div class="proposal-list-item">
+                    ${proposal.image_url ? `
+                        <img src="${proposal.image_url}" alt="${proposal.title}" class="proposal-list-image">
+                    ` : ''}
+
+                    <div class="proposal-list-content">
+                        <div class="proposal-list-header">
+                            <div class="proposal-list-title-section">
+                                <h4 class="proposal-list-title">${proposal.title}</h4>
+                                <span class="proposal-status-badge ${statusBadge.class}">${statusBadge.label}</span>
                             </div>
-                            <p class="text-gray-300 mb-4">${proposal.description}</p>
-
-                            ${proposal.category ? `
-                                <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-gray-700 text-gray-300 mb-3">
-                                    ${proposal.category}
-                                </span>
-                            ` : ''}
-
-                            <!-- Vote Statistics -->
-                            <div class="grid grid-cols-2 gap-4 mt-4">
-                                <div class="bg-gray-900 rounded-lg p-3">
-                                    <p class="text-sm text-gray-400 mb-1">Yes Votes</p>
-                                    <div class="flex items-center gap-2">
-                                        <div class="flex-1 bg-gray-700 rounded-full h-2">
-                                            <div class="bg-green-400 h-2 rounded-full" style="width: ${yesPercent}%"></div>
-                                        </div>
-                                        <span class="text-green-400 font-bold">${yesVotes}</span>
-                                    </div>
-                                </div>
-                                <div class="bg-gray-900 rounded-lg p-3">
-                                    <p class="text-sm text-gray-400 mb-1">No Votes</p>
-                                    <div class="flex items-center gap-2">
-                                        <div class="flex-1 bg-gray-700 rounded-full h-2">
-                                            <div class="bg-red-400 h-2 rounded-full" style="width: ${100 - yesPercent}%"></div>
-                                        </div>
-                                        <span class="text-red-400 font-bold">${noVotes}</span>
-                                    </div>
-                                </div>
+                            <div class="proposal-list-meta">
+                                <span><i class="fa-solid fa-user"></i> ${proposal.profiles?.username || 'Unknown'}</span>
+                                <span><i class="fa-solid fa-calendar"></i> ${new Date(proposal.created_at).toLocaleDateString()}</span>
+                                <span><i class="fa-solid fa-comments"></i> ${commentCount}</span>
+                                ${proposal.category ? `<span class="proposal-list-category"><i class="fa-solid fa-tag"></i> ${proposal.category}</span>` : ''}
                             </div>
                         </div>
 
-                        <div class="ml-4">
-                            <span class="inline-block px-4 py-2 rounded-lg text-sm font-bold mb-3"
-                                  style="background-color: ${status.bg}; color: ${status.text};">
-                                ${proposal.status.toUpperCase()}
-                            </span>
+                        <p class="proposal-list-description">${proposal.description}</p>
+
+                        <div class="proposal-list-votes">
+                            <div class="proposal-vote-item">
+                                <div class="proposal-vote-header">
+                                    <span class="proposal-vote-label"><i class="fa-solid fa-thumbs-up"></i> Yes</span>
+                                    <span class="proposal-vote-count text-green-400">${yesVotes}</span>
+                                </div>
+                                <div class="proposal-vote-bar">
+                                    <div class="proposal-vote-fill bg-green-400" style="width: ${yesPercent}%"></div>
+                                </div>
+                            </div>
+                            <div class="proposal-vote-item">
+                                <div class="proposal-vote-header">
+                                    <span class="proposal-vote-label"><i class="fa-solid fa-thumbs-down"></i> No</span>
+                                    <span class="proposal-vote-count text-red-400">${noVotes}</span>
+                                </div>
+                                <div class="proposal-vote-bar">
+                                    <div class="proposal-vote-fill bg-red-400" style="width: ${100 - yesPercent}%"></div>
+                                </div>
+                            </div>
+                            <div class="proposal-vote-summary">
+                                <span class="proposal-vote-total"><i class="fa-solid fa-chart-simple"></i> ${totalVotes} total votes</span>
+                                <span class="proposal-vote-percent">${yesPercent}% approval</span>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Action Buttons -->
-                    <div class="flex gap-2 pt-4 border-t border-gray-700">
+                    <div class="proposal-list-actions">
                         ${proposal.status === 'pending' ? `
-                            <button onclick="adminPanel.approveProposal('${proposal.id}')"
-                                class="px-4 py-2 rounded-lg font-semibold text-sm transition hover:opacity-80"
-                                style="background-color: #10B981; color: white;">
-                                ✓ Approve
+                            <button onclick="adminPanel.approveProposal('${proposal.id}')" class="proposal-action-btn proposal-btn-approve" title="Approve">
+                                <i class="fa-solid fa-circle-check"></i>
+                                <span class="proposal-btn-text">Approve</span>
                             </button>
-                            <button onclick="adminPanel.rejectProposal('${proposal.id}')"
-                                class="px-4 py-2 rounded-lg font-semibold text-sm transition hover:opacity-80"
-                                style="background-color: #ef4444; color: white;">
-                                ✗ Reject
+                            <button onclick="adminPanel.rejectProposal('${proposal.id}')" class="proposal-action-btn proposal-btn-reject" title="Reject">
+                                <i class="fa-solid fa-circle-xmark"></i>
+                                <span class="proposal-btn-text">Reject</span>
                             </button>
                         ` : ''}
                         ${proposal.status === 'approved' || proposal.status === 'rejected' ? `
-                            <button onclick="adminPanel.resetProposalStatus('${proposal.id}')"
-                                class="px-4 py-2 rounded-lg font-semibold text-sm transition hover:opacity-80"
-                                style="background-color: #F2C300; color: black;">
-                                ↺ Reset to Pending
+                            <button onclick="adminPanel.resetProposalStatus('${proposal.id}')" class="proposal-action-btn proposal-btn-reset" title="Reset">
+                                <i class="fa-solid fa-rotate-left"></i>
+                                <span class="proposal-btn-text">Reset</span>
                             </button>
                         ` : ''}
-                        <button onclick="adminPanel.deleteProposal('${proposal.id}')"
-                            class="px-4 py-2 rounded-lg font-semibold text-sm border-2 transition hover:bg-red-900 hover:border-red-500"
-                            style="border-color: #ef4444; color: #ef4444;">
-                            🗑 Delete
-                        </button>
+                        <div class="proposal-dropdown">
+                            <button class="proposal-action-btn proposal-btn-more" data-proposal-id="${proposal.id}" title="More options">
+                                <i class="fa-solid fa-ellipsis-vertical"></i>
+                            </button>
+                            <div class="proposal-dropdown-menu" data-proposal-id="${proposal.id}">
+                                <button onclick="adminPanel.deleteProposal('${proposal.id}')" class="proposal-dropdown-item proposal-dropdown-delete">
+                                    <i class="fa-solid fa-trash"></i>
+                                    <span>Delete Proposal</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
         }).join('');
+    }
+
+    attachProposalDropdownListeners() {
+        // Close all dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.proposal-dropdown')) {
+                document.querySelectorAll('.proposal-dropdown-menu').forEach(menu => {
+                    menu.classList.remove('show');
+                });
+            }
+        });
+
+        // Toggle dropdowns
+        document.querySelectorAll('.proposal-btn-more').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const proposalId = btn.dataset.proposalId;
+                const menu = document.querySelector(`.proposal-dropdown-menu[data-proposal-id="${proposalId}"]`);
+
+                // Close other dropdowns
+                document.querySelectorAll('.proposal-dropdown-menu').forEach(m => {
+                    if (m !== menu) m.classList.remove('show');
+                });
+
+                // Toggle current dropdown
+                if (menu) {
+                    menu.classList.toggle('show');
+                }
+            });
+        });
     }
 
     async approveProposal(proposalId) {
@@ -2243,6 +2851,240 @@ class AdminPanel {
         } else {
             container.innerHTML = '<div class="text-center py-12 text-red-400">Banner management component not loaded</div>';
         }
+    }
+
+    async renderActivity(container) {
+        try {
+            // Fetch all activities
+            const [recentBets, recentMarkets, recentComments, recentUsers, recentProposals, transactions] = await Promise.all([
+                window.supabaseClient
+                    .from('bets')
+                    .select('*, user:profiles!bets_user_id_fkey(username), market:markets(title)')
+                    .order('created_at', { ascending: false })
+                    .limit(50),
+                window.supabaseClient
+                    .from('markets')
+                    .select('*, creator:profiles!markets_created_by_fkey(username)')
+                    .order('created_at', { ascending: false })
+                    .limit(30),
+                window.supabaseClient
+                    .from('comments')
+                    .select('*, user:profiles!comments_user_id_fkey(username), market:markets(title)')
+                    .order('created_at', { ascending: false })
+                    .limit(40),
+                window.supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(20),
+                window.supabaseClient
+                    .from('proposals')
+                    .select('*, user:profiles!proposals_user_id_fkey(username)')
+                    .order('created_at', { ascending: false })
+                    .limit(20),
+                this.api.getAllTransactions({ limit: 100 })
+            ]);
+
+            // Combine all activities
+            const allActivities = [];
+
+            // Add bets
+            if (recentBets?.data) {
+                recentBets.data.forEach(bet => {
+                    allActivities.push({
+                        type: 'bet',
+                        created_at: bet.created_at,
+                        user: bet.user?.username || 'Unknown',
+                        data: bet
+                    });
+                });
+            }
+
+            // Add new markets
+            if (recentMarkets?.data) {
+                recentMarkets.data.forEach(market => {
+                    allActivities.push({
+                        type: 'market_created',
+                        created_at: market.created_at,
+                        user: market.creator?.username || 'Unknown',
+                        data: market
+                    });
+                });
+            }
+
+            // Add comments
+            if (recentComments?.data) {
+                recentComments.data.forEach(comment => {
+                    allActivities.push({
+                        type: 'comment',
+                        created_at: comment.created_at,
+                        user: comment.user?.username || 'Unknown',
+                        data: comment
+                    });
+                });
+            }
+
+            // Add new users
+            if (recentUsers?.data) {
+                recentUsers.data.forEach(user => {
+                    allActivities.push({
+                        type: 'user_joined',
+                        created_at: user.created_at,
+                        user: user.username,
+                        data: user
+                    });
+                });
+            }
+
+            // Add proposals
+            if (recentProposals?.data) {
+                recentProposals.data.forEach(proposal => {
+                    allActivities.push({
+                        type: 'proposal',
+                        created_at: proposal.created_at,
+                        user: proposal.user?.username || 'Unknown',
+                        data: proposal
+                    });
+                });
+            }
+
+            // Add transactions (payouts, deposits, withdrawals)
+            if (transactions) {
+                transactions.forEach(tx => {
+                    if (tx.type !== 'bet') {
+                        allActivities.push({
+                            type: tx.type,
+                            created_at: tx.created_at,
+                            user: tx.user?.username || 'Unknown',
+                            data: tx
+                        });
+                    }
+                });
+            }
+
+            // Sort by date (most recent first)
+            allActivities.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            // Render activities in a table
+            container.innerHTML = `
+                <div style="background: var(--bg2); border-radius: 12px; padding: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <h3 style="font-size: 18px; font-weight: 600;">All Site Activity</h3>
+                        <span style="color: var(--muted);">${allActivities.length} total activities</span>
+                    </div>
+
+                    ${allActivities.length === 0 ? `
+                        <div style="text-align: center; padding: 48px; color: var(--muted);">
+                            <i class="fa-solid fa-inbox" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
+                            <p>No activities yet</p>
+                        </div>
+                    ` : `
+                        <div style="overflow-x: auto;">
+                            ${allActivities.map(activity => {
+                                const date = new Date(activity.created_at);
+                                const timeAgo = this.getTimeAgo(date);
+                                const fullDate = date.toLocaleString();
+
+                                let typeIcon, typeColor, typeText, description;
+
+                                switch (activity.type) {
+                                    case 'bet':
+                                        typeIcon = 'fa-chart-line';
+                                        typeColor = '#00CB97';
+                                        typeText = 'Bet Placed';
+                                        description = `${activity.data.outcome?.toUpperCase()} on "${activity.data.market?.title || 'Unknown Market'}" - J$${parseFloat(activity.data.amount).toFixed(2)}`;
+                                        break;
+                                    case 'market_created':
+                                        typeIcon = 'fa-plus-circle';
+                                        typeColor = '#631BDD';
+                                        typeText = 'Market Created';
+                                        description = activity.data.title;
+                                        break;
+                                    case 'comment':
+                                        typeIcon = 'fa-comment';
+                                        typeColor = '#027A40';
+                                        typeText = 'Comment';
+                                        description = `On "${activity.data.market?.title || 'Unknown Market'}"`;
+                                        break;
+                                    case 'user_joined':
+                                        typeIcon = 'fa-user-plus';
+                                        typeColor = '#F2C300';
+                                        typeText = 'New Member';
+                                        description = `@${activity.user} joined`;
+                                        break;
+                                    case 'proposal':
+                                        typeIcon = 'fa-lightbulb';
+                                        typeColor = '#00e5af';
+                                        typeText = 'Proposal';
+                                        description = activity.data.title || activity.data.market_question;
+                                        break;
+                                    case 'payout':
+                                        typeIcon = 'fa-trophy';
+                                        typeColor = '#F2C300';
+                                        typeText = 'Payout';
+                                        description = `Won J$${parseFloat(activity.data.amount).toFixed(2)}`;
+                                        break;
+                                    case 'deposit':
+                                        typeIcon = 'fa-arrow-down';
+                                        typeColor = '#027A40';
+                                        typeText = 'Deposit';
+                                        description = `+J$${parseFloat(activity.data.amount).toFixed(2)}`;
+                                        break;
+                                    case 'withdrawal':
+                                        typeIcon = 'fa-arrow-up';
+                                        typeColor = '#ef4444';
+                                        typeText = 'Withdrawal';
+                                        description = `-J$${parseFloat(Math.abs(activity.data.amount)).toFixed(2)}`;
+                                        break;
+                                    default:
+                                        typeIcon = 'fa-circle-info';
+                                        typeColor = '#9333ea';
+                                        typeText = activity.type;
+                                        description = activity.data.description || '';
+                                }
+
+                                return `
+                                    <div style="display: flex; align-items: center; gap: 16px; padding: 16px; border-bottom: 1px solid var(--bg3); transition: background 0.2s;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='transparent'">
+                                        <div style="flex-shrink: 0;">
+                                            <i class="fa-solid ${typeIcon}" style="color: ${typeColor}; font-size: 20px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: rgba(${parseInt(typeColor.slice(1,3), 16)}, ${parseInt(typeColor.slice(3,5), 16)}, ${parseInt(typeColor.slice(5,7), 16)}, 0.1); border-radius: 8px;"></i>
+                                        </div>
+                                        <div style="flex: 1; min-width: 0;">
+                                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                                <strong style="color: var(--text-primary); font-size: 14px;">${typeText}</strong>
+                                                <span style="color: var(--muted); font-size: 12px;">•</span>
+                                                <span style="color: var(--muted); font-size: 12px;">${activity.user}</span>
+                                            </div>
+                                            <div style="color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                ${description}
+                                            </div>
+                                        </div>
+                                        <div style="flex-shrink: 0; text-align: right;">
+                                            <div style="color: var(--text-primary); font-size: 13px; margin-bottom: 2px;" title="${fullDate}">${timeAgo}</div>
+                                            <div style="color: var(--muted); font-size: 11px;">${date.toLocaleDateString()}</div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
+
+        } catch (error) {
+            console.error('Error loading activities:', error);
+            container.innerHTML = `<div class="text-center py-12" style="color: var(--error);">Error loading activities: ${error.message}</div>`;
+        }
+    }
+
+    getTimeAgo(date) {
+        const now = new Date();
+        const seconds = Math.floor((now - date) / 1000);
+
+        if (seconds < 60) return 'just now';
+        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+        if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+        if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+        return date.toLocaleDateString();
     }
 }
 

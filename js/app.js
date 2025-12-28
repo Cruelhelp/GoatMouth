@@ -3,7 +3,7 @@ class GoatMouth {
     constructor() {
         this.api = null;
         this.currentUser = null;
-        this.currentView = 'markets';
+        this.currentView = 'markets'; // Always default to markets on page load
         this.currentCategory = 'all';
         this.isMobile = this.detectMobile();
         this.mobileMenuOpen = false;
@@ -72,9 +72,9 @@ class GoatMouth {
             }
         });
 
-        // Check for hash navigation (e.g., #activity, #portfolio)
+        // Check for hash navigation (e.g., #portfolio, #voting, #activity)
         const hash = window.location.hash.substring(1);
-        if (hash && ['activity', 'portfolio', 'markets', 'voting', 'leaderboard'].includes(hash)) {
+        if (hash && ['portfolio', 'markets', 'voting', 'leaderboard', 'activity'].includes(hash)) {
             this.currentView = hash;
 
             // Update active state on navigation buttons
@@ -87,6 +87,9 @@ class GoatMouth {
                     activeBtn.classList.add('active');
                 }
             }, 100);
+
+            // Clear hash from URL for cleaner navigation
+            window.history.replaceState(null, null, window.location.pathname);
         }
 
         // Full render (updates auth state in header and renders content)
@@ -128,19 +131,45 @@ class GoatMouth {
     }
 
     async handleAuthCallback() {
-        // Check if URL contains auth tokens (from email verification)
+        // Check if URL contains auth tokens (from email verification or OAuth)
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const accessToken = hashParams.get('access_token');
         const type = hashParams.get('type');
 
-        if (accessToken && type === 'signup') {
-            // Email was verified! Clean up URL and show success message
-            window.history.replaceState({}, document.title, window.location.pathname);
+        // Check query params for app identifier
+        const urlParams = new URLSearchParams(window.location.search);
+        const appParam = urlParams.get('app');
 
-            // Show welcome message
-            setTimeout(() => {
-                this.showWelcomeMessage();
-            }, 1000);
+        // If we have an access token, this is an OAuth callback
+        if (accessToken) {
+            // Check if this OAuth was initiated from GoatMouth
+            const oauthApp = localStorage.getItem('oauth_app');
+            const oauthRedirect = localStorage.getItem('oauth_redirect');
+
+            // If OAuth was initiated from GoatMouth but we're on a different site, redirect back
+            if (oauthApp === 'goatmouth' && oauthRedirect && !window.location.origin.includes(oauthRedirect)) {
+                localStorage.removeItem('oauth_app');
+                localStorage.removeItem('oauth_redirect');
+                window.location.href = `${oauthRedirect}/index.html`;
+                return;
+            }
+
+            // Clean up OAuth markers
+            localStorage.removeItem('oauth_app');
+            localStorage.removeItem('oauth_redirect');
+
+            if (type === 'signup') {
+                // Email was verified! Clean up URL and show success message
+                window.history.replaceState({}, document.title, window.location.pathname);
+
+                // Show welcome message
+                setTimeout(() => {
+                    this.showWelcomeMessage();
+                }, 1000);
+            } else {
+                // OAuth login completed, clean up URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
         }
     }
 
@@ -365,12 +394,12 @@ class GoatMouth {
                         <div class="flex items-center gap-2">
                             ${isAuth ? `
                                 <!-- Balance -->
-                                <div class="px-2 py-1 rounded-lg border" style="background: rgba(0, 203, 151, 0.1); border-color: rgba(0, 203, 151, 0.3); max-width: 85px; overflow: hidden;">
-                                    <span class="text-xs font-bold whitespace-nowrap" style="color: #00CB97; display: block; overflow: hidden; text-overflow: ellipsis;" id="mobile-user-balance">$0.00</span>
+                                <div class="px-2 py-1 rounded-lg border" style="background: rgba(2, 122, 64, 0.1); border-color: rgba(2, 122, 64, 0.3); max-width: 85px; overflow: hidden;">
+                                    <span class="text-xs font-bold whitespace-nowrap" style="color: #027A40; display: block; overflow: hidden; text-overflow: ellipsis;" id="mobile-user-balance">$0.00</span>
                                 </div>
                             ` : `
                                 <!-- Login & Sign Up Buttons -->
-                                <button class="px-2 py-1.5 rounded-lg font-semibold text-xs border touch-target" style="border-color: #00CB97; color: #00CB97; min-height: 32px;" data-action="connect" data-tab="login">Login</button>
+                                <button class="px-2 py-1.5 rounded-lg font-semibold text-xs border touch-target" style="border-color: #027A40; color: #027A40; min-height: 32px;" data-action="connect" data-tab="login">Login</button>
                                 <button class="px-2 py-1.5 rounded-lg font-semibold text-xs touch-target" style="background: #00CB97; color: white; min-height: 32px;" data-action="connect" data-tab="signup">Sign Up</button>
                             `}
                         </div>
@@ -384,7 +413,7 @@ class GoatMouth {
                 <div class="mobile-menu">
                     <div class="p-6">
                         <!-- User Info -->
-                        <div class="flex items-center gap-3 mb-6 pb-6 border-b-2" style="border-color: rgba(0, 203, 151, 0.2);">
+                        <div class="flex items-center gap-3 mb-6 pb-6 border-b-2" style="border-color: rgba(2, 122, 64, 0.2);">
                             <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold" style="background: linear-gradient(135deg, #00CB97 0%, #631BDD 100%);">
                                 <span id="mobile-avatar-initial">U</span>
                             </div>
@@ -397,7 +426,7 @@ class GoatMouth {
                         <!-- Menu Items -->
                         <nav class="space-y-2">
                             <a href="#" class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition touch-target" data-nav="markets" onclick="app.toggleMobileMenu()">
-                                <svg class="w-5 h-5" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-5 h-5" style="color: #027A40;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
                                 </svg>
                                 <span class="font-semibold">Markets</span>
@@ -415,10 +444,10 @@ class GoatMouth {
                                 <span class="font-semibold">Activity</span>
                             </a>
                             <a href="#" class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition touch-target" data-nav="voting" onclick="app.toggleMobileMenu()">
-                                <svg class="w-5 h-5" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-5 h-5" style="color: #027A40;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
-                                <span class="font-semibold" style="color: #00CB97;">Community Voting</span>
+                                <span class="font-semibold" style="color: #027A40;">Community Voting</span>
                             </a>
 
                             <!-- Live Feed Section (Mobile Only) -->
@@ -524,7 +553,7 @@ class GoatMouth {
                         <input
                             type="text"
                             placeholder="Search GoatMouth Market..."
-                            class="w-full px-5 py-2.5 pl-12 bg-gray-800 border-2 rounded-xl text-base focus:outline-none shadow-lg" style="border-color: #00CB97; box-shadow: 0 4px 14px 0 rgba(0, 203, 151, 0.15);" onfocus="this.style.boxShadow='0 4px 20px 0 rgba(0, 203, 151, 0.3)'; this.style.borderColor='#00CB97'" onblur="this.style.boxShadow='0 4px 14px 0 rgba(0, 203, 151, 0.15)'; this.style.borderColor='#00CB97'"
+                            class="w-full px-5 py-2.5 pl-12 bg-gray-800 border-2 rounded-xl text-base focus:outline-none shadow-lg" style="border-color: #027A40; box-shadow: 0 4px 14px 0 rgba(2, 122, 64, 0.15);" onfocus="this.style.boxShadow='0 4px 20px 0 rgba(2, 122, 64, 0.3)'; this.style.borderColor='#00CB97'" onblur="this.style.boxShadow='0 4px 14px 0 rgba(2, 122, 64, 0.15)'; this.style.borderColor='#00CB97'"
                         >
                         <svg class="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5" style="color: #00a87d;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -542,8 +571,8 @@ class GoatMouth {
 
                         <!-- Balance -->
                         <div class="relative px-5 py-2.5 rounded-xl border-2"
-                             style="background: linear-gradient(135deg, rgba(0, 203, 151, 0.15) 0%, rgba(0, 203, 151, 0.05) 100%);
-                                    border-color: rgba(0, 203, 151, 0.3);
+                             style="background: linear-gradient(135deg, rgba(2, 122, 64, 0.15) 0%, rgba(2, 122, 64, 0.05) 100%);
+                                    border-color: rgba(2, 122, 64, 0.3);
                                     backdrop-filter: blur(10px);">
                             <div class="flex items-center gap-2.5">
                                 <div class="flex items-center justify-center w-8 h-8 rounded-lg"
@@ -553,8 +582,8 @@ class GoatMouth {
                                     </svg>
                                 </div>
                                 <div class="flex flex-col" style="min-width: 0;">
-                                    <span class="text-xs font-medium tracking-wide" style="color: rgba(0, 203, 151, 0.8);">BALANCE</span>
-                                    <span class="text-lg font-bold leading-none tracking-tight whitespace-nowrap" style="color: #00CB97; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 120px;" id="desktop-user-balance">$0.00</span>
+                                    <span class="text-xs font-medium tracking-wide" style="color: rgba(2, 122, 64, 0.8);">BALANCE</span>
+                                    <span class="text-lg font-bold leading-none tracking-tight whitespace-nowrap" style="color: #027A40; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 120px;" id="desktop-user-balance">$0.00</span>
                                 </div>
                             </div>
                         </div>
@@ -562,12 +591,12 @@ class GoatMouth {
                         <!-- User Profile Dropdown -->
                         <div class="relative profile-dropdown">
                             <button class="group relative flex items-center gap-2.5 px-5 py-2.5 rounded-xl border-2 transition-all duration-300 hover:scale-105 overflow-hidden"
-                                    style="background: linear-gradient(135deg, rgba(0, 203, 151, 0.08) 0%, rgba(99, 27, 221, 0.08) 100%);
-                                           border-color: rgba(0, 203, 151, 0.3);
+                                    style="background: linear-gradient(135deg, rgba(2, 122, 64, 0.08) 0%, rgba(99, 27, 221, 0.08) 100%);
+                                           border-color: rgba(2, 122, 64, 0.3);
                                            backdrop-filter: blur(10px);"
                                     data-action="toggle-profile"
-                                    onmouseover="this.style.borderColor='rgba(0, 203, 151, 0.6)'; this.style.boxShadow='0 0 20px rgba(0, 203, 151, 0.3)'"
-                                    onmouseout="this.style.borderColor='rgba(0, 203, 151, 0.3)'; this.style.boxShadow='none'">
+                                    onmouseover="this.style.borderColor='rgba(2, 122, 64, 0.6)'; this.style.boxShadow='0 0 20px rgba(2, 122, 64, 0.3)'"
+                                    onmouseout="this.style.borderColor='rgba(2, 122, 64, 0.3)'; this.style.boxShadow='none'">
                                 <div class="flex items-center justify-center w-7 h-7 rounded-lg transition-all duration-300 group-hover:scale-110"
                                      style="background: linear-gradient(135deg, #00CB97 0%, #631BDD 100%);">
                                     <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -575,7 +604,7 @@ class GoatMouth {
                                     </svg>
                                 </div>
                                 <span class="font-bold text-white tracking-tight" id="user-name">User</span>
-                                <svg class="h-4 w-4 transition-transform duration-300 group-hover:translate-y-0.5" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="h-4 w-4 transition-transform duration-300 group-hover:translate-y-0.5" style="color: #027A40;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
                                 </svg>
                             </button>
@@ -583,17 +612,17 @@ class GoatMouth {
                             <!-- Dropdown Menu -->
                             <div class="profile-menu hidden absolute right-0 mt-3 w-72 rounded-2xl border-2 shadow-2xl z-50 overflow-hidden"
                                  style="background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-                                        border-color: rgba(0, 203, 151, 0.2);
+                                        border-color: rgba(2, 122, 64, 0.2);
                                         backdrop-filter: blur(20px);
-                                        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 203, 151, 0.1);">
+                                        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(2, 122, 64, 0.1);">
                                 <!-- Header -->
-                                <div class="p-5 border-b-2" style="background: linear-gradient(135deg, rgba(0, 203, 151, 0.12) 0%, rgba(99, 27, 221, 0.12) 100%);
-                                                                    border-color: rgba(0, 203, 151, 0.15);">
+                                <div class="p-5 border-b-2" style="background: linear-gradient(135deg, rgba(2, 122, 64, 0.12) 0%, rgba(99, 27, 221, 0.12) 100%);
+                                                                    border-color: rgba(2, 122, 64, 0.15);">
                                     <div class="flex items-center gap-3.5">
                                         <div class="relative flex-shrink-0">
                                             <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg text-white ring-2 ring-offset-2 ring-offset-gray-800 transition-all duration-300"
                                                  style="background: linear-gradient(135deg, #00CB97 0%, #631BDD 100%);
-                                                        ring-color: rgba(0, 203, 151, 0.4);">
+                                                        ring-color: rgba(2, 122, 64, 0.4);">
                                                 <span id="user-avatar-initial">U</span>
                                             </div>
                                             <div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-gray-800"
@@ -601,7 +630,7 @@ class GoatMouth {
                                         </div>
                                         <div class="flex-1 min-w-0">
                                             <p class="font-bold text-base text-white truncate tracking-tight" id="user-name-dropdown">User</p>
-                                            <p class="text-xs font-medium truncate mt-0.5" style="color: rgba(0, 203, 151, 0.8);" id="user-email">user@email.com</p>
+                                            <p class="text-xs font-medium truncate mt-0.5" style="color: rgba(2, 122, 64, 0.8);" id="user-email">user@email.com</p>
                                         </div>
                                     </div>
                                 </div>
@@ -610,11 +639,11 @@ class GoatMouth {
                                 <div class="py-2">
                                     <a href="#" class="group flex items-center gap-3.5 px-5 py-3 transition-all duration-200 relative overflow-hidden"
                                        data-nav="profile"
-                                       onmouseover="this.style.background='linear-gradient(90deg, rgba(0, 203, 151, 0.15) 0%, rgba(0, 203, 151, 0.05) 100%)'"
+                                       onmouseover="this.style.background='linear-gradient(90deg, rgba(2, 122, 64, 0.15) 0%, rgba(2, 122, 64, 0.05) 100%)'"
                                        onmouseout="this.style.background='transparent'">
                                         <div class="flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-200"
-                                             style="background: rgba(0, 203, 151, 0.1);">
-                                            <svg class="h-4.5 w-4.5 transition-all duration-200" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                             style="background: rgba(2, 122, 64, 0.1);">
+                                            <svg class="h-4.5 w-4.5 transition-all duration-200" style="color: #027A40;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                                             </svg>
                                         </div>
@@ -622,11 +651,11 @@ class GoatMouth {
                                     </a>
                                     <a href="#" class="group flex items-center gap-3.5 px-5 py-3 transition-all duration-200 relative overflow-hidden"
                                        data-action="edit-profile"
-                                       onmouseover="this.style.background='linear-gradient(90deg, rgba(0, 203, 151, 0.15) 0%, rgba(0, 203, 151, 0.05) 100%)'"
+                                       onmouseover="this.style.background='linear-gradient(90deg, rgba(2, 122, 64, 0.15) 0%, rgba(2, 122, 64, 0.05) 100%)'"
                                        onmouseout="this.style.background='transparent'">
                                         <div class="flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-200"
-                                             style="background: rgba(0, 203, 151, 0.1);">
-                                            <svg class="h-4.5 w-4.5 transition-all duration-200" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                             style="background: rgba(2, 122, 64, 0.1);">
+                                            <svg class="h-4.5 w-4.5 transition-all duration-200" style="color: #027A40;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                             </svg>
                                         </div>
@@ -670,8 +699,8 @@ class GoatMouth {
                             <img src="assets/info.png" alt="Info" class="h-9 w-9">
                             How it works
                         </a>
-                        <button class="px-8 py-4 text-lg font-bold rounded-xl transition" style="color: #00CB97;" onmouseover="this.style.backgroundColor='rgba(0, 203, 151, 0.1)'" onmouseout="this.style.backgroundColor='transparent'" data-action="connect" data-tab="login">Log In</button>
-                        <button class="px-8 py-4 rounded-xl font-bold text-lg transition text-white" style="background-color: #00CB97;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'" data-action="connect" data-tab="signup">Sign Up</button>
+                        <button class="px-8 py-4 text-lg font-bold rounded-xl transition" style="color: #027A40;" onmouseover="this.style.backgroundColor='rgba(2, 122, 64, 0.1)'" onmouseout="this.style.backgroundColor='transparent'" data-action="connect" data-tab="login">Log In</button>
+                        <button class="px-8 py-4 rounded-xl font-bold text-lg transition text-white" style="background-color: #027A40;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'" data-action="connect" data-tab="signup">Sign Up</button>
                     `}
                     <button class="text-gray-300 hover:text-white transition p-3">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -689,7 +718,7 @@ class GoatMouth {
                 <div class="category-nav-mobile border-t border-gray-800 bg-gray-900" style="position: fixed; top: 124px; left: 0; right: 0; z-index: 40; width: 100%;">
                     <div class="flex gap-3 overflow-x-auto px-4 py-3" style="-webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none;">
                         <a href="#" class="mobile-card whitespace-nowrap px-4 py-2 rounded-full text-xs font-semibold transition active:scale-95 ${this.currentCategory === 'all' && this.currentView === 'markets' ? 'category-active' : ''}"
-                           style="background: ${this.currentCategory === 'all' && this.currentView === 'markets' ? '#00CB97' : 'rgba(0, 203, 151, 0.1)'};
+                           style="background: ${this.currentCategory === 'all' && this.currentView === 'markets' ? '#00CB97' : 'rgba(2, 122, 64, 0.1)'};
                                   color: ${this.currentCategory === 'all' && this.currentView === 'markets' ? 'white' : '#00CB97'};
                                   border: 1px solid ${this.currentCategory === 'all' && this.currentView === 'markets' ? '#00CB97' : 'transparent'};"
                            data-category="all">
@@ -718,7 +747,7 @@ class GoatMouth {
                             Earn
                         </a>
                         <a href="#" class="mobile-card whitespace-nowrap px-4 py-2 rounded-full text-xs font-semibold transition active:scale-95"
-                           style="background: ${this.currentCategory === 'Politics' ? '#00CB97' : 'rgba(0, 203, 151, 0.1)'};
+                           style="background: ${this.currentCategory === 'Politics' ? '#00CB97' : 'rgba(2, 122, 64, 0.1)'};
                                   color: ${this.currentCategory === 'Politics' ? 'white' : '#00CB97'};
                                   border: 1px solid ${this.currentCategory === 'Politics' ? '#00CB97' : 'transparent'};"
                            data-category="Politics">Politics</a>
@@ -733,7 +762,7 @@ class GoatMouth {
                                   border: 1px solid ${this.currentCategory === 'Finance' ? '#F2C300' : 'transparent'};"
                            data-category="Finance">Finance</a>
                         <a href="#" class="mobile-card whitespace-nowrap px-4 py-2 rounded-full text-xs font-semibold transition active:scale-95"
-                           style="background: ${this.currentCategory === 'Crypto' ? '#00CB97' : 'rgba(0, 203, 151, 0.1)'};
+                           style="background: ${this.currentCategory === 'Crypto' ? '#00CB97' : 'rgba(2, 122, 64, 0.1)'};
                                   color: ${this.currentCategory === 'Crypto' ? 'white' : '#00CB97'};
                                   border: 1px solid ${this.currentCategory === 'Crypto' ? '#00CB97' : 'transparent'};"
                            data-category="Crypto">Crypto</a>
@@ -748,7 +777,7 @@ class GoatMouth {
                                   border: 1px solid ${this.currentCategory === 'Science' ? '#F2C300' : 'transparent'};"
                            data-category="Science">Science</a>
                         <a href="#" class="mobile-card whitespace-nowrap px-4 py-2 rounded-full text-xs font-semibold transition active:scale-95"
-                           style="background: ${this.currentCategory === 'Culture' ? '#00CB97' : 'rgba(0, 203, 151, 0.1)'};
+                           style="background: ${this.currentCategory === 'Culture' ? '#00CB97' : 'rgba(2, 122, 64, 0.1)'};
                                   color: ${this.currentCategory === 'Culture' ? 'white' : '#00CB97'};
                                   border: 1px solid ${this.currentCategory === 'Culture' ? '#00CB97' : 'transparent'};"
                            data-category="Culture">Culture</a>
@@ -945,7 +974,7 @@ class GoatMouth {
                     <div class="text-center py-12">
                         <p class="text-gray-400 mb-4">No active markets${categoryText}</p>
                         ${this.currentCategory !== 'all' ? '<button class="px-4 py-2 rounded-lg text-white transition" style="background-color: #631BDD;" onmouseover="this.style.backgroundColor=\'#7a2ef0\'" onmouseout="this.style.backgroundColor=\'#631BDD\'" onclick="app.filterByCategory(\'all\')">View All Markets</button>' : ''}
-                        ${this.currentProfile && this.currentProfile.role === 'admin' ? '<button class="px-4 py-2 rounded-lg text-white transition ml-2" style="background-color: #00CB97;" onmouseover="this.style.backgroundColor=\'#00e5af\'" onmouseout="this.style.backgroundColor=\'#00CB97\'" onclick="app.showCreateMarketModal()">Create Market</button>' : ''}
+                        ${this.currentProfile && this.currentProfile.role === 'admin' ? '<button class="px-4 py-2 rounded-lg text-white transition ml-2" style="background-color: #027A40;" onmouseover="this.style.backgroundColor=\'#00e5af\'" onmouseout="this.style.backgroundColor=\'#00CB97\'" onclick="app.showCreateMarketModal()">Create Market</button>' : ''}
                     </div>
                 `;
                 return;
@@ -974,7 +1003,7 @@ class GoatMouth {
 
                 ${this.currentProfile && this.currentProfile.role === 'admin' ? `
                     <div class="mb-6 flex justify-end">
-                        <button class="px-4 py-2 rounded-lg text-white transition" style="background-color: #00CB97;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'" onclick="app.showCreateMarketModal()">Create Market</button>
+                        <button class="px-4 py-2 rounded-lg text-white transition" style="background-color: #027A40;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'" onclick="app.showCreateMarketModal()">Create Market</button>
                     </div>
                 ` : ''}
 
@@ -995,7 +1024,7 @@ class GoatMouth {
                         <span class="text-gray-400 font-medium">Page ${currentPage} of ${totalPages}</span>
                         ${hasMore ? `
                             <button class="px-6 py-3 rounded-lg font-bold text-white transition"
-                                    style="background-color: #00CB97;"
+                                    style="background-color: #027A40;"
                                     onmouseover="this.style.backgroundColor='#00e5af'"
                                     onmouseout="this.style.backgroundColor='#00CB97'"
                                     onclick="app.nextPage()">
@@ -1025,12 +1054,12 @@ class GoatMouth {
                 <div class="mobile-card bg-gray-800 rounded-xl overflow-hidden border border-gray-700 touch-target"
                      onclick="app.showMarketDetail('${market.id}')"
                      style="box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);"
-                     ontouchstart="this.style.transform='scale(0.97)'; this.style.boxShadow='0 1px 4px rgba(0,0,0,0.2), inset 0 0 0 1px rgba(0, 203, 151, 0.3)'; this.style.borderColor='rgba(0, 203, 151, 0.4)';"
+                     ontouchstart="this.style.transform='scale(0.97)'; this.style.boxShadow='0 1px 4px rgba(0,0,0,0.2), inset 0 0 0 1px rgba(2, 122, 64, 0.3)'; this.style.borderColor='rgba(2, 122, 64, 0.4)';"
                      ontouchend="this.style.transform='scale(1)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.3)'; this.style.borderColor='rgb(55, 65, 81)';"
                      ontouchcancel="this.style.transform='scale(1)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.3)'; this.style.borderColor='rgb(55, 65, 81)';">
 
                     <!-- Colored Top Bar -->
-                    <div style="height: 4px; background: linear-gradient(90deg, #00CB97 0%, #00CB97 ${yesPercent}%, #ef4444 ${yesPercent}%, #ef4444 100%);"></div>
+                    <div style="height: 4px; background: linear-gradient(90deg, #027A40 0%, #027A40 ${yesPercent}%, #ef4444 ${yesPercent}%, #ef4444 100%);"></div>
 
                     <!-- Image Section -->
                     ${market.image_url ? `
@@ -1041,7 +1070,7 @@ class GoatMouth {
                         <!-- Category Badge -->
                         ${market.category ? `
                             <div class="mb-2">
-                                <span class="text-xs px-2 py-0.5 rounded-md font-semibold" style="background-color: rgba(0, 203, 151, 0.1); color: #00CB97; border: 1px solid rgba(0, 203, 151, 0.2);">${market.category}</span>
+                                <span class="text-xs px-2 py-0.5 rounded-md font-semibold" style="background-color: rgba(2, 122, 64, 0.1); color: #027A40; border: 1px solid rgba(2, 122, 64, 0.2);">${market.category}</span>
                             </div>
                         ` : ''}
 
@@ -1057,14 +1086,14 @@ class GoatMouth {
                                     <!-- Vertical Bar Area (Fixed Height) -->
                                     <div style="width: 100%; height: 100px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative;">
                                         <!-- Faded background track -->
-                                        <div style="position: absolute; bottom: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, rgba(0, 203, 151, 0.05) 0px, rgba(0, 203, 151, 0.05) 10px, transparent 10px, transparent 20px); border-radius: 6px; opacity: 0.3;"></div>
+                                        <div style="position: absolute; bottom: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, rgba(2, 122, 64, 0.05) 0px, rgba(2, 122, 64, 0.05) 10px, transparent 10px, transparent 20px); border-radius: 6px; opacity: 0.3;"></div>
                                         <!-- Active bar growing from bottom -->
-                                        <div style="width: 100%; background: linear-gradient(180deg, #00e5af 0%, #00CB97 100%); border-radius: 6px 6px 0 0; transition: all 0.5s ease; box-shadow: 0 -4px 12px rgba(0, 203, 151, 0.4); height: ${yesPercent}%; display: flex; align-items: center; justify-content: center; position: relative; z-index: 10;">
+                                        <div style="width: 100%; background: linear-gradient(180deg, #03924d 0%, #027A40 100%); border-radius: 6px 6px 0 0; transition: all 0.5s ease; box-shadow: 0 -4px 12px rgba(2, 122, 64, 0.4); height: ${yesPercent}%; display: flex; align-items: center; justify-content: center; position: relative; z-index: 10;">
                                             <span style="font-size: 1.1rem; font-weight: 700; color: white; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);">${yesPercent}%</span>
                                         </div>
                                     </div>
                                     <!-- Label below bar -->
-                                    <span style="font-size: 0.7rem; font-weight: 600; color: #00CB97; text-transform: uppercase; letter-spacing: 0.03em;">Yes</span>
+                                    <span style="font-size: 0.7rem; font-weight: 600; color: #027A40; text-transform: uppercase; letter-spacing: 0.03em;">Yes</span>
                                 </div>
 
                                 <!-- NO Bar -->
@@ -1114,13 +1143,13 @@ class GoatMouth {
                 <div class="bg-gray-800 rounded-lg overflow-hidden cursor-pointer border border-gray-700"
                      onclick="app.showMarketDetail('${market.id}')"
                      style="box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);"
-                     onmouseover="this.style.boxShadow='0 8px 24px rgba(0, 203, 151, 0.15), 0 4px 12px rgba(0,0,0,0.4)'; this.style.transform='translateY(-4px) scale(1.01)'; this.style.borderColor='rgba(0, 203, 151, 0.5)';"
+                     onmouseover="this.style.boxShadow='0 8px 24px rgba(2, 122, 64, 0.15), 0 4px 12px rgba(0,0,0,0.4)'; this.style.transform='translateY(-4px) scale(1.01)'; this.style.borderColor='rgba(2, 122, 64, 0.5)';"
                      onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.2)'; this.style.transform='translateY(0) scale(1)'; this.style.borderColor='rgb(55, 65, 81)';"
-                     onmousedown="this.style.transform='translateY(-2px) scale(0.99)'; this.style.boxShadow='0 4px 12px rgba(0, 203, 151, 0.2)';"
-                     onmouseup="this.style.transform='translateY(-4px) scale(1.01)'; this.style.boxShadow='0 8px 24px rgba(0, 203, 151, 0.15), 0 4px 12px rgba(0,0,0,0.4)';">
+                     onmousedown="this.style.transform='translateY(-2px) scale(0.99)'; this.style.boxShadow='0 4px 12px rgba(2, 122, 64, 0.2)';"
+                     onmouseup="this.style.transform='translateY(-4px) scale(1.01)'; this.style.boxShadow='0 8px 24px rgba(2, 122, 64, 0.15), 0 4px 12px rgba(0,0,0,0.4)';">
 
                     <!-- Colored Top Bar -->
-                    <div style="height: 3px; background: linear-gradient(90deg, #00CB97 0%, #00CB97 ${yesPercent}%, #ef4444 ${yesPercent}%, #ef4444 100%);"></div>
+                    <div style="height: 3px; background: linear-gradient(90deg, #027A40 0%, #027A40 ${yesPercent}%, #ef4444 ${yesPercent}%, #ef4444 100%);"></div>
 
                     <!-- Image Placeholder -->
                     ${market.image_url ? `
@@ -1135,7 +1164,7 @@ class GoatMouth {
                                         stroke-dasharray="${2 * Math.PI * 26}"
                                         stroke-dashoffset="${2 * Math.PI * 26 - (yesPercent / 100) * 2 * Math.PI * 26}"
                                         stroke-linecap="round"
-                                        style="filter: drop-shadow(0 0 4px rgba(0, 203, 151, 0.6)); transition: stroke-dashoffset 0.5s ease;"/>
+                                        style="filter: drop-shadow(0 0 4px rgba(2, 122, 64, 0.6)); transition: stroke-dashoffset 0.5s ease;"/>
                                 <text x="30" y="30" text-anchor="middle" dy="5" font-size="16" font-weight="bold" fill="#00CB97" transform="rotate(90 30 30)">${yesPercent}%</text>
                             </svg>
                         </div>
@@ -1145,7 +1174,7 @@ class GoatMouth {
                         <!-- Category Badge -->
                         ${market.category ? `
                             <div class="mb-2">
-                                <span class="text-xs px-2 py-0.5 rounded-md font-semibold" style="background-color: rgba(0, 203, 151, 0.1); color: #00CB97; border: 1px solid rgba(0, 203, 151, 0.2); font-size: 9px;">${market.category}</span>
+                                <span class="text-xs px-2 py-0.5 rounded-md font-semibold" style="background-color: rgba(2, 122, 64, 0.1); color: #027A40; border: 1px solid rgba(2, 122, 64, 0.2); font-size: 9px;">${market.category}</span>
                             </div>
                         ` : ''}
 
@@ -1161,14 +1190,14 @@ class GoatMouth {
                                     <!-- Vertical Bar Area (Fixed Height) -->
                                     <div style="width: 100%; height: 80px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative;">
                                         <!-- Faded background track -->
-                                        <div style="position: absolute; bottom: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, rgba(0, 203, 151, 0.05) 0px, rgba(0, 203, 151, 0.05) 8px, transparent 8px, transparent 16px); border-radius: 5px; opacity: 0.3;"></div>
+                                        <div style="position: absolute; bottom: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, rgba(2, 122, 64, 0.05) 0px, rgba(2, 122, 64, 0.05) 8px, transparent 8px, transparent 16px); border-radius: 5px; opacity: 0.3;"></div>
                                         <!-- Active bar growing from bottom -->
-                                        <div style="width: 100%; background: linear-gradient(180deg, #00e5af 0%, #00CB97 100%); border-radius: 5px 5px 0 0; transition: all 0.5s ease; box-shadow: 0 -3px 10px rgba(0, 203, 151, 0.4); height: ${yesPercent}%; display: flex; align-items: center; justify-content: center; position: relative; z-index: 10;">
+                                        <div style="width: 100%; background: linear-gradient(180deg, #03924d 0%, #027A40 100%); border-radius: 5px 5px 0 0; transition: all 0.5s ease; box-shadow: 0 -3px 10px rgba(2, 122, 64, 0.4); height: ${yesPercent}%; display: flex; align-items: center; justify-content: center; position: relative; z-index: 10;">
                                             <span style="font-size: 0.95rem; font-weight: 700; color: white; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);">${yesPercent}%</span>
                                         </div>
                                     </div>
                                     <!-- Label below bar -->
-                                    <span style="font-size: 0.65rem; font-weight: 600; color: #00CB97; text-transform: uppercase; letter-spacing: 0.02em;">Yes</span>
+                                    <span style="font-size: 0.65rem; font-weight: 600; color: #027A40; text-transform: uppercase; letter-spacing: 0.02em;">Yes</span>
                                 </div>
 
                                 <!-- NO Bar -->
@@ -1229,7 +1258,7 @@ class GoatMouth {
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-2">
                             ${market.category ? `
-                                <span class="text-xs px-2 py-0.5 rounded-md font-semibold" style="background-color: rgba(0, 203, 151, 0.1); color: #00CB97; border: 1px solid rgba(0, 203, 151, 0.2);">
+                                <span class="text-xs px-2 py-0.5 rounded-md font-semibold" style="background-color: rgba(2, 122, 64, 0.1); color: #027A40; border: 1px solid rgba(2, 122, 64, 0.2);">
                                     ${market.category}
                                 </span>
                             ` : ''}
@@ -1262,7 +1291,7 @@ class GoatMouth {
                     <!-- Right: Probability Bars -->
                     <div class="flex gap-6 items-center">
                         <div class="text-center">
-                            <div class="text-2xl font-bold mb-1" style="color: #00CB97;">${yesPercent}%</div>
+                            <div class="text-2xl font-bold mb-1" style="color: #027A40;">${yesPercent}%</div>
                             <div class="text-xs text-gray-400 uppercase font-semibold">Yes</div>
                         </div>
                         <div class="h-16 w-px bg-gray-700"></div>
@@ -1421,7 +1450,7 @@ class GoatMouth {
                                         </div>
                                     </div>
                                     <div class="text-right">
-                                        <div class="text-xl font-bold" style="color: #00CB97;">$${(user.balance || 0).toFixed(2)}</div>
+                                        <div class="text-xl font-bold" style="color: #027A40;">$${(user.balance || 0).toFixed(2)}</div>
                                         <div class="text-sm text-gray-400">Balance</div>
                                     </div>
                                 </div>
@@ -1480,15 +1509,15 @@ class GoatMouth {
                             <div class="flex gap-4 mt-4">
                                 <!-- Balance Card -->
                                 <div class="group relative px-5 py-3 rounded-xl border-2 transition-all duration-300 hover:scale-105"
-                                     style="background: linear-gradient(135deg, rgba(0, 203, 151, 0.1) 0%, rgba(0, 203, 151, 0.05) 100%);
-                                            border-color: rgba(0, 203, 151, 0.3);">
+                                     style="background: linear-gradient(135deg, rgba(2, 122, 64, 0.1) 0%, rgba(2, 122, 64, 0.05) 100%);
+                                            border-color: rgba(2, 122, 64, 0.3);">
                                     <div class="flex items-center gap-2 mb-1">
-                                        <svg class="w-4 h-4" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="w-4 h-4" style="color: #027A40;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
                                         </svg>
-                                        <p class="text-xs font-semibold tracking-wide" style="color: rgba(0, 203, 151, 0.8);">BALANCE</p>
+                                        <p class="text-xs font-semibold tracking-wide" style="color: rgba(2, 122, 64, 0.8);">BALANCE</p>
                                     </div>
-                                    <p class="text-2xl font-bold" style="color: #00CB97;">J$${parseFloat(this.currentProfile.balance).toFixed(2)}</p>
+                                    <p class="text-2xl font-bold" style="color: #027A40;">J$${parseFloat(this.currentProfile.balance).toFixed(2)}</p>
                                 </div>
 
                                 <!-- Total Bets Card -->
@@ -1520,7 +1549,7 @@ class GoatMouth {
                                 </div>
                             </div>
                         </div>
-                        <button onclick="app.showEditProfileModal()" class="px-6 py-3 rounded-lg font-semibold text-white transition" style="background-color: #00CB97;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'">
+                        <button onclick="app.showEditProfileModal()" class="px-6 py-3 rounded-lg font-semibold text-white transition" style="background-color: #027A40;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'">
                             Edit Profile
                         </button>
                     </div>
@@ -1649,25 +1678,25 @@ class GoatMouth {
                 .stat-yellow { background: linear-gradient(135deg, #F2C300 0%, #ffd700 100%); }
                 .stat-red { background: linear-gradient(135deg, #ef4444 0%, #f87171 100%); }
                 .vote-tab {
-                    background: rgba(0, 203, 151, 0.1);
-                    border: 1px solid rgba(0, 203, 151, 0.3);
+                    background: rgba(2, 122, 64, 0.1);
+                    border: 1px solid rgba(2, 122, 64, 0.3);
                     padding: 10px 20px;
                     border-radius: 8px;
                     font-weight: 600;
                     cursor: pointer;
                     transition: 0.2s;
-                    color: #00CB97;
+                    color: #027A40;
                     display: inline-flex;
                     align-items: center;
                     gap: 8px;
                 }
                 .vote-tab:hover {
-                    background: rgba(0, 203, 151, 0.2);
+                    background: rgba(2, 122, 64, 0.2);
                 }
                 .vote-tab.active {
                     background: #00CB97;
                     color: white;
-                    border-color: #00CB97;
+                    border-color: #027A40;
                 }
                 .admin-grid {
                     display: grid;
@@ -1676,8 +1705,8 @@ class GoatMouth {
                     margin-top: 10px;
                 }
                 .admin-btn {
-                    background: rgba(0, 203, 151, 0.1);
-                    border: 1px solid rgba(0, 203, 151, 0.3);
+                    background: rgba(2, 122, 64, 0.1);
+                    border: 1px solid rgba(2, 122, 64, 0.3);
                     border-radius: 10px;
                     padding: 20px 10px;
                     text-align: center;
@@ -1685,7 +1714,7 @@ class GoatMouth {
                     font-size: 0.95rem;
                     cursor: pointer;
                     transition: 0.2s;
-                    color: #00CB97;
+                    color: #027A40;
                     display: flex;
                     flex-direction: column;
                     align-items: center;
@@ -1696,8 +1725,8 @@ class GoatMouth {
                     opacity: 0.75;
                 }
                 .admin-btn:hover {
-                    background: rgba(0, 203, 151, 0.2);
-                    border-color: #00CB97;
+                    background: rgba(2, 122, 64, 0.2);
+                    border-color: #027A40;
                     transform: translateY(-2px);
                 }
                 @media (max-width: 1024px) {
@@ -1846,7 +1875,7 @@ class GoatMouth {
 
                         <!-- Logo & Title -->
                         <div class="text-center mb-6">
-                            <img src="assets/official.png" alt="GoatMouth" class="mx-auto mb-4 logo-no-bg" style="height: 100px; width: 100px; filter: drop-shadow(0 0 30px rgba(0, 203, 151, 0.4));">
+                            <img src="assets/official.png" alt="GoatMouth" class="mx-auto mb-4 logo-no-bg" style="height: 100px; width: 100px; filter: drop-shadow(0 0 30px rgba(2, 122, 64, 0.4));">
                             <h2 class="text-2xl font-bold mb-1 bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">Welcome Back</h2>
                             <p class="text-gray-400 text-xs">Sign in or create an account to start trading</p>
                         </div>
@@ -2151,10 +2180,20 @@ class GoatMouth {
                 // Clear previous errors
                 errorDiv.classList.add('hidden');
 
+                // Mark that this is GoatMouth app for redirect after OAuth
+                localStorage.setItem('oauth_app', 'goatmouth');
+                localStorage.setItem('oauth_redirect', window.location.origin);
+
+                // Use current site's URL with app identifier for redirect
+                const redirectUrl = `${window.location.origin}/index.html?app=goatmouth`;
+                console.log('Google OAuth redirect URL:', redirectUrl);
+
                 const { data, error } = await this.api.db.auth.signInWithOAuth({
                     provider: 'google',
                     options: {
-                        redirectTo: `${window.location.origin}/index.html`
+                        redirectTo: redirectUrl,
+                        // Skip confirmation for faster login
+                        skipBrowserRedirect: false
                     }
                 });
 
@@ -2219,7 +2258,7 @@ class GoatMouth {
                         <button
                             type="submit"
                             class="w-full px-6 py-3 rounded-lg font-bold text-white transition"
-                            style="background-color: #00CB97;"
+                            style="background-color: #027A40;"
                             onmouseover="this.style.backgroundColor='#00e5af'"
                             onmouseout="this.style.backgroundColor='#00CB97'"
                         >
@@ -2328,7 +2367,7 @@ class GoatMouth {
             modal.innerHTML = `
                 <div class="bg-gray-800 rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
                     <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold" style="color: #00CB97;">Edit Market</h2>
+                        <h2 class="text-2xl font-bold" style="color: #027A40;">Edit Market</h2>
                         <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white transition">
                             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -2404,7 +2443,7 @@ class GoatMouth {
                         <div class="flex gap-3 pt-4">
                             <button type="submit"
                                     class="flex-1 px-6 py-3 rounded-lg font-bold text-white transition"
-                                    style="background-color: #00CB97;"
+                                    style="background-color: #027A40;"
                                     onmouseover="this.style.backgroundColor='#00e5af'"
                                     onmouseout="this.style.backgroundColor='#00CB97'">
                                 Update Market
@@ -2529,7 +2568,7 @@ class GoatMouth {
         modal.innerHTML = `
             <div class="bg-gray-800 rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold" style="color: #00CB97;">Create New Market</h2>
+                    <h2 class="text-2xl font-bold" style="color: #027A40;">Create New Market</h2>
                     <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white transition">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -2604,7 +2643,7 @@ class GoatMouth {
                     <div class="flex gap-3 pt-4">
                         <button type="submit"
                                 class="flex-1 px-6 py-3 rounded-lg font-bold text-white transition"
-                                style="background-color: #00CB97;"
+                                style="background-color: #027A40;"
                                 onmouseover="this.style.backgroundColor='#00e5af'"
                                 onmouseout="this.style.backgroundColor='#00CB97'">
                             Create Market
@@ -2726,8 +2765,30 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         app = new GoatMouth();
         window.app = app; // Expose for debugging
+
+        // Check if redirected from voting page to show login
+        if (window.location.hash === '#login') {
+            setTimeout(() => {
+                if (app && app.showAuthModal) {
+                    app.showAuthModal('login');
+                    // Remove hash from URL
+                    history.replaceState(null, null, ' ');
+                }
+            }, 500);
+        }
     });
 } else {
     app = new GoatMouth();
     window.app = app;
+
+    // Check if redirected from voting page to show login
+    if (window.location.hash === '#login') {
+        setTimeout(() => {
+            if (app && app.showAuthModal) {
+                app.showAuthModal('login');
+                // Remove hash from URL
+                history.replaceState(null, null, ' ');
+            }
+        }, 500);
+    }
 }

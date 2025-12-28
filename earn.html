@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; img-src 'self' data: https: blob:; font-src 'self' data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co https://accounts.google.com https://cdn.jsdelivr.net;">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -274,9 +275,33 @@
       <!-- Main Navigation -->
       <div class="nav-section">
         <a href="index.html" class="nav-btn"><i class="fa-solid fa-house"></i> Markets</a>
+        <a href="voting.html" class="nav-btn desktop-only"><i class="fa-solid fa-check-circle"></i> Voting</a>
         <a href="earn.html" class="nav-btn active"><i class="fa-solid fa-coins"></i> Earn</a>
         <a href="index.html#activity" class="nav-btn"><i class="fa-solid fa-chart-line"></i> Activity</a>
         <a href="index.html#leaderboard" class="nav-btn"><i class="fa-solid fa-trophy"></i> Leaderboard</a>
+      </div>
+
+      <!-- Category Navigation (Desktop Only) -->
+      <div class="category-section desktop-only">
+        <span class="category-divider">|</span>
+        <a href="index.html#all" class="category-chip" data-category="all">
+          <i class="fa-solid fa-chart-line"></i> All
+        </a>
+        <a href="index.html#Politics" class="category-chip" data-category="Politics">
+          <i class="fa-solid fa-landmark"></i> Politics
+        </a>
+        <a href="index.html#Sports" class="category-chip" data-category="Sports">
+          <i class="fa-solid fa-futbol"></i> Sports
+        </a>
+        <a href="index.html#Finance" class="category-chip" data-category="Finance">
+          <i class="fa-solid fa-dollar-sign"></i> Finance
+        </a>
+        <a href="index.html#Crypto" class="category-chip" data-category="Crypto">
+          <i class="fa-brands fa-bitcoin"></i> Crypto
+        </a>
+        <a href="index.html#Technology" class="category-chip" data-category="Technology">
+          <i class="fa-solid fa-microchip"></i> Tech
+        </a>
       </div>
     </div>
 
@@ -287,6 +312,9 @@
             <div class="main-column">
                 <!-- Banner Placeholder -->
                 <div id="banner-container" class="banner-placeholder">
+                    <button class="banner-close-btn" onclick="closeBanner()" title="Close banner">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
                     <div class="banner-content">
                         <div class="banner-spinner" id="bannerSpinner">
                             <div class="spinner-ring"></div>
@@ -294,7 +322,7 @@
                     </div>
                 </div>
 
-                <!-- Reopen Banner Button -->
+                <!-- Reopen Banner Button (shows when banner is closed) -->
                 <div id="banner-reopen-container" class="banner-reopen-container hidden">
                     <button class="banner-reopen-btn" onclick="reopenBanner()" title="Show banner">
                         <i class="fa-solid fa-image"></i>
@@ -325,6 +353,21 @@
                             <i class="fa-solid fa-paper-plane"></i>
                             Get updates
                         </button>
+                    </div>
+                </div>
+
+                <!-- Live Feed Placeholder -->
+                <div class="live-feed-box">
+                    <div class="live-feed-header">
+                        <i class="fa-solid fa-rss"></i>
+                        <h3>Live Feed</h3>
+                    </div>
+                    <div class="live-feed-content">
+                        <div class="live-feed-placeholder">
+                            <i class="fa-brands fa-twitter" style="font-size: 32px; color: #1DA1F2; margin-bottom: 12px;"></i>
+                            <p>Social media feed placeholder</p>
+                            <span class="feed-subtext">Your social media updates will appear here</span>
+                        </div>
                     </div>
                 </div>
             </aside>
@@ -384,13 +427,26 @@
             api = new GoatMouthAPI(window.supabaseClient);
             await checkAuthState();
 
+            // Check banner state from localStorage
+            const bannerClosed = localStorage.getItem('bannerClosed') === 'true';
+            if (bannerClosed) {
+                const bannerContainer = document.getElementById('banner-container');
+                const reopenContainer = document.getElementById('banner-reopen-container');
+                if (bannerContainer && reopenContainer) {
+                    bannerContainer.classList.add('hidden');
+                    reopenContainer.classList.remove('hidden');
+                }
+            }
+
             // Initialize banner - pass app-like object with api property
             bannerCarousel = new BannerCarousel({ api });
             await bannerCarousel.loadBanners();
 
             // Render banner if we have a container
-            const bannerContainer = document.querySelector('#banner-container .banner-content');
-            if (bannerContainer && bannerCarousel.banners.length > 0) {
+            const bannerContainer = document.getElementById('banner-container');
+            const bannerContent = bannerContainer ? bannerContainer.querySelector('.banner-content') : null;
+
+            if (bannerContainer && bannerContent && bannerCarousel.banners.length > 0) {
                 bannerCarousel.render(bannerContainer);
             }
         }
@@ -440,14 +496,6 @@
 
         function showUserProfile() {
             window.location.href = 'index.html#profile';
-        }
-
-        function closeBanner() {
-            if (bannerCarousel) bannerCarousel.closeBanner();
-        }
-
-        function reopenBanner() {
-            if (bannerCarousel) bannerCarousel.reopenBanner();
         }
 
         function toggleMobileSidebar() {

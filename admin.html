@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://accounts.google.com https://cdn.jsdelivr.net;">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -23,6 +24,20 @@
 
     <!-- Tailwind CSS (for content rendering) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Suppress Tailwind CDN production warning
+        if (window.tailwind) {
+            window.tailwind.config = { corePlugins: { preflight: false } };
+        }
+        // Suppress console warning
+        const originalWarn = console.warn;
+        console.warn = function(...args) {
+            if (args[0]?.includes?.('cdn.tailwindcss.com should not be used in production')) {
+                return;
+            }
+            originalWarn.apply(console, args);
+        };
+    </script>
 
     <style>
         /* VS Code-like dark theme */
@@ -127,6 +142,13 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .user-badge:hover {
+            background: var(--border);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
         .role-badge {
@@ -554,12 +576,17 @@
         .banner-live-container {
             width: 100%;
             max-width: 100%;
-            height: 100px;
+            height: 140px;
             background: #1f2937;
             position: relative;
             cursor: move;
             overflow: hidden;
             user-select: none;
+            transition: height 0.3s ease;
+        }
+
+        .banner-live-container.mobile-preview {
+            height: 80px;
         }
 
         .banner-live-container img {
@@ -1343,6 +1370,1687 @@
                 font-size: 11px;
             }
         }
+
+        /* User Action Buttons */
+        .user-action-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+
+        .user-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            opacity: 0.9;
+        }
+
+        .user-action-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        /* User Dropdown Menu */
+        .user-dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 4px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            min-width: 180px;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s ease;
+        }
+
+        .user-dropdown-menu.show-dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .user-dropdown-menu button {
+            width: 100%;
+            padding: 10px 16px;
+            background: transparent;
+            border: none;
+            color: var(--fg);
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.15s ease;
+        }
+
+        .user-dropdown-menu button:hover {
+            background: var(--bg3);
+        }
+
+        .user-dropdown-menu button:first-child {
+            border-radius: 8px 8px 0 0;
+        }
+
+        .user-dropdown-menu button:last-child {
+            border-radius: 0 0 8px 8px;
+        }
+
+        .user-dropdown-menu button i {
+            width: 16px;
+            font-size: 14px;
+        }
+
+        /* Mobile User Actions Modal */
+        .mobile-user-actions-modal {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .mobile-user-actions-modal.active {
+            opacity: 1;
+        }
+
+        .mobile-user-actions-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+        }
+
+        .mobile-user-actions-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg);
+            border-radius: 20px 20px 0 0;
+            max-height: 80vh;
+            overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .mobile-user-actions-modal.active .mobile-user-actions-content {
+            transform: translateY(0);
+        }
+
+        .mobile-user-actions-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 20px;
+            border-bottom: 2px solid var(--border);
+            background: var(--bg2);
+        }
+
+        .mobile-user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .mobile-user-info {
+            flex: 1;
+        }
+
+        .mobile-user-info h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--fg);
+            margin: 0 0 4px 0;
+        }
+
+        .mobile-user-info p {
+            font-size: 13px;
+            color: var(--muted);
+            margin: 0;
+        }
+
+        .mobile-user-actions-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--bg3);
+            border: none;
+            color: var(--fg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .mobile-user-actions-close:hover {
+            background: var(--border);
+            transform: rotate(90deg);
+        }
+
+        .mobile-user-actions-list {
+            padding: 8px;
+        }
+
+        .mobile-user-action-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: var(--bg2);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            text-align: left;
+        }
+
+        .mobile-user-action-item:hover {
+            background: var(--bg3);
+            border-color: var(--accent);
+            transform: translateX(4px);
+        }
+
+        .mobile-user-action-item.danger:hover {
+            border-color: #EF4444;
+        }
+
+        .mobile-user-action-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .mobile-user-action-item.disabled:hover {
+            background: var(--bg2);
+            border-color: var(--border);
+            transform: none;
+        }
+
+        .mobile-user-action-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .mobile-user-action-text {
+            flex: 1;
+        }
+
+        .mobile-user-action-text strong {
+            display: block;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--fg);
+            margin-bottom: 2px;
+        }
+
+        .mobile-user-action-text span {
+            display: block;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .mobile-user-action-arrow {
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        /* General Admin Modal - Below Header */
+        .admin-modal-overlay {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            z-index: 9998;
+            overflow-y: auto;
+        }
+
+        @media (max-width: 768px) {
+            .admin-modal-overlay {
+                top: 56px;
+            }
+        }
+
+        /* User row hover effect on mobile */
+        @media (max-width: 768px) {
+            .user-row {
+                cursor: pointer;
+            }
+
+            .user-row:active {
+                background: var(--bg3) !important;
+            }
+
+            /* Adjust modals for mobile header height */
+            .mobile-user-actions-modal,
+            .delete-user-modal {
+                top: 56px;
+            }
+        }
+
+        /* Delete User Modal */
+        .delete-user-modal {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .delete-user-modal.active {
+            opacity: 1;
+        }
+
+        .delete-user-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+        }
+
+        .delete-user-content {
+            position: relative;
+            background: var(--bg);
+            border: 2px solid #EF4444;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .delete-user-modal.active .delete-user-content {
+            transform: scale(1);
+        }
+
+        .delete-user-header {
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            padding: 24px;
+            text-align: center;
+            border-radius: 14px 14px 0 0;
+        }
+
+        .delete-user-icon {
+            width: 64px;
+            height: 64px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 32px;
+            color: white;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .delete-user-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            margin: 0 0 8px 0;
+        }
+
+        .delete-user-header p {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.9);
+            margin: 0;
+        }
+
+        .delete-user-body {
+            padding: 24px;
+        }
+
+        .delete-user-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: var(--bg2);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .delete-user-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .delete-user-info h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--fg);
+            margin: 0 0 4px 0;
+        }
+
+        .delete-user-info p {
+            font-size: 13px;
+            color: var(--muted);
+            margin: 0;
+        }
+
+        .delete-warning-box {
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid #EF4444;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .delete-warning-box h4 {
+            font-size: 14px;
+            font-weight: 700;
+            color: #EF4444;
+            margin: 0 0 12px 0;
+        }
+
+        .delete-warning-box h4 i {
+            margin-right: 8px;
+        }
+
+        .delete-warning-box p {
+            font-size: 13px;
+            color: var(--fg);
+            margin: 0 0 12px 0;
+        }
+
+        .delete-warning-box ul {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .delete-warning-box li {
+            font-size: 13px;
+            color: var(--fg);
+            padding: 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .delete-warning-box li i {
+            color: #EF4444;
+            width: 16px;
+        }
+
+        .delete-confirmation {
+            margin-bottom: 24px;
+        }
+
+        .delete-confirmation label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--fg);
+            margin-bottom: 12px;
+        }
+
+        .delete-confirmation label strong {
+            color: #EF4444;
+        }
+
+        .delete-confirmation input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg2);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            color: var(--fg);
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .delete-confirmation input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .delete-confirmation input.error {
+            border-color: #EF4444;
+            animation: shake 0.3s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .delete-error-msg {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            padding: 10px 12px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #EF4444;
+            border-radius: 6px;
+            color: #EF4444;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .delete-user-footer {
+            display: flex;
+            gap: 12px;
+            padding: 0 24px 24px;
+        }
+
+        .delete-cancel-btn, .delete-confirm-btn {
+            flex: 1;
+            padding: 14px 24px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .delete-cancel-btn {
+            background: var(--bg2);
+            color: var(--fg);
+            border: 2px solid var(--border);
+        }
+
+        .delete-cancel-btn:hover {
+            background: var(--bg3);
+            border-color: var(--accent);
+        }
+
+        .delete-confirm-btn {
+            background: var(--bg3);
+            color: var(--muted);
+            border: 2px solid var(--border);
+            cursor: not-allowed;
+        }
+
+        .delete-confirm-btn.enabled {
+            background: #EF4444;
+            color: white;
+            border-color: #EF4444;
+            cursor: pointer;
+        }
+
+        .delete-confirm-btn.enabled:hover {
+            background: #DC2626;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+
+        .delete-confirm-btn:disabled {
+            opacity: 0.5;
+        }
+
+        /* Success Toast */
+        .success-toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+            z-index: 10001;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .success-toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .success-toast i {
+            font-size: 18px;
+        }
+
+        /* Mobile optimizations for delete modal */
+        @media (max-width: 768px) {
+            .delete-user-content {
+                width: 95%;
+                max-height: 95vh;
+            }
+
+            .delete-user-header {
+                padding: 20px;
+            }
+
+            .delete-user-icon {
+                width: 56px;
+                height: 56px;
+                font-size: 28px;
+            }
+
+            .delete-user-header h2 {
+                font-size: 20px;
+            }
+
+            .delete-user-body {
+                padding: 20px;
+            }
+
+            .delete-warning-box li {
+                font-size: 12px;
+            }
+
+            .delete-user-footer {
+                flex-direction: column;
+                padding: 0 20px 20px;
+            }
+
+            .success-toast {
+                bottom: 16px;
+                right: 16px;
+                left: 16px;
+                font-size: 13px;
+            }
+        }
+
+        /* Messages Section Styles */
+        .message-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .message-stat-card {
+            background: var(--bg2);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 20px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .message-stat-card:hover {
+            background: var(--bg3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .message-stat-card.active {
+            border-color: var(--accent);
+            background: var(--bg3);
+        }
+
+        .message-stat-card i {
+            font-size: 24px;
+            color: var(--accent);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .message-stat-card .stat-number {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+
+        .message-stat-card .stat-label {
+            font-size: 12px;
+            color: var(--muted);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .messages-container {
+            display: grid;
+            gap: 16px;
+        }
+
+        .message-card {
+            background: var(--bg2);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .message-card:hover {
+            border-color: var(--bg3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .message-header {
+            margin-bottom: 16px;
+        }
+
+        .message-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .message-subject {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--fg);
+            margin: 0;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .message-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .message-badge {
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            border: 1px solid;
+            white-space: nowrap;
+        }
+
+        .message-badge i {
+            margin-right: 4px;
+        }
+
+        .message-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .message-meta div {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .message-meta i {
+            font-size: 12px;
+        }
+
+        .message-meta strong {
+            color: var(--fg);
+        }
+
+        .message-meta .text-muted {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .message-body {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .message-body p {
+            color: var(--fg);
+            line-height: 1.6;
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .message-notes {
+            background: rgba(99, 27, 221, 0.1);
+            border: 2px solid #631BDD;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .message-notes i {
+            color: #631BDD;
+            margin-right: 6px;
+        }
+
+        .message-notes strong {
+            color: #631BDD;
+            margin-right: 8px;
+        }
+
+        .message-notes p {
+            margin: 8px 0 0 0;
+            color: var(--fg);
+            line-height: 1.5;
+        }
+
+        .message-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .message-action-btn {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .message-action-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .message-action-btn i {
+            font-size: 14px;
+        }
+
+        .message-dropdown-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .message-dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 4px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            min-width: 180px;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s ease;
+        }
+
+        .message-dropdown-menu.show-dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .message-dropdown-menu button {
+            width: 100%;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            color: var(--fg);
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.15s ease;
+        }
+
+        .message-dropdown-menu button:hover {
+            background: var(--bg3);
+        }
+
+        .message-dropdown-menu button:first-child {
+            border-radius: 8px 8px 0 0;
+        }
+
+        .message-dropdown-menu button:last-child {
+            border-radius: 0 0 8px 8px;
+        }
+
+        .message-dropdown-menu button i {
+            width: 16px;
+            font-size: 14px;
+        }
+
+        /* Mobile & Responsive Fixes */
+        @media (max-width: 768px) {
+            .user-action-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 15px;
+            }
+
+            .user-dropdown-menu {
+                min-width: 160px;
+            }
+
+            /* Make users table horizontally scrollable on mobile */
+            .table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* Ensure action buttons are visible on mobile */
+            table {
+                min-width: 900px;
+            }
+
+            /* Messages mobile optimization */
+            .message-stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+                gap: 8px;
+            }
+
+            .message-stat-card {
+                padding: 16px 12px;
+            }
+
+            .message-stat-card i {
+                font-size: 20px;
+            }
+
+            .message-stat-card .stat-number {
+                font-size: 24px;
+            }
+
+            .message-stat-card .stat-label {
+                font-size: 10px;
+            }
+
+            .message-card {
+                padding: 16px;
+            }
+
+            .message-subject {
+                font-size: 16px;
+                min-width: 150px;
+            }
+
+            .message-badge {
+                font-size: 10px;
+                padding: 3px 8px;
+            }
+
+            .message-meta {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .message-action-btn span {
+                display: none;
+            }
+
+            .message-action-btn {
+                padding: 10px;
+                width: 40px;
+                height: 40px;
+                justify-content: center;
+            }
+
+            .message-action-btn i {
+                margin: 0;
+            }
+
+            /* Banner Section Mobile Optimization */
+            #bannersPanel > div[style*="grid-template-columns"] {
+                display: block !important;
+            }
+
+            #bannersPanel > div > div {
+                position: static !important;
+                margin-bottom: 20px;
+            }
+
+            .banner-control-panel {
+                padding: 16px;
+            }
+
+            .banner-preview-wrapper {
+                margin-bottom: 16px;
+            }
+
+            .banner-mock-header {
+                padding: 0 12px;
+                height: 50px;
+            }
+
+            .banner-mock-logo {
+                width: 32px;
+                height: 32px;
+            }
+
+            .banner-mock-nav {
+                padding: 0 12px;
+                height: 40px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .banner-mock-nav-item {
+                font-size: 10px;
+                padding: 4px 10px;
+            }
+
+            .banner-mock-market-grid {
+                grid-template-columns: 1fr;
+                padding: 12px;
+                gap: 8px;
+            }
+
+            .banner-mock-market-card {
+                height: 60px;
+            }
+
+            .banner-quick-actions {
+                grid-template-columns: 1fr;
+            }
+
+            .banner-quick-btn {
+                padding: 12px;
+                font-size: 13px;
+            }
+
+            .banner-control-label {
+                font-size: 11px;
+            }
+
+            /* Position info cards - stack vertically on very small screens */
+            #bannersPanel div[style*="flex: 1"] {
+                min-width: 100px;
+            }
+
+            /* Banner list items */
+            .banner-list-item {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 12px;
+            }
+
+            .banner-list-thumb {
+                width: 100% !important;
+                height: 80px !important;
+            }
+
+            .banner-list-item > div:last-child {
+                width: 100%;
+            }
+
+            /* Preview mode toggle */
+            #bannersPanel div[style*="display: flex; gap: 8px"] button {
+                padding: 6px 12px !important;
+                font-size: 11px;
+            }
+
+            /* System status section */
+            #systemStatus {
+                font-size: 10px !important;
+                word-break: break-all;
+            }
+
+            /* Fine tune grid */
+            #bannersPanel div[style*="grid-template-columns: repeat(3, 1fr)"] {
+                gap: 6px;
+            }
+        }
+
+        /* Tablet optimization for banners */
+        @media (max-width: 1024px) and (min-width: 769px) {
+            #bannersPanel > div[style*="grid-template-columns"] {
+                grid-template-columns: 1fr 320px !important;
+            }
+
+            .banner-control-panel {
+                padding: 16px;
+            }
+
+            .banner-quick-btn {
+                font-size: 10px;
+                padding: 6px 10px;
+            }
+        }
+
+        /* Extra small devices - additional banner optimizations */
+        @media (max-width: 480px) {
+            .banner-mock-header div[style*="font-size: 18px"] {
+                font-size: 14px !important;
+            }
+
+            .banner-live-container {
+                min-height: 100px;
+            }
+
+            #bannersPanel h3 {
+                font-size: 14px !important;
+            }
+
+            .banner-control-section {
+                margin-bottom: 16px;
+                padding-bottom: 16px;
+            }
+
+            /* Stack position info vertically on very small screens */
+            #bannersPanel > div > div:first-child > div[style*="display: flex; gap: 12px"] {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+
+        /* Voting Section Styles */
+        .voting-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .voting-stat-card {
+            background: var(--bg2);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .voting-stat-card:hover {
+            background: var(--bg3);
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 203, 151, 0.2);
+        }
+
+        .voting-stat-card.active {
+            background: var(--bg3);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 203, 151, 0.1);
+        }
+
+        .voting-stat-icon {
+            font-size: 48px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .voting-stat-value {
+            font-size: 42px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 8px;
+            line-height: 1;
+        }
+
+        .voting-stat-label {
+            font-size: 14px;
+            color: var(--text2);
+            font-weight: 500;
+        }
+
+        /* Proposals List */
+        .proposals-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Proposal List Item */
+        .proposal-list-item {
+            background: var(--bg2);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            transition: all 0.2s ease;
+        }
+
+        .proposal-list-item:hover {
+            border-color: var(--accent);
+            box-shadow: 0 2px 8px rgba(0, 203, 151, 0.15);
+        }
+
+        .proposal-list-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 2px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .proposal-list-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .proposal-list-header {
+            margin-bottom: 12px;
+        }
+
+        .proposal-list-title-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .proposal-list-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text1);
+            margin: 0;
+        }
+
+        .proposal-list-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--text2);
+        }
+
+        .proposal-list-meta span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .proposal-list-meta i {
+            color: var(--accent);
+            font-size: 12px;
+        }
+
+        .proposal-list-category {
+            padding: 4px 10px;
+            background: var(--bg3);
+            border-radius: 12px;
+        }
+
+        /* Status Badges */
+        .proposal-status-badge {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .proposal-status-pending {
+            background: rgba(242, 195, 0, 0.2);
+            color: #F2C300;
+        }
+
+        .proposal-status-approved {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10B981;
+        }
+
+        .proposal-status-rejected {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        /* Proposal Description */
+        .proposal-list-description {
+            color: var(--text1);
+            line-height: 1.5;
+            font-size: 14px;
+            margin-bottom: 12px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Vote Statistics - Inline */
+        .proposal-list-votes {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .proposal-vote-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 140px;
+        }
+
+        .proposal-vote-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .proposal-vote-label {
+            font-size: 13px;
+            color: var(--text2);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .proposal-vote-label i {
+            font-size: 12px;
+        }
+
+        .proposal-vote-count {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .proposal-vote-bar {
+            width: 60px;
+            height: 6px;
+            background: var(--bg3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .proposal-vote-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .proposal-vote-summary {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: var(--text2);
+            padding: 4px 12px;
+            background: var(--bg3);
+            border-radius: 6px;
+        }
+
+        .proposal-vote-summary span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .proposal-vote-summary i {
+            font-size: 11px;
+            color: var(--accent);
+        }
+
+        .proposal-vote-total {
+            font-weight: 600;
+        }
+
+        .proposal-vote-percent {
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        /* Proposal Actions */
+        .proposal-list-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-left: 16px;
+            border-left: 2px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .proposal-action-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .proposal-action-btn i {
+            font-size: 14px;
+        }
+
+        .proposal-btn-approve {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10B981;
+        }
+
+        .proposal-btn-approve:hover {
+            background: rgba(16, 185, 129, 0.25);
+            transform: translateX(-2px);
+        }
+
+        .proposal-btn-reject {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        .proposal-btn-reject:hover {
+            background: rgba(239, 68, 68, 0.25);
+            transform: translateX(-2px);
+        }
+
+        .proposal-btn-reset {
+            background: rgba(242, 195, 0, 0.15);
+            color: #F2C300;
+        }
+
+        .proposal-btn-reset:hover {
+            background: rgba(242, 195, 0, 0.25);
+            transform: translateX(-2px);
+        }
+
+        .proposal-btn-more {
+            background: var(--bg3);
+            color: var(--text2);
+            padding: 10px 16px;
+        }
+
+        .proposal-btn-more:hover {
+            background: var(--border);
+            color: var(--text1);
+        }
+
+        /* Proposal Dropdown */
+        .proposal-dropdown {
+            position: relative;
+            margin-left: auto;
+        }
+
+        .proposal-dropdown-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            background: var(--bg2);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            min-width: 180px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s ease;
+        }
+
+        .proposal-dropdown-menu.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .proposal-dropdown-item {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            color: var(--text1);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .proposal-dropdown-item:hover {
+            background: var(--bg3);
+        }
+
+        .proposal-dropdown-item i {
+            width: 16px;
+            font-size: 14px;
+        }
+
+        .proposal-dropdown-delete {
+            color: #ef4444;
+        }
+
+        .proposal-dropdown-delete:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        /* Mobile Responsive - Voting Section */
+        @media (max-width: 1024px) {
+            .voting-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+
+            .voting-stat-card {
+                padding: 20px;
+            }
+
+            .voting-stat-icon {
+                font-size: 40px;
+                margin-bottom: 12px;
+            }
+
+            .voting-stat-value {
+                font-size: 36px;
+            }
+
+            .voting-stat-label {
+                font-size: 13px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .voting-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+
+            .voting-stat-card {
+                padding: 16px;
+            }
+
+            .voting-stat-icon {
+                font-size: 36px;
+                margin-bottom: 10px;
+            }
+
+            .voting-stat-value {
+                font-size: 32px;
+            }
+
+            .voting-stat-label {
+                font-size: 12px;
+            }
+
+            .proposal-list-item {
+                flex-direction: column;
+                padding: 12px;
+            }
+
+            .proposal-list-image {
+                width: 100%;
+                height: 160px;
+            }
+
+            .proposal-list-title {
+                font-size: 16px;
+            }
+
+            .proposal-list-meta {
+                gap: 12px;
+                font-size: 12px;
+            }
+
+            .proposal-list-description {
+                font-size: 13px;
+            }
+
+            .proposal-list-votes {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .proposal-vote-item {
+                width: 100%;
+            }
+
+            .proposal-vote-bar {
+                flex: 1;
+            }
+
+            .proposal-vote-summary {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .proposal-list-actions {
+                flex-direction: row;
+                border-left: none;
+                border-top: 2px solid var(--border);
+                padding-left: 0;
+                padding-top: 12px;
+                width: 100%;
+            }
+
+            .proposal-btn-text {
+                display: none;
+            }
+
+            .proposal-action-btn {
+                padding: 12px;
+                min-width: 44px;
+                height: 44px;
+            }
+
+            .proposal-action-btn i {
+                margin: 0;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .voting-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+
+            .voting-stat-card {
+                padding: 12px;
+            }
+
+            .voting-stat-icon {
+                font-size: 28px;
+                margin-bottom: 8px;
+            }
+
+            .voting-stat-value {
+                font-size: 24px;
+            }
+
+            .voting-stat-label {
+                font-size: 11px;
+            }
+
+            .proposal-status-badge {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+
+            .proposal-list-title-section {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .proposal-list-meta {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .proposal-vote-summary {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1363,7 +3071,8 @@
             </div>
         </div>
         <div class="user-info">
-            <div class="user-badge">
+            <div class="user-badge" onclick="adminPanel.showAdminProfileModal()" style="cursor: pointer;" title="View Profile">
+                <i class="fa-solid fa-user" style="margin-right: 8px;"></i>
                 <span id="admin-username">Admin</span>
                 <span class="role-badge">Admin</span>
             </div>
@@ -1391,6 +3100,9 @@
         </button>
         <button onclick="switchView('users')">
             <i class="fa-solid fa-users"></i> Users
+        </button>
+        <button onclick="switchView('activity')">
+            <i class="fa-solid fa-clock-rotate-left"></i> Activity
         </button>
         <button onclick="switchView('transactions')">
             <i class="fa-solid fa-receipt"></i> Transactions
@@ -1508,50 +3220,10 @@
                 <div class="activity-feed">
                     <h3><i class="fa-solid fa-clock-rotate-left"></i> Recent Activity</h3>
                     <div id="activity-list">
-                        <div class="activity-item">
-                            <div class="activity-item-header">
-                                <span class="activity-item-title">
-                                    <i class="fa-solid fa-user-plus" style="color: var(--success);"></i> New user registered
-                                </span>
-                                <span class="activity-item-time">2 minutes ago</span>
-                            </div>
-                            <div class="activity-item-description">john.doe@example.com joined the platform</div>
-                        </div>
-                        <div class="activity-item">
-                            <div class="activity-item-header">
-                                <span class="activity-item-title">
-                                    <i class="fa-solid fa-chart-line" style="color: var(--info);"></i> Market created
-                                </span>
-                                <span class="activity-item-time">15 minutes ago</span>
-                            </div>
-                            <div class="activity-item-description">New market: "Will Bitcoin reach $100k in 2025?"</div>
-                        </div>
-                        <div class="activity-item">
-                            <div class="activity-item-header">
-                                <span class="activity-item-title">
-                                    <i class="fa-solid fa-coins" style="color: var(--warning);"></i> Large transaction
-                                </span>
-                                <span class="activity-item-time">1 hour ago</span>
-                            </div>
-                            <div class="activity-item-description">User deposited $5,000</div>
-                        </div>
-                        <div class="activity-item">
-                            <div class="activity-item-header">
-                                <span class="activity-item-title">
-                                    <i class="fa-solid fa-envelope" style="color: var(--accent);"></i> New message
-                                </span>
-                                <span class="activity-item-time">2 hours ago</span>
-                            </div>
-                            <div class="activity-item-description">Support inquiry from customer</div>
-                        </div>
-                        <div class="activity-item">
-                            <div class="activity-item-header">
-                                <span class="activity-item-title">
-                                    <i class="fa-solid fa-trophy" style="color: var(--success);"></i> Market resolved
-                                </span>
-                                <span class="activity-item-time">3 hours ago</span>
-                            </div>
-                            <div class="activity-item-description">Market "Q4 Earnings Prediction" closed with 1,234 participants</div>
+                        <!-- Loading spinner -->
+                        <div style="text-align: center; padding: 32px; color: var(--muted);">
+                            <div class="spinner-glow" style="margin: 0 auto;"></div>
+                            <p style="margin-top: 16px;">Loading activities...</p>
                         </div>
                     </div>
                 </div>
@@ -1591,10 +3263,21 @@
                 <!-- Main Banner Editor -->
                 <div style="display: grid; grid-template-columns: 1fr 400px; gap: 24px; margin-bottom: 24px;">
                     <!-- Left: Live Preview -->
-                    <div>
-                        <h3 style="color: var(--accent); margin-bottom: 16px; font-size: 16px; font-weight: 600;">
-                            <i class="fa-solid fa-eye"></i> Live Site Preview
-                        </h3>
+                    <div style="position: sticky; top: 80px; align-self: flex-start;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h3 style="color: var(--accent); font-size: 16px; font-weight: 600; margin: 0;">
+                                <i class="fa-solid fa-eye"></i> Live Site Preview
+                            </h3>
+                            <!-- Preview Mode Toggle -->
+                            <div style="display: flex; gap: 8px; background: var(--bg2); border-radius: 8px; padding: 4px;">
+                                <button id="desktopModeBtn" class="banner-quick-btn active" onclick="switchPreviewMode('desktop')" style="padding: 8px 16px;">
+                                    <i class="fa-solid fa-desktop"></i> Desktop
+                                </button>
+                                <button id="mobileModeBtn" class="banner-quick-btn" onclick="switchPreviewMode('mobile')" style="padding: 8px 16px;">
+                                    <i class="fa-solid fa-mobile-screen-button"></i> Mobile
+                                </button>
+                            </div>
+                        </div>
                         <div class="banner-preview-wrapper">
                             <!-- Mock Header -->
                             <div class="banner-mock-header">
@@ -1780,6 +3463,54 @@
                 </div>
             </section>
 
+            <!-- Voting Hero Panel -->
+            <section class="tabpanel" id="votingHeroPanel">
+                <div class="section-banner">
+                    <div class="section-banner-icon">
+                        <i class="fa-solid fa-vote-yea"></i>
+                    </div>
+                    <div class="section-banner-content">
+                        <h2>Voting Hero Background</h2>
+                        <p>Upload background image for voting page hero section</p>
+                    </div>
+                </div>
+
+                <div style="max-width: 800px; margin-top: 24px;">
+                    <!-- Current Image Preview -->
+                    <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+                        <h3 style="color: var(--accent); margin-bottom: 16px; font-size: 16px; font-weight: 600;">
+                            <i class="fa-solid fa-image"></i> Current Background
+                        </h3>
+                        <div id="votingHeroPreview" style="width: 100%; height: 200px; background: linear-gradient(135deg, #1f2937 0%, #111827 100%); border-radius: 8px; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; color: var(--muted);">
+                            <div style="text-align: center;">
+                                <i class="fa-solid fa-image" style="font-size: 48px; opacity: 0.3; margin-bottom: 12px;"></i>
+                                <p>No background image set</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Upload Section -->
+                    <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 24px;">
+                        <h3 style="color: var(--accent); margin-bottom: 16px; font-size: 16px; font-weight: 600;">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Upload New Background
+                        </h3>
+                        <input type="file" id="votingHeroUpload" accept="image/*" style="display: none;">
+                        <button class="btn" style="width: 100%; justify-content: center; margin-bottom: 16px;" onclick="document.getElementById('votingHeroUpload').click()">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Choose Image
+                        </button>
+                        <div style="display: flex; gap: 12px;">
+                            <button class="btn secondary" style="flex: 1; justify-content: center;" onclick="saveVotingHeroImage()">
+                                <i class="fa-solid fa-save"></i> Save
+                            </button>
+                            <button class="btn secondary" style="flex: 1; justify-content: center;" onclick="removeVotingHeroImage()">
+                                <i class="fa-solid fa-trash"></i> Remove
+                            </button>
+                        </div>
+                        <div id="votingHeroStatus" style="margin-top: 16px; font-size: 14px;"></div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Users Panel -->
             <section class="tabpanel" id="usersPanel">
                 <div class="section-banner">
@@ -1795,6 +3526,25 @@
                     <div class="loading">
                         <div class="spinner"></div>
                         <div>Loading users...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Activity Panel -->
+            <section class="tabpanel" id="activityPanel">
+                <div class="section-banner">
+                    <div class="section-banner-icon">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </div>
+                    <div class="section-banner-content">
+                        <h2>Site Activity</h2>
+                        <p>View all recent site activity</p>
+                    </div>
+                </div>
+                <div id="admin-content-activity">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <div>Loading activities...</div>
                     </div>
                 </div>
             </section>
@@ -1887,19 +3637,40 @@
         const mobileOverlay = document.getElementById('mobileOverlay');
 
         function toggleMobileMenu() {
-            hamburger.classList.toggle('active');
-            menubar.classList.toggle('active');
-            mobileOverlay.classList.toggle('active');
+            if (hamburger) hamburger.classList.toggle('active');
+            if (menubar) menubar.classList.toggle('active');
+            if (mobileOverlay) mobileOverlay.classList.toggle('active');
         }
 
         function closeMobileMenu() {
-            hamburger.classList.remove('active');
-            menubar.classList.remove('active');
-            mobileOverlay.classList.remove('active');
+            if (hamburger) hamburger.classList.remove('active');
+            if (menubar) menubar.classList.remove('active');
+            if (mobileOverlay) mobileOverlay.classList.remove('active');
         }
 
-        hamburger.addEventListener('click', toggleMobileMenu);
-        mobileOverlay.addEventListener('click', closeMobileMenu);
+        if (hamburger) hamburger.addEventListener('click', toggleMobileMenu);
+        if (mobileOverlay) mobileOverlay.addEventListener('click', closeMobileMenu);
+
+        // Close dropdown menus when clicking outside
+        document.addEventListener('click', function(event) {
+            // Close user dropdowns
+            const userDropdowns = document.querySelectorAll('.user-dropdown-menu.show-dropdown');
+            userDropdowns.forEach(dropdown => {
+                const button = dropdown.previousElementSibling;
+                if (!dropdown.contains(event.target) && !button.contains(event.target)) {
+                    dropdown.classList.remove('show-dropdown');
+                }
+            });
+
+            // Close message dropdowns
+            const messageDropdowns = document.querySelectorAll('.message-dropdown-menu.show-dropdown');
+            messageDropdowns.forEach(dropdown => {
+                const button = dropdown.previousElementSibling;
+                if (!dropdown.contains(event.target) && !button.contains(event.target)) {
+                    dropdown.classList.remove('show-dropdown');
+                }
+            });
+        });
 
         // View switching functionality
         function switchView(view) {
@@ -1913,7 +3684,10 @@
 
             // Add active class to clicked button
             if (event && event.target) {
-                event.target.closest('button').classList.add('active');
+                const button = event.target.closest('button');
+                if (button) {
+                    button.classList.add('active');
+                }
             }
 
             // Hide all panels
@@ -1926,7 +3700,9 @@
                 'dashboard': 'dashboardPanel',
                 'markets': 'marketsPanel',
                 'banners': 'bannersPanel',
+                'voting-hero': 'votingHeroPanel',
                 'users': 'usersPanel',
+                'activity': 'activityPanel',
                 'transactions': 'transactionsPanel',
                 'messages': 'messagesPanel',
                 'voting': 'votingPanel'
@@ -1934,11 +3710,17 @@
 
             const panelId = panelMap[view];
             if (panelId) {
-                document.getElementById(panelId).classList.add('active');
+                const panel = document.getElementById(panelId);
+                if (panel) {
+                    panel.classList.add('active');
+                }
             }
 
             // Update status bar
-            document.getElementById('status-info').textContent = `Viewing: ${view.charAt(0).toUpperCase() + view.slice(1)}`;
+            const statusInfo = document.getElementById('status-info');
+            if (statusInfo) {
+                statusInfo.textContent = `Viewing: ${view.charAt(0).toUpperCase() + view.slice(1)}`;
+            }
 
             // Trigger actual data loading via adminPanel
             if (window.adminPanel) {
@@ -2081,6 +3863,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             initDashboardCharts();
             initBannerEditor();
+            // Activity feed is now loaded by admin.js renderDashboard()
         });
 
         // Banner Editor State
@@ -2088,12 +3871,15 @@
             currentImage: null,
             posX: 50,
             posY: 50,
+            posX_mobile: 50,
+            posY_mobile: 50,
             fit: 'cover',
             scale: 100,
             isDragging: false,
             dragStartX: 0,
             dragStartY: 0,
-            currentBannerId: null
+            currentBannerId: null,
+            previewMode: 'desktop' // 'desktop' or 'mobile'
         };
 
         // Initialize Banner Editor
@@ -2155,16 +3941,41 @@
             reader.readAsDataURL(file);
         }
 
+        // Switch Preview Mode
+        function switchPreviewMode(mode) {
+            bannerState.previewMode = mode;
+
+            // Update button states
+            document.getElementById('desktopModeBtn').classList.toggle('active', mode === 'desktop');
+            document.getElementById('mobileModeBtn').classList.toggle('active', mode === 'mobile');
+
+            // Update preview container height
+            const preview = document.getElementById('bannerLivePreview');
+            if (mode === 'mobile') {
+                preview.classList.add('mobile-preview');
+            } else {
+                preview.classList.remove('mobile-preview');
+            }
+
+            // Update preview and displays
+            updateBannerPreview();
+            updatePositionDisplays();
+        }
+
         // Update Banner Preview
         function updateBannerPreview() {
             const preview = document.getElementById('bannerLivePreview');
             if (!preview || !bannerState.currentImage) return;
 
+            // Get current position based on preview mode
+            const currentPosX = bannerState.previewMode === 'mobile' ? bannerState.posX_mobile : bannerState.posX;
+            const currentPosY = bannerState.previewMode === 'mobile' ? bannerState.posY_mobile : bannerState.posY;
+
             let imageStyle = `
                 width: 100%;
                 height: 100%;
                 object-fit: ${bannerState.fit};
-                object-position: ${bannerState.posX}% ${bannerState.posY}%;
+                object-position: ${currentPosX}% ${currentPosY}%;
             `;
 
             // If fit is 'none', apply scale transform
@@ -2175,8 +3986,8 @@
                     max-width: none;
                     max-height: none;
                     position: absolute;
-                    left: ${bannerState.posX}%;
-                    top: ${bannerState.posY}%;
+                    left: ${currentPosX}%;
+                    top: ${currentPosY}%;
                     transform: translate(-50%, -50%) scale(${bannerState.scale / 100});
                     transform-origin: center;
                 `;
@@ -2186,7 +3997,7 @@
                 <img src="${bannerState.currentImage}" style="${imageStyle}">
                 <div class="banner-position-overlay">
                     <div class="banner-position-indicator">
-                        ${Math.round(bannerState.posX)}% × ${Math.round(bannerState.posY)}%
+                        ${Math.round(currentPosX)}% × ${Math.round(currentPosY)}%
                         ${bannerState.fit === 'none' ? ` • ${bannerState.scale}%` : ''}
                     </div>
                 </div>
@@ -2239,8 +4050,15 @@
 
             // Convert pixel movement to percentage
             const sensitivity = 0.5;
-            bannerState.posX = Math.max(0, Math.min(100, bannerState.posX + (deltaX * sensitivity)));
-            bannerState.posY = Math.max(0, Math.min(100, bannerState.posY + (deltaY * sensitivity)));
+
+            // Update the appropriate position based on preview mode
+            if (bannerState.previewMode === 'mobile') {
+                bannerState.posX_mobile = Math.max(0, Math.min(100, bannerState.posX_mobile + (deltaX * sensitivity)));
+                bannerState.posY_mobile = Math.max(0, Math.min(100, bannerState.posY_mobile + (deltaY * sensitivity)));
+            } else {
+                bannerState.posX = Math.max(0, Math.min(100, bannerState.posX + (deltaX * sensitivity)));
+                bannerState.posY = Math.max(0, Math.min(100, bannerState.posY + (deltaY * sensitivity)));
+            }
 
             bannerState.dragStartX = e.clientX;
             bannerState.dragStartY = e.clientY;
@@ -2265,19 +4083,29 @@
             });
             event.target.closest('button').classList.add('active');
 
+            let posX = 50, posY = 50;
             switch(position) {
                 case 'top':
-                    bannerState.posX = 50;
-                    bannerState.posY = 0;
+                    posX = 50;
+                    posY = 0;
                     break;
                 case 'center':
-                    bannerState.posX = 50;
-                    bannerState.posY = 50;
+                    posX = 50;
+                    posY = 50;
                     break;
                 case 'bottom':
-                    bannerState.posX = 50;
-                    bannerState.posY = 100;
+                    posX = 50;
+                    posY = 100;
                     break;
+            }
+
+            // Update the appropriate position based on preview mode
+            if (bannerState.previewMode === 'mobile') {
+                bannerState.posX_mobile = posX;
+                bannerState.posY_mobile = posY;
+            } else {
+                bannerState.posX = posX;
+                bannerState.posY = posY;
             }
 
             updateBannerPreview();
@@ -2288,19 +4116,32 @@
         function adjustBannerPosition(direction) {
             const step = 5;
 
+            // Get current positions based on preview mode
+            let posX = bannerState.previewMode === 'mobile' ? bannerState.posX_mobile : bannerState.posX;
+            let posY = bannerState.previewMode === 'mobile' ? bannerState.posY_mobile : bannerState.posY;
+
             switch(direction) {
                 case 'up':
-                    bannerState.posY = Math.max(0, bannerState.posY - step);
+                    posY = Math.max(0, posY - step);
                     break;
                 case 'down':
-                    bannerState.posY = Math.min(100, bannerState.posY + step);
+                    posY = Math.min(100, posY + step);
                     break;
                 case 'left':
-                    bannerState.posX = Math.max(0, bannerState.posX - step);
+                    posX = Math.max(0, posX - step);
                     break;
                 case 'right':
-                    bannerState.posX = Math.min(100, bannerState.posX + step);
+                    posX = Math.min(100, posX + step);
                     break;
+            }
+
+            // Update the appropriate position based on preview mode
+            if (bannerState.previewMode === 'mobile') {
+                bannerState.posX_mobile = posX;
+                bannerState.posY_mobile = posY;
+            } else {
+                bannerState.posX = posX;
+                bannerState.posY = posY;
             }
 
             updateBannerPreview();
@@ -2309,8 +4150,12 @@
 
         // Update Position Displays
         function updatePositionDisplays() {
-            document.getElementById('posXDisplay').textContent = Math.round(bannerState.posX) + '%';
-            document.getElementById('posYDisplay').textContent = Math.round(bannerState.posY) + '%';
+            // Display current position based on preview mode
+            const currentPosX = bannerState.previewMode === 'mobile' ? bannerState.posX_mobile : bannerState.posX;
+            const currentPosY = bannerState.previewMode === 'mobile' ? bannerState.posY_mobile : bannerState.posY;
+
+            document.getElementById('posXDisplay').textContent = Math.round(currentPosX) + '%';
+            document.getElementById('posYDisplay').textContent = Math.round(currentPosY) + '%';
         }
 
         // Save Banner
@@ -2338,6 +4183,8 @@
                     const updateData = {
                         custom_position_x: Math.round(bannerState.posX),
                         custom_position_y: Math.round(bannerState.posY),
+                        custom_position_x_mobile: Math.round(bannerState.posX_mobile),
+                        custom_position_y_mobile: Math.round(bannerState.posY_mobile),
                         image_fit: bannerState.fit
                     };
 
@@ -2392,6 +4239,8 @@
                             image_fit: bannerState.fit,
                             custom_position_x: Math.round(bannerState.posX),
                             custom_position_y: Math.round(bannerState.posY),
+                            custom_position_x_mobile: Math.round(bannerState.posX_mobile),
+                            custom_position_y_mobile: Math.round(bannerState.posY_mobile),
                             link_type: 'none',
                             order_index: 0,
                             active: true
@@ -2464,6 +4313,8 @@
             bannerState.currentImage = null;
             bannerState.posX = 50;
             bannerState.posY = 50;
+            bannerState.posX_mobile = 50;
+            bannerState.posY_mobile = 50;
             bannerState.fit = 'cover';
             bannerState.scale = 100;
             bannerState.currentBannerId = null;
@@ -2543,7 +4394,7 @@
                 }
 
                 container.innerHTML = banners.map(banner => `
-                    <div class="banner-list-item" onclick="selectBanner('${banner.id}', '${banner.image_url}', ${banner.custom_position_x || 50}, ${banner.custom_position_y || 50}, '${banner.image_fit || 'cover'}', ${banner.image_scale || 100})">
+                    <div class="banner-list-item" onclick="selectBanner('${banner.id}', '${banner.image_url}', ${banner.custom_position_x || 50}, ${banner.custom_position_y || 50}, '${banner.image_fit || 'cover'}', ${banner.image_scale || 100}, ${banner.custom_position_x_mobile || 50}, ${banner.custom_position_y_mobile || 50})">
                         <div class="banner-list-thumb">
                             <img src="${banner.image_url}" alt="${banner.title || 'Banner'}" style="object-fit: cover;">
                         </div>
@@ -2577,11 +4428,13 @@
         }
 
         // Select Banner from List
-        function selectBanner(id, imageUrl, posX = 50, posY = 50, fit = 'cover', scale = 100) {
+        function selectBanner(id, imageUrl, posX = 50, posY = 50, fit = 'cover', scale = 100, posX_mobile = 50, posY_mobile = 50) {
             bannerState.currentImage = imageUrl;
             bannerState.currentBannerId = id;
             bannerState.posX = posX;
             bannerState.posY = posY;
+            bannerState.posX_mobile = posX_mobile;
+            bannerState.posY_mobile = posY_mobile;
             bannerState.fit = fit;
             bannerState.scale = scale;
 
@@ -2782,6 +4635,102 @@
                 `;
                 console.error('Database test error:', error);
             }
+        }
+
+        // Voting Hero Background Functions
+        let votingHeroImageFile = null;
+
+        // Handle file selection
+        document.addEventListener('DOMContentLoaded', () => {
+            const uploadInput = document.getElementById('votingHeroUpload');
+            if (uploadInput) {
+                uploadInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        votingHeroImageFile = file;
+                        // Preview the image
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            const preview = document.getElementById('votingHeroPreview');
+                            preview.style.backgroundImage = `url('${event.target.result}')`;
+                            preview.innerHTML = '';
+
+                            const status = document.getElementById('votingHeroStatus');
+                            status.innerHTML = `<div style="color: var(--info);">✓ Image selected: ${file.name}</div>`;
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+
+            // Load existing image on panel load
+            loadVotingHeroImage();
+        });
+
+        async function saveVotingHeroImage() {
+            const status = document.getElementById('votingHeroStatus');
+
+            if (!votingHeroImageFile) {
+                status.innerHTML = `<div style="color: var(--warning);">⚠ Please select an image first</div>`;
+                return;
+            }
+
+            try {
+                status.innerHTML = `<div style="color: var(--info);">Uploading...</div>`;
+
+                // Upload to Supabase storage
+                const fileName = `voting-hero-${Date.now()}.${votingHeroImageFile.name.split('.').pop()}`;
+                const { data, error } = await window.adminPanel.api.db.storage
+                    .from('banners')
+                    .upload(`voting/${fileName}`, votingHeroImageFile, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
+
+                if (error) throw error;
+
+                // Get public URL
+                const { data: { publicUrl } } = window.adminPanel.api.db.storage
+                    .from('banners')
+                    .getPublicUrl(`voting/${fileName}`);
+
+                // Save URL to localStorage
+                localStorage.setItem('votingHeroBackgroundUrl', publicUrl);
+
+                status.innerHTML = `<div style="color: var(--success);">✓ Image uploaded successfully!</div>`;
+                votingHeroImageFile = null;
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                status.innerHTML = `<div style="color: var(--error);">✗ Upload failed: ${error.message}</div>`;
+            }
+        }
+
+        function loadVotingHeroImage() {
+            const url = localStorage.getItem('votingHeroBackgroundUrl');
+            if (url) {
+                const preview = document.getElementById('votingHeroPreview');
+                if (preview) {
+                    preview.style.backgroundImage = `url('${url}')`;
+                    preview.innerHTML = '';
+                }
+            }
+        }
+
+        function removeVotingHeroImage() {
+            localStorage.removeItem('votingHeroBackgroundUrl');
+            const preview = document.getElementById('votingHeroPreview');
+            if (preview) {
+                preview.style.backgroundImage = '';
+                preview.innerHTML = `
+                    <div style="text-align: center;">
+                        <i class="fa-solid fa-image" style="font-size: 48px; opacity: 0.3; margin-bottom: 12px;"></i>
+                        <p>No background image set</p>
+                    </div>
+                `;
+            }
+            const status = document.getElementById('votingHeroStatus');
+            status.innerHTML = `<div style="color: var(--success);">✓ Background image removed</div>`;
         }
     </script>
 </body>

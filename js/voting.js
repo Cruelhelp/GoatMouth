@@ -99,9 +99,9 @@ class VotingSystem {
             suggestBtn.innerHTML = `
                 <button type="button"
                         class="py-3 px-8 rounded-xl font-bold text-base transition text-white flex items-center gap-2 whitespace-nowrap"
-                        style="background: linear-gradient(135deg, #00CB97 0%, #00e5af 100%); box-shadow: 0 4px 12px rgba(0, 203, 151, 0.3);"
-                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0, 203, 151, 0.4)'"
-                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0, 203, 151, 0.3)'"
+                        style="background: linear-gradient(135deg, #0d7a4f 0%, #10a368 100%); box-shadow: 0 4px 12px rgba(13, 122, 79, 0.3);"
+                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(13, 122, 79, 0.4)'"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(13, 122, 79, 0.3)'"
                         data-action="create-proposal">
                     <i class="ri-add-circle-line text-xl"></i>
                     <span>Suggest Market</span>
@@ -118,10 +118,10 @@ class VotingSystem {
             }
         } else {
             suggestBtn.innerHTML = `
-                <a href="index.html" class="py-3 px-8 rounded-xl font-bold text-base transition flex items-center gap-2"
-                   style="background: rgba(0, 203, 151, 0.15); color: #00CB97; border: 2px solid rgba(0, 203, 151, 0.3);"
-                   onmouseover="this.style.background='rgba(0, 203, 151, 0.25)'"
-                   onmouseout="this.style.background='rgba(0, 203, 151, 0.15)'">
+                <a href="index.html#login" class="py-3 px-8 rounded-xl font-bold text-base transition flex items-center gap-2 whitespace-nowrap"
+                   style="background: rgba(255, 255, 255, 0.15); color: white; border: 2px solid rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);"
+                   onmouseover="this.style.background='rgba(255, 255, 255, 0.25)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0, 0, 0, 0.4)'"
+                   onmouseout="this.style.background='rgba(255, 255, 255, 0.15)'; this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0, 0, 0, 0.3)'">
                     <i class="ri-login-box-line text-xl"></i>
                     <span>Sign In to Participate</span>
                 </a>
@@ -146,6 +146,13 @@ class VotingSystem {
 
     async loadProposals() {
         const container = document.getElementById('proposals-container');
+
+        // Check if container exists before trying to set innerHTML
+        if (!container) {
+            console.error('proposals-container element not found');
+            return;
+        }
+
         container.innerHTML = `
             <div class="inline-loader">
                 <div class="spinner-container">

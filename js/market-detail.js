@@ -22,11 +22,20 @@ class MarketDetailModal {
 
         // Traditional centered modal for both mobile and desktop
         modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-start justify-center z-50 modal-backdrop';
-        modal.style.paddingTop = '80px';
+
+        // Responsive padding - more on mobile to clear nav links
+        const isMobile = window.innerWidth <= 768;
+        modal.style.paddingTop = isMobile ? '220px' : '150px';
+        modal.style.paddingBottom = isMobile ? '20px' : '80px';
+        modal.style.overflowY = 'auto';
+        modal.style.overflowX = 'hidden';
 
         modal.innerHTML = this.getHTML();
 
         document.body.appendChild(modal);
+
+        // Prevent body scroll when modal is open
+        document.body.style.overflow = 'hidden';
 
         // Attach event listeners
         this.attachListeners(modal);
@@ -44,7 +53,7 @@ class MarketDetailModal {
         return `
             <div class="bg-gray-800 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto mobile-market-modal" style="margin: 1rem; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
                 <!-- Close Button - Top Right -->
-                <button onclick="this.closest('.fixed').remove()" class="absolute top-4 right-4 z-50 text-gray-400 hover:text-white text-3xl leading-none p-2 rounded-lg hover:bg-gray-700 transition touch-target" style="width: 44px; height: 44px;">&times;</button>
+                <button onclick="document.body.style.overflow=''; this.closest('.fixed').remove();" class="absolute top-4 right-4 z-50 text-gray-400 hover:text-white text-3xl leading-none p-2 rounded-lg hover:bg-gray-700 transition touch-target" style="width: 44px; height: 44px;">&times;</button>
 
                 <!-- Market Image (if available) -->
                 ${market.image_url ? `
@@ -184,7 +193,7 @@ class MarketDetailModal {
                             </div>
                             <div style="width: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; height: 100%;">
                                 <div style="position: absolute; bottom: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, rgba(0, 203, 151, 0.05) 0px, rgba(0, 203, 151, 0.05) 12px, transparent 12px, transparent 24px); border-radius: 10px; opacity: 0.3;"></div>
-                                <div style="width: 100%; background: linear-gradient(180deg, #00e5af 0%, #00CB97 100%); border-radius: 10px 10px 0 0; transition: all 0.5s ease; box-shadow: 0 -6px 20px rgba(0, 203, 151, 0.6); height: ${yesPercent}%; min-height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; z-index: 10; padding: 12px;">
+                                <div style="width: 100%; background: linear-gradient(180deg, #03924d 0%, #027A40 100%); border-radius: 10px 10px 0 0; transition: all 0.5s ease; box-shadow: 0 -6px 20px rgba(2, 122, 64, 0.6); height: ${yesPercent}%; min-height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; z-index: 10; padding: 12px;">
                                     <span style="font-size: 2rem; font-weight: 800; color: white; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); line-height: 1;">${yesPercent}%</span>
                                     <span style="font-size: 0.75rem; color: rgba(255, 255, 255, 0.9); margin-top: 4px;">${(100 - parseFloat(yesPercent)).toFixed(0)}% profit</span>
                                 </div>
@@ -306,7 +315,7 @@ class MarketDetailModal {
                             <p class="text-lg font-semibold mb-2">Sign In to Place Bets</p>
                             <p class="text-sm text-gray-400">Create an account or sign in to start betting on this market</p>
                         </div>
-                        <button onclick="app.showAuthModal(); this.closest('.fixed').remove();" class="px-6 py-3 rounded-xl text-white font-bold transition touch-target text-base" style="background: linear-gradient(135deg, #00CB97 0%, #00e5af 100%); min-height: 50px; box-shadow: 0 4px 20px rgba(0, 203, 151, 0.3);" onmouseover="this.style.boxShadow='0 6px 30px rgba(0, 203, 151, 0.5)'" onmouseout="this.style.boxShadow='0 4px 20px rgba(0, 203, 151, 0.3)'">
+                        <button onclick="document.body.style.overflow=''; app.showAuthModal(); this.closest('.fixed').remove();" class="px-6 py-3 rounded-xl text-white font-bold transition touch-target text-base" style="background: linear-gradient(135deg, #027A40 0%, #03924d 100%); min-height: 50px; box-shadow: 0 4px 20px rgba(2, 122, 64, 0.3);" onmouseover="this.style.boxShadow='0 6px 30px rgba(2, 122, 64, 0.5)'" onmouseout="this.style.boxShadow='0 4px 20px rgba(2, 122, 64, 0.3)'">
                             Sign In / Sign Up
                         </button>
                     </div>
@@ -343,7 +352,7 @@ class MarketDetailModal {
                     ` : `
                         <div class="mb-4 p-3 md:p-4 bg-gray-700 rounded-lg text-center">
                             <p class="text-gray-400 mb-2 text-sm md:text-base">Sign in to join the discussion</p>
-                            <button onclick="app.showAuthModal(); this.closest('.fixed').remove();" class="text-xs md:text-sm px-3 py-2 md:px-4 md:py-2 rounded-lg text-white transition touch-target" style="background-color: #00CB97; min-height: 36px;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'">
+                            <button onclick="document.body.style.overflow=''; app.showAuthModal(); this.closest('.fixed').remove();" class="text-xs md:text-sm px-3 py-2 md:px-4 md:py-2 rounded-lg text-white transition touch-target" style="background-color: #027A40; min-height: 36px;" onmouseover="this.style.backgroundColor='#03924d'" onmouseout="this.style.backgroundColor='#027A40'">
                                 Sign In
                             </button>
                         </div>

@@ -195,13 +195,13 @@ input:focus {
 
 .auth-tab:hover {
     color: #ffffff;
-    background-color: rgba(0, 203, 151, 0.1);
+    background-color: rgba(2, 122, 64, 0.1);
 }
 
 .auth-tab.active {
     color: #ffffff;
-    background: linear-gradient(135deg, rgba(0, 203, 151, 0.2) 0%, rgba(0, 168, 120, 0.2) 100%);
-    box-shadow: 0 2px 8px rgba(0, 203, 151, 0.2);
+    background: linear-gradient(135deg, rgba(2, 122, 64, 0.2) 0%, rgba(0, 168, 120, 0.2) 100%);
+    box-shadow: 0 2px 8px rgba(2, 122, 64, 0.2);
 }
 
 /* Auth Form */
@@ -1556,7 +1556,7 @@ video, iframe {
         align-items: center;
         gap: 10px;
         margin-bottom: 12px;
-        color: #00CB97;
+        color: #027A40;
         font-size: 15px;
     }
 
@@ -1773,7 +1773,7 @@ video, iframe {
     background: rgba(2, 122, 64, 0.1);
     border: 1.5px solid rgba(2, 122, 64, 0.25);
     border-radius: 8px;
-    color: rgba(0, 203, 151, 0.7);
+    color: rgba(2, 122, 64, 0.7);
     cursor: pointer;
     transition: all 0.2s ease;
     opacity: 0.6;
@@ -1782,7 +1782,7 @@ video, iframe {
 .banner-reopen-btn:hover {
     background: rgba(2, 122, 64, 0.2);
     border-color: #027A40;
-    color: #00CB97;
+    color: #027A40;
     opacity: 1;
     transform: translateY(-1px);
 }
@@ -2500,7 +2500,7 @@ video, iframe {
     left: 14px;
     top: 50%;
     transform: translateY(-50%);
-    color: #00CB97;
+    color: #027A40;
     font-size: 14px;
     pointer-events: none;
     z-index: 1;
@@ -2531,13 +2531,13 @@ video, iframe {
 }
 
 .search-input:focus {
-    border-color: #00CB97;
+    border-color: #027A40;
     background: #1f2937;
-    box-shadow: 0 0 0 3px rgba(0, 203, 151, 0.1);
+    box-shadow: 0 0 0 3px rgba(2, 122, 64, 0.1);
 }
 
 .search-input:focus ~ .search-icon {
-    color: #00CB97;
+    color: #027A40;
     transform: translateY(-50%) scale(1.1);
 }
 
@@ -2875,8 +2875,8 @@ video, iframe {
 
 /* Toast Types */
 .toast-success {
-    background: linear-gradient(135deg, rgba(2, 122, 64, 0.95) 0%, rgba(0, 203, 151, 0.95) 100%);
-    border-color: #00CB97;
+    background: linear-gradient(135deg, rgba(2, 122, 64, 0.95) 0%, rgba(2, 122, 64, 0.95) 100%);
+    border-color: #027A40;
     color: #ffffff;
 }
 
@@ -2917,7 +2917,7 @@ video, iframe {
 
 .toast-modal {
     background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-    border: 2px solid rgba(0, 203, 151, 0.3);
+    border: 2px solid rgba(2, 122, 64, 0.3);
     border-radius: 16px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     max-width: 480px;
@@ -2948,7 +2948,7 @@ video, iframe {
 .toast-modal-icon {
     width: 32px;
     height: 32px;
-    color: #00CB97;
+    color: #027A40;
 }
 
 .toast-modal-title {
@@ -2979,8 +2979,8 @@ video, iframe {
 
 .toast-modal-input:focus {
     outline: none;
-    border-color: #00CB97;
-    box-shadow: 0 0 0 3px rgba(0, 203, 151, 0.1);
+    border-color: #027A40;
+    box-shadow: 0 0 0 3px rgba(2, 122, 64, 0.1);
 }
 
 .toast-modal-actions {
@@ -3010,13 +3010,13 @@ video, iframe {
 }
 
 .toast-modal-btn-confirm {
-    background: linear-gradient(135deg, #027A40 0%, #00CB97 100%);
+    background: linear-gradient(135deg, #027A40 0%, #027A40 100%);
     color: #ffffff;
 }
 
 .toast-modal-btn-confirm:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 203, 151, 0.3);
+    box-shadow: 0 4px 12px rgba(2, 122, 64, 0.3);
 }
 
 /* Mobile Responsive */
@@ -3092,12 +3092,12 @@ video, iframe {
     }
 
     .proposals-grid::-webkit-scrollbar-thumb {
-        background: rgba(0, 203, 151, 0.3);
+        background: rgba(2, 122, 64, 0.3);
         border-radius: 3px;
     }
 
     .proposals-grid::-webkit-scrollbar-thumb:hover {
-        background: rgba(0, 203, 151, 0.5);
+        background: rgba(2, 122, 64, 0.5);
     }
 
     .proposal-card-compact {

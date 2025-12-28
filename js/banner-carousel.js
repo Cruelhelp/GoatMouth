@@ -47,7 +47,7 @@ class BannerCarousel {
                 </div>
 
                 <!-- Banner Container -->
-                <div class="banner-slides relative" style="height: ${isMobile ? '100px' : '400px'};">
+                <div class="banner-slides relative" style="height: ${isMobile ? '100px' : '120px'};">
                     ${this.banners.map((banner, index) => this.renderBannerSlide(banner, index)).join('')}
                 </div>
 
@@ -106,9 +106,21 @@ class BannerCarousel {
             imageFit = '100% 100%'; // Stretch to fill on mobile for better visibility
         }
 
-        // Always use custom position values (default to center if not set)
-        const posX = banner.custom_position_x !== null && banner.custom_position_x !== undefined ? banner.custom_position_x : 50;
-        const posY = banner.custom_position_y !== null && banner.custom_position_y !== undefined ? banner.custom_position_y : 50;
+        // Use mobile or desktop position values based on screen size
+        let posX, posY;
+        if (isMobile) {
+            // Use mobile-specific positions if available, fallback to desktop positions
+            posX = banner.custom_position_x_mobile !== null && banner.custom_position_x_mobile !== undefined
+                ? banner.custom_position_x_mobile
+                : (banner.custom_position_x !== null && banner.custom_position_x !== undefined ? banner.custom_position_x : 50);
+            posY = banner.custom_position_y_mobile !== null && banner.custom_position_y_mobile !== undefined
+                ? banner.custom_position_y_mobile
+                : (banner.custom_position_y !== null && banner.custom_position_y !== undefined ? banner.custom_position_y : 50);
+        } else {
+            // Use desktop positions (default to center if not set)
+            posX = banner.custom_position_x !== null && banner.custom_position_x !== undefined ? banner.custom_position_x : 50;
+            posY = banner.custom_position_y !== null && banner.custom_position_y !== undefined ? banner.custom_position_y : 50;
+        }
         const cssPosition = `${posX}% ${posY}%`;
 
         return `
