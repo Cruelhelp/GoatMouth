@@ -25,7 +25,7 @@ class AuthGuard {
         try {
             const { data, error } = await window.supabaseClient
                 .from('profiles')
-                .select('*')
+                .select('id, username, email, role, balance, created_at, updated_at')
                 .eq('id', userId)
                 .single();
 

@@ -140,28 +140,28 @@ class AdminPanel {
                 .catch(() => ({ data: [], error: null })),
             window.supabaseClient
                 .from('markets')
-                .select('*, creator:profiles!markets_created_by_fkey(username)')
-                .order('created_at', { ascending: false })
-                .limit(10)
-                .then(r => r)
-                .catch(() => ({ data: [], error: null })),
-            window.supabaseClient
-                .from('comments')
-                .select('*, user:profiles!comments_user_id_fkey(username), market:markets(title)')
-                .order('created_at', { ascending: false })
-                .limit(15)
-                .then(r => r)
-                .catch(() => ({ data: [], error: null })),
-            window.supabaseClient
-                .from('profiles')
                 .select('*')
                 .order('created_at', { ascending: false })
                 .limit(10)
                 .then(r => r)
                 .catch(() => ({ data: [], error: null })),
             window.supabaseClient
+                .from('comments')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(15)
+                .then(r => r)
+                .catch(() => ({ data: [], error: null })),
+            window.supabaseClient
+                .from('profiles')
+                .select('id, username, email, role, balance, created_at')
+                .order('created_at', { ascending: false })
+                .limit(10)
+                .then(r => r)
+                .catch(() => ({ data: [], error: null })),
+            window.supabaseClient
                 .from('proposals')
-                .select('*, user:profiles!proposals_user_id_fkey(username)')
+                .select('*')
                 .order('created_at', { ascending: false })
                 .limit(10)
                 .then(r => r)
@@ -694,9 +694,6 @@ class AdminPanel {
         container.innerHTML = `
             <div class="flex justify-between items-center mb-6" style="flex-wrap: wrap; gap: 12px;">
                 <h3 class="text-xl font-bold" style="color: var(--fg);">All Markets (${markets.length})</h3>
-                <button onclick="adminPanel.showCreateMarketModal()" class="btn" style="background: var(--accent); color: white;">
-                    <i class="fa-solid fa-plus"></i> Create Market
-                </button>
             </div>
 
             <!-- Markets Grid View -->
@@ -2561,10 +2558,10 @@ class AdminPanel {
                         <div class="voting-stat-label">Pending Review</div>
                     </div>
                     <div class="voting-stat-card" data-status="approved">
-                        <div class="voting-stat-icon text-green-400">
+                        <div class="voting-stat-icon" style="color: #047857;">
                             <i class="fa-solid fa-circle-check"></i>
                         </div>
-                        <div class="voting-stat-value text-green-400">${approvedCount}</div>
+                        <div class="voting-stat-value" style="color: #047857;">${approvedCount}</div>
                         <div class="voting-stat-label">Approved & Live</div>
                     </div>
                     <div class="voting-stat-card" data-status="rejected">
@@ -2658,10 +2655,10 @@ class AdminPanel {
                             <div class="proposal-vote-item">
                                 <div class="proposal-vote-header">
                                     <span class="proposal-vote-label"><i class="fa-solid fa-thumbs-up"></i> Yes</span>
-                                    <span class="proposal-vote-count text-green-400">${yesVotes}</span>
+                                    <span class="proposal-vote-count" style="color: #047857;">${yesVotes}</span>
                                 </div>
                                 <div class="proposal-vote-bar">
-                                    <div class="proposal-vote-fill bg-green-400" style="width: ${yesPercent}%"></div>
+                                    <div class="proposal-vote-fill" style="background-color: #047857; width: ${yesPercent}%"></div>
                                 </div>
                             </div>
                             <div class="proposal-vote-item">
@@ -2859,17 +2856,17 @@ class AdminPanel {
             const [recentBets, recentMarkets, recentComments, recentUsers, recentProposals, transactions] = await Promise.all([
                 window.supabaseClient
                     .from('bets')
-                    .select('*, user:profiles!bets_user_id_fkey(username), market:markets(title)')
+                    .select('*')
                     .order('created_at', { ascending: false })
                     .limit(50),
                 window.supabaseClient
                     .from('markets')
-                    .select('*, creator:profiles!markets_created_by_fkey(username)')
+                    .select('*')
                     .order('created_at', { ascending: false })
                     .limit(30),
                 window.supabaseClient
                     .from('comments')
-                    .select('*, user:profiles!comments_user_id_fkey(username), market:markets(title)')
+                    .select('*')
                     .order('created_at', { ascending: false })
                     .limit(40),
                 window.supabaseClient
@@ -2879,7 +2876,7 @@ class AdminPanel {
                     .limit(20),
                 window.supabaseClient
                     .from('proposals')
-                    .select('*, user:profiles!proposals_user_id_fkey(username)')
+                    .select('*')
                     .order('created_at', { ascending: false })
                     .limit(20),
                 this.api.getAllTransactions({ limit: 100 })

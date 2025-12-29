@@ -12,6 +12,7 @@ class GoatMouth {
         this.marketOffset = 0; // For pagination
         this.marketsPerPage = 25; // 5x5 grid
         this.viewMode = localStorage.getItem('marketViewMode') || 'grid'; // 'grid' or 'list'
+        this.bookmarksCache = []; // Cache bookmarked market IDs
         this.init();
     }
 
@@ -94,6 +95,15 @@ class GoatMouth {
 
         // Full render (updates auth state in header and renders content)
         this.render();
+
+        // Check if bookmarks modal should be shown (from other pages)
+        if (sessionStorage.getItem('showBookmarksOnLoad') === 'true') {
+            sessionStorage.removeItem('showBookmarksOnLoad');
+            // Wait a bit for auth to be fully ready
+            setTimeout(() => {
+                this.showBookmarksModal();
+            }, 500);
+        }
 
         // Prevent back button cache issues
         this.setupPageVisibilityMonitoring();
@@ -203,6 +213,9 @@ class GoatMouth {
             if (this.currentUser) {
                 this.currentProfile = await this.api.getProfile(this.currentUser.id);
 
+                // Load user's bookmarks
+                await this.loadBookmarks();
+
                 // Redirect admin to admin panel
                 if (this.currentProfile.role === 'admin' && !window.location.pathname.includes('admin.html')) {
                     // Optional: comment this out if you want admins to access main app too
@@ -220,6 +233,9 @@ class GoatMouth {
     async onSignIn(user) {
         this.currentUser = user;
         this.currentProfile = await this.api.getProfile(user.id);
+
+        // Load user's bookmarks
+        await this.loadBookmarks();
 
         // Redirect admin to admin panel on login
         if (this.currentProfile.role === 'admin') {
@@ -368,6 +384,12 @@ class GoatMouth {
     renderNav() {
         const mainNav = document.querySelector('#main-nav');
         const categoryNav = document.querySelector('#category-nav');
+
+        // If elements don't exist, components are handling navigation - skip rendering
+        if (!mainNav || !categoryNav) {
+            return;
+        }
+
         const isAuth = !!this.currentUser;
         const isOnIndexPage = window.location.pathname.endsWith('index.html') || window.location.pathname === '/' || window.location.pathname === '';
 
@@ -444,10 +466,10 @@ class GoatMouth {
                                 <span class="font-semibold">Activity</span>
                             </a>
                             <a href="#" class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition touch-target" data-nav="voting" onclick="app.toggleMobileMenu()">
-                                <svg class="w-5 h-5" style="color: #027A40;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-5 h-5" style="color: #ffffff;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
-                                <span class="font-semibold" style="color: #027A40;">Community Voting</span>
+                                <span class="font-semibold" style="color: #ffffff;">Community Voting</span>
                             </a>
 
                             <!-- Live Feed Section (Mobile Only) -->
@@ -968,6 +990,9 @@ class GoatMouth {
             const allMarkets = await this.api.getMarkets(filters);
             const markets = allMarkets;
 
+            // Store all markets for bookmarks modal
+            this.markets = allMarkets;
+
             if (markets.length === 0) {
                 const categoryText = this.currentCategory === 'all' ? '' : ` in ${this.currentCategory}`;
                 container.innerHTML = `
@@ -1005,6 +1030,30 @@ class GoatMouth {
                     <div class="mb-6 flex justify-end">
                         <button class="px-4 py-2 rounded-lg text-white transition" style="background-color: #027A40;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'" onclick="app.showCreateMarketModal()">Create Market</button>
                     </div>
+                ` : ''}
+
+                <!-- Floating View Toggle - Mobile Only -->
+                ${this.isMobile ? `
+                    <button onclick="app.toggleViewMode()"
+                            class="mobile-only"
+                            style="position: fixed; bottom: 80px; right: 16px; background: transparent; border: none; padding: 8px; display: flex; align-items: center; justify-content: center; z-index: 40; transition: all 0.2s ease; cursor: pointer;"
+                            onmouseover="this.style.transform='scale(1.1)'; this.style.opacity='0.8';"
+                            onmouseout="this.style.transform='scale(1)'; this.style.opacity='1';"
+                            ontouchstart="this.style.transform='scale(0.9)'; this.style.opacity='0.8';"
+                            ontouchend="this.style.transform='scale(1)'; this.style.opacity='1';"
+                            title="${this.viewMode === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}">
+                        ${this.viewMode === 'grid' ? `
+                            <!-- List Icon (3 horizontal lines) -->
+                            <svg style="width: 36px; height: 36px; color: #027A40; filter: drop-shadow(0 2px 8px rgba(2, 122, 64, 0.5));" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16"/>
+                            </svg>
+                        ` : `
+                            <!-- Grid Icon (4 squares) -->
+                            <svg style="width: 36px; height: 36px; color: #027A40; filter: drop-shadow(0 2px 8px rgba(2, 122, 64, 0.5));" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                            </svg>
+                        `}
+                    </button>
                 ` : ''}
 
                 <!-- Markets Container -->
@@ -1049,193 +1098,208 @@ class GoatMouth {
         const yesStrokeDashoffset = circumference - (yesPercent / 100) * circumference;
 
         if (this.isMobile) {
-            // Mobile card with visual indicators
+            // Mobile card - Polymarket style
             return `
-                <div class="mobile-card bg-gray-800 rounded-xl overflow-hidden border border-gray-700 touch-target"
-                     onclick="app.showMarketDetail('${market.id}')"
-                     style="box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);"
-                     ontouchstart="this.style.transform='scale(0.97)'; this.style.boxShadow='0 1px 4px rgba(0,0,0,0.2), inset 0 0 0 1px rgba(2, 122, 64, 0.3)'; this.style.borderColor='rgba(2, 122, 64, 0.4)';"
-                     ontouchend="this.style.transform='scale(1)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.3)'; this.style.borderColor='rgb(55, 65, 81)';"
-                     ontouchcancel="this.style.transform='scale(1)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.3)'; this.style.borderColor='rgb(55, 65, 81)';">
-
-                    <!-- Colored Top Bar -->
-                    <div style="height: 4px; background: linear-gradient(90deg, #027A40 0%, #027A40 ${yesPercent}%, #ef4444 ${yesPercent}%, #ef4444 100%);"></div>
+                <div class="mobile-card bg-gray-800 rounded-xl overflow-hidden border border-gray-700"
+                     style="box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: all 0.2s;">
 
                     <!-- Image Section -->
-                    ${market.image_url ? `
-                        <div style="height: 120px; background: url('${market.image_url}') center/cover; position: relative;"></div>
-                    ` : ''}
-
-                    <div class="p-4">
-                        <!-- Category Badge -->
-                        ${market.category ? `
-                            <div class="mb-2">
-                                <span class="text-xs px-2 py-0.5 rounded-md font-semibold" style="background-color: rgba(2, 122, 64, 0.1); color: #027A40; border: 1px solid rgba(2, 122, 64, 0.2);">${market.category}</span>
+                    <div onclick="window.location.href='market.html?id=${market.id}'" style="cursor: pointer; position: relative;">
+                        ${market.image_url ? `
+                            <div style="height: 140px; background: url('${market.image_url}') center/cover; position: relative;">
+                                <div style="position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.4) 100%);"></div>
                             </div>
-                        ` : ''}
+                        ` : `
+                            <div style="height: 140px; background: linear-gradient(135deg, #1f2937 0%, #111827 100%); position: relative; display: flex; align-items: center; justify-content: center;">
+                                <div style="font-size: 2.5rem; font-weight: 800; color: rgba(0, 203, 151, 0.15);">${yesPercent}%</div>
+                            </div>
+                        `}
 
-                        <!-- Title -->
-                        <h3 class="text-base font-bold mb-3 leading-tight line-clamp-2" style="color: #ffffff; font-family: system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;">${market.title}</h3>
+                        <!-- Share Icon - Bottom Right -->
+                        <button onclick="event.stopPropagation(); app.shareMarket('${market.id}', '${market.title.replace(/'/g, "\\'")}');"
+                                class="share-btn"
+                                style="position: absolute; bottom: 10px; right: 50px; padding: 8px; background: none; border: none; transition: all 0.2s; opacity: 0.9; -webkit-tap-highlight-color: transparent;"
+                                onmouseover="this.style.opacity='1'; this.style.transform='scale(1.15)';"
+                                onmouseout="this.style.opacity='0.9'; this.style.transform='scale(1)';">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                                <circle cx="18" cy="5" r="3"></circle>
+                                <circle cx="6" cy="12" r="3"></circle>
+                                <circle cx="18" cy="19" r="3"></circle>
+                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                            </svg>
+                        </button>
 
-                        <!-- Vertical Voting Analytics Style Bars -->
-                        <div style="margin-bottom: 12px;">
-                            <!-- Bar Chart Container -->
-                            <div style="display: flex; gap: 12px; padding: 0 16px;">
-                                <!-- YES Bar -->
-                                <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;">
-                                    <!-- Vertical Bar Area (Fixed Height) -->
-                                    <div style="width: 100%; height: 100px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative;">
-                                        <!-- Faded background track -->
-                                        <div style="position: absolute; bottom: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, rgba(2, 122, 64, 0.05) 0px, rgba(2, 122, 64, 0.05) 10px, transparent 10px, transparent 20px); border-radius: 6px; opacity: 0.3;"></div>
-                                        <!-- Active bar growing from bottom -->
-                                        <div style="width: 100%; background: linear-gradient(180deg, #03924d 0%, #027A40 100%); border-radius: 6px 6px 0 0; transition: all 0.5s ease; box-shadow: 0 -4px 12px rgba(2, 122, 64, 0.4); height: ${yesPercent}%; display: flex; align-items: center; justify-content: center; position: relative; z-index: 10;">
-                                            <span style="font-size: 1.1rem; font-weight: 700; color: white; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);">${yesPercent}%</span>
-                                        </div>
-                                    </div>
-                                    <!-- Label below bar -->
-                                    <span style="font-size: 0.7rem; font-weight: 600; color: #027A40; text-transform: uppercase; letter-spacing: 0.03em;">Yes</span>
+                        <!-- Bookmark Icon - Bottom Right -->
+                        <button onclick="event.stopPropagation(); app.toggleBookmark('${market.id}');"
+                                class="bookmark-btn ${this.isBookmarked(market.id) ? 'bookmarked' : ''}"
+                                data-market-id="${market.id}"
+                                style="position: absolute; bottom: 10px; right: 10px; padding: 8px; background: none; border: none; transition: all 0.2s; opacity: 0.9; -webkit-tap-highlight-color: transparent;"
+                                onmouseover="this.style.opacity='1'; this.style.transform='scale(1.15)';"
+                                onmouseout="this.style.opacity='0.9'; this.style.transform='scale(1)';">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="${this.isBookmarked(market.id) ? '#059669' : 'none'}" stroke="${this.isBookmarked(market.id) ? '#059669' : '#ffffff'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M18 7v14l-6 -4l-6 4v-14a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4z" />
+                            </svg>
+                        </button>
+
+                        <div class="p-4">
+                            <!-- Category & Time -->
+                            <div class="flex items-center justify-between mb-2">
+                                ${market.category ? `
+                                    <span class="text-xs font-semibold" style="color: #059669;">${market.category}</span>
+                                ` : '<span></span>'}
+                                <div class="flex items-center gap-1 text-gray-400 text-xs">
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <span class="font-medium">${timeLeft}</span>
                                 </div>
+                            </div>
 
-                                <!-- NO Bar -->
-                                <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;">
-                                    <!-- Vertical Bar Area (Fixed Height) -->
-                                    <div style="width: 100%; height: 100px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative;">
-                                        <!-- Faded background track -->
-                                        <div style="position: absolute; bottom: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, rgba(239, 68, 68, 0.05) 0px, rgba(239, 68, 68, 0.05) 10px, transparent 10px, transparent 20px); border-radius: 6px; opacity: 0.3;"></div>
-                                        <!-- Active bar growing from bottom -->
-                                        <div style="width: 100%; background: linear-gradient(180deg, #f87171 0%, #ef4444 100%); border-radius: 6px 6px 0 0; transition: all 0.5s ease; box-shadow: 0 -4px 12px rgba(239, 68, 68, 0.4); height: ${noPercent}%; display: flex; align-items: center; justify-content: center; position: relative; z-index: 10;">
-                                            <span style="font-size: 1.1rem; font-weight: 700; color: white; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);">${noPercent}%</span>
-                                        </div>
-                                    </div>
-                                    <!-- Label below bar -->
-                                    <span style="font-size: 0.7rem; font-weight: 600; color: #ef4444; text-transform: uppercase; letter-spacing: 0.03em;">No</span>
+                            <!-- Title -->
+                            <h3 class="text-base font-bold mb-3 leading-tight line-clamp-2" style="color: #ffffff; min-height: 40px;">${market.title}</h3>
+
+                            <!-- Bet Buttons - Polymarket Style -->
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <button onclick="event.stopPropagation(); app.quickBet('${market.id}', 'yes', ${market.yes_price});"
+                                        class="flex items-center justify-between px-3 py-2.5 rounded-lg transition"
+                                        style="background: rgba(5, 150, 105, 0.12);"
+                                        onmouseover="this.style.background='rgba(5, 150, 105, 0.18)';"
+                                        onmouseout="this.style.background='rgba(5, 150, 105, 0.12)';">
+                                    <span class="text-xs font-semibold" style="color: #059669;">YES</span>
+                                    <span class="text-lg font-bold" style="color: #059669;">${yesPercent}¢</span>
+                                </button>
+
+                                <button onclick="event.stopPropagation(); app.quickBet('${market.id}', 'no', ${market.no_price});"
+                                        class="flex items-center justify-between px-3 py-2.5 rounded-lg transition"
+                                        style="background: rgba(239, 68, 68, 0.12);"
+                                        onmouseover="this.style.background='rgba(239, 68, 68, 0.18)';"
+                                        onmouseout="this.style.background='rgba(239, 68, 68, 0.12)';">
+                                    <span class="text-xs font-semibold" style="color: #ef4444;">NO</span>
+                                    <span class="text-lg font-bold" style="color: #ef4444;">${noPercent}¢</span>
+                                </button>
+                            </div>
+
+                            <!-- Volume & Traders -->
+                            <div class="flex items-center gap-4 text-xs text-gray-400">
+                                <div class="flex items-center gap-1.5">
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                                    </svg>
+                                    <span class="font-medium">J$${parseFloat(market.total_volume/1000).toFixed(1)}K vol</span>
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- Footer Info -->
-                        <div class="flex items-center justify-between text-xs gap-2">
-                            <div class="flex items-center gap-1.5 text-gray-400">
-                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                                </svg>
-                                <span class="font-medium text-xs">J$${parseFloat(market.total_volume/1000).toFixed(1)}K</span>
-                            </div>
-                            <div class="flex items-center gap-1 text-gray-400">
-                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                                </svg>
-                                <span class="font-medium text-xs">${market.bettor_count || 0}</span>
-                            </div>
-                            <div class="flex items-center gap-1 text-gray-400">
-                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                                <span class="font-medium text-xs">${timeLeft}</span>
+                                <div class="flex items-center gap-1.5">
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                    </svg>
+                                    <span class="font-medium">${market.bettor_count || 0}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             `;
         } else {
-            // Desktop card - Compact 5-column layout
+            // Desktop card - Polymarket style
             return `
-                <div class="bg-gray-800 rounded-lg overflow-hidden cursor-pointer border border-gray-700"
-                     onclick="app.showMarketDetail('${market.id}')"
+                <div class="bg-gray-800 rounded-lg overflow-hidden border border-gray-700"
                      style="box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);"
-                     onmouseover="this.style.boxShadow='0 8px 24px rgba(2, 122, 64, 0.15), 0 4px 12px rgba(0,0,0,0.4)'; this.style.transform='translateY(-4px) scale(1.01)'; this.style.borderColor='rgba(2, 122, 64, 0.5)';"
-                     onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.2)'; this.style.transform='translateY(0) scale(1)'; this.style.borderColor='rgb(55, 65, 81)';"
-                     onmousedown="this.style.transform='translateY(-2px) scale(0.99)'; this.style.boxShadow='0 4px 12px rgba(2, 122, 64, 0.2)';"
-                     onmouseup="this.style.transform='translateY(-4px) scale(1.01)'; this.style.boxShadow='0 8px 24px rgba(2, 122, 64, 0.15), 0 4px 12px rgba(0,0,0,0.4)';">
+                     onmouseover="this.style.boxShadow='0 6px 20px rgba(2, 122, 64, 0.12), 0 3px 10px rgba(0,0,0,0.3)'; this.style.transform='translateY(-2px)'; this.style.borderColor='rgba(2, 122, 64, 0.3)';"
+                     onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.2)'; this.style.transform='translateY(0)'; this.style.borderColor='rgb(55, 65, 81)';">
 
-                    <!-- Colored Top Bar -->
-                    <div style="height: 3px; background: linear-gradient(90deg, #027A40 0%, #027A40 ${yesPercent}%, #ef4444 ${yesPercent}%, #ef4444 100%);"></div>
+                    <!-- Image Section -->
+                    <div onclick="window.location.href='market.html?id=${market.id}'" style="cursor: pointer; position: relative;">
+                        ${market.image_url ? `
+                            <div style="height: 110px; background: url('${market.image_url}') center/cover; position: relative;">
+                                <div style="position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.3) 100%);"></div>
+                            </div>
+                        ` : `
+                            <div style="height: 110px; background: linear-gradient(135deg, #1f2937 0%, #111827 100%); display: flex; align-items: center; justify-content: center; position: relative;">
+                                <div style="font-size: 2rem; font-weight: 800; color: rgba(0, 203, 151, 0.12);">${yesPercent}%</div>
+                            </div>
+                        `}
 
-                    <!-- Image Placeholder -->
-                    ${market.image_url ? `
-                        <div style="height: 100px; background: url('${market.image_url}') center/cover; position: relative;">
-                        </div>
-                    ` : `
-                        <div style="height: 100px; background: linear-gradient(135deg, #1f2937 0%, #111827 100%); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                            <div style="position: absolute; inset: 0; opacity: 0.03; background-image: radial-gradient(circle, #00CB97 1px, transparent 1px); background-size: 15px 15px;"></div>
-                            <svg width="60" height="60" style="transform: rotate(-90deg);">
-                                <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3"/>
-                                <circle cx="30" cy="30" r="26" fill="none" stroke="#00CB97" stroke-width="3"
-                                        stroke-dasharray="${2 * Math.PI * 26}"
-                                        stroke-dashoffset="${2 * Math.PI * 26 - (yesPercent / 100) * 2 * Math.PI * 26}"
-                                        stroke-linecap="round"
-                                        style="filter: drop-shadow(0 0 4px rgba(2, 122, 64, 0.6)); transition: stroke-dashoffset 0.5s ease;"/>
-                                <text x="30" y="30" text-anchor="middle" dy="5" font-size="16" font-weight="bold" fill="#00CB97" transform="rotate(90 30 30)">${yesPercent}%</text>
+                        <!-- Share Icon - Bottom Right -->
+                        <button onclick="event.stopPropagation(); app.shareMarket('${market.id}', '${market.title.replace(/'/g, "\\'")}');"
+                                class="share-btn"
+                                style="position: absolute; bottom: 6px; right: 40px; padding: 0; background: none; border: none; transition: all 0.2s; opacity: 0.9;"
+                                onmouseover="this.style.opacity='1'; this.style.transform='scale(1.15)';"
+                                onmouseout="this.style.opacity='0.9'; this.style.transform='scale(1)';">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                                <circle cx="18" cy="5" r="3"></circle>
+                                <circle cx="6" cy="12" r="3"></circle>
+                                <circle cx="18" cy="19" r="3"></circle>
+                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                             </svg>
-                        </div>
-                    `}
+                        </button>
 
-                    <div class="p-3">
-                        <!-- Category Badge -->
-                        ${market.category ? `
-                            <div class="mb-2">
-                                <span class="text-xs px-2 py-0.5 rounded-md font-semibold" style="background-color: rgba(2, 122, 64, 0.1); color: #027A40; border: 1px solid rgba(2, 122, 64, 0.2); font-size: 9px;">${market.category}</span>
-                            </div>
-                        ` : ''}
+                        <!-- Bookmark Icon - Bottom Right -->
+                        <button onclick="event.stopPropagation(); app.toggleBookmark('${market.id}');"
+                                class="bookmark-btn ${this.isBookmarked(market.id) ? 'bookmarked' : ''}"
+                                data-market-id="${market.id}"
+                                style="position: absolute; bottom: 6px; right: 6px; padding: 0; background: none; border: none; transition: all 0.2s; opacity: 0.9;"
+                                onmouseover="this.style.opacity='1'; this.style.transform='scale(1.15)';"
+                                onmouseout="this.style.opacity='0.9'; this.style.transform='scale(1)';">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${this.isBookmarked(market.id) ? '#059669' : 'none'}" stroke="${this.isBookmarked(market.id) ? '#059669' : '#ffffff'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M18 7v14l-6 -4l-6 4v-14a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4z" />
+                            </svg>
+                        </button>
 
-                        <!-- Title -->
-                        <h3 class="text-sm font-bold mb-2 leading-tight line-clamp-2" style="color: #ffffff; min-height: 36px; font-family: system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;">${market.title}</h3>
-
-                        <!-- Vertical Voting Analytics Style Bars -->
-                        <div style="margin-bottom: 8px;">
-                            <!-- Bar Chart Container -->
-                            <div style="display: flex; gap: 10px; padding: 0 8px;">
-                                <!-- YES Bar -->
-                                <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;">
-                                    <!-- Vertical Bar Area (Fixed Height) -->
-                                    <div style="width: 100%; height: 80px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative;">
-                                        <!-- Faded background track -->
-                                        <div style="position: absolute; bottom: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, rgba(2, 122, 64, 0.05) 0px, rgba(2, 122, 64, 0.05) 8px, transparent 8px, transparent 16px); border-radius: 5px; opacity: 0.3;"></div>
-                                        <!-- Active bar growing from bottom -->
-                                        <div style="width: 100%; background: linear-gradient(180deg, #03924d 0%, #027A40 100%); border-radius: 5px 5px 0 0; transition: all 0.5s ease; box-shadow: 0 -3px 10px rgba(2, 122, 64, 0.4); height: ${yesPercent}%; display: flex; align-items: center; justify-content: center; position: relative; z-index: 10;">
-                                            <span style="font-size: 0.95rem; font-weight: 700; color: white; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);">${yesPercent}%</span>
-                                        </div>
-                                    </div>
-                                    <!-- Label below bar -->
-                                    <span style="font-size: 0.65rem; font-weight: 600; color: #027A40; text-transform: uppercase; letter-spacing: 0.02em;">Yes</span>
-                                </div>
-
-                                <!-- NO Bar -->
-                                <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;">
-                                    <!-- Vertical Bar Area (Fixed Height) -->
-                                    <div style="width: 100%; height: 80px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative;">
-                                        <!-- Faded background track -->
-                                        <div style="position: absolute; bottom: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, rgba(239, 68, 68, 0.05) 0px, rgba(239, 68, 68, 0.05) 8px, transparent 8px, transparent 16px); border-radius: 5px; opacity: 0.3;"></div>
-                                        <!-- Active bar growing from bottom -->
-                                        <div style="width: 100%; background: linear-gradient(180deg, #f87171 0%, #ef4444 100%); border-radius: 5px 5px 0 0; transition: all 0.5s ease; box-shadow: 0 -3px 10px rgba(239, 68, 68, 0.4); height: ${noPercent}%; display: flex; align-items: center; justify-content: center; position: relative; z-index: 10;">
-                                            <span style="font-size: 0.95rem; font-weight: 700; color: white; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);">${noPercent}%</span>
-                                        </div>
-                                    </div>
-                                    <!-- Label below bar -->
-                                    <span style="font-size: 0.65rem; font-weight: 600; color: #ef4444; text-transform: uppercase; letter-spacing: 0.02em;">No</span>
+                        <div class="p-3">
+                            <!-- Category & Time -->
+                            <div class="flex items-center justify-between mb-2">
+                                ${market.category ? `
+                                    <span class="text-xs font-semibold" style="color: #059669; font-size: 9px;">${market.category}</span>
+                                ` : '<span></span>'}
+                                <div class="flex items-center gap-0.5 text-gray-400 text-xs">
+                                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <span class="font-medium" style="font-size: 9px;">${timeLeft}</span>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Footer -->
-                        <div class="flex items-center justify-between text-xs gap-1">
-                            <div class="flex items-center gap-0.5 text-gray-400">
-                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                                </svg>
-                                <span class="font-medium" style="font-size: 10px;">J$${parseFloat(market.total_volume/1000).toFixed(1)}K</span>
+                            <!-- Title -->
+                            <h3 class="text-sm font-bold mb-3 leading-tight line-clamp-2" style="color: #ffffff; min-height: 36px;">${market.title}</h3>
+
+                            <!-- Bet Buttons - Polymarket Style -->
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <button onclick="event.stopPropagation(); app.quickBet('${market.id}', 'yes', ${market.yes_price});"
+                                        class="flex items-center justify-between px-2.5 py-2 rounded-lg transition"
+                                        style="background: rgba(5, 150, 105, 0.12);"
+                                        onmouseover="this.style.background='rgba(5, 150, 105, 0.18)';"
+                                        onmouseout="this.style.background='rgba(5, 150, 105, 0.12)';">
+                                    <span class="text-xs font-semibold" style="color: #059669; font-size: 10px;">YES</span>
+                                    <span class="text-base font-bold" style="color: #059669;">${yesPercent}¢</span>
+                                </button>
+
+                                <button onclick="event.stopPropagation(); app.quickBet('${market.id}', 'no', ${market.no_price});"
+                                        class="flex items-center justify-between px-2.5 py-2 rounded-lg transition"
+                                        style="background: rgba(239, 68, 68, 0.12);"
+                                        onmouseover="this.style.background='rgba(239, 68, 68, 0.18)';"
+                                        onmouseout="this.style.background='rgba(239, 68, 68, 0.12)';">
+                                    <span class="text-xs font-semibold" style="color: #ef4444; font-size: 10px;">NO</span>
+                                    <span class="text-base font-bold" style="color: #ef4444;">${noPercent}¢</span>
+                                </button>
                             </div>
-                            <div class="flex items-center gap-0.5 text-gray-400">
-                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                                </svg>
-                                <span class="font-medium" style="font-size: 10px;">${market.bettor_count || 0}</span>
-                            </div>
-                            <div class="flex items-center gap-0.5 text-gray-400">
-                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                                <span class="font-medium" style="font-size: 10px;">${timeLeft}</span>
+
+                            <!-- Volume & Traders -->
+                            <div class="flex items-center gap-3 text-xs text-gray-400">
+                                <div class="flex items-center gap-1">
+                                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                                    </svg>
+                                    <span class="font-medium" style="font-size: 9px;">J$${parseFloat(market.total_volume/1000).toFixed(1)}K</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                    </svg>
+                                    <span class="font-medium" style="font-size: 9px;">${market.bettor_count || 0}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1251,54 +1315,104 @@ class GoatMouth {
 
         return `
             <div class="bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition cursor-pointer"
-                 onclick="app.showMarketDetail('${market.id}')"
-                 style="box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
-                <div class="p-4 flex items-center gap-4">
+                 onclick="window.location.href='market.html?id=${market.id}'"
+                 style="box-shadow: 0 1px 3px rgba(0,0,0,0.2); overflow: hidden;">
+                <div style="padding: 12px; display: flex; align-items: center; gap: 8px; overflow: hidden;">
+                    <!-- Image Thumbnail -->
+                    ${market.image_url ? `
+                        <div class="flex-shrink-0">
+                            <img src="${market.image_url}"
+                                 alt="${market.title}"
+                                 class="object-cover rounded-lg border border-gray-700"
+                                 style="width: 48px; height: 48px;"
+                                 onerror="this.style.display='none'">
+                        </div>
+                    ` : ''}
+
                     <!-- Left: Market Info -->
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 mb-2">
+                    <div class="flex-1" style="min-width: 0; display: flex; flex-direction: column; gap: 4px; overflow: hidden;">
+                        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; overflow: hidden;">
                             ${market.category ? `
-                                <span class="text-xs px-2 py-0.5 rounded-md font-semibold" style="background-color: rgba(2, 122, 64, 0.1); color: #027A40; border: 1px solid rgba(2, 122, 64, 0.2);">
+                                <span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; background-color: rgba(2, 122, 64, 0.1); color: #027A40; border: 1px solid rgba(2, 122, 64, 0.2); white-space: nowrap;">
                                     ${market.category}
                                 </span>
                             ` : ''}
-                            <span class="text-xs text-gray-400 flex items-center gap-1">
-                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <span style="font-size: 0.65rem; color: #9ca3af; display: flex; align-items: center; gap: 3px; white-space: nowrap;">
+                                <svg style="width: 11px; height: 11px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
                                 ${timeLeft}
                             </span>
                         </div>
-                        <h3 class="text-base font-bold text-white mb-2 line-clamp-2 leading-snug">
+                        <h3 style="font-size: 0.85rem; font-weight: 700; color: #ffffff; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">
                             ${market.title}
                         </h3>
-                        <div class="flex items-center gap-4 text-xs text-gray-400">
-                            <span class="flex items-center gap-1">
-                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.65rem; color: #9ca3af; flex-wrap: wrap; overflow: hidden;">
+                            <span style="display: flex; align-items: center; gap: 3px; white-space: nowrap;">
+                                <svg style="width: 11px; height: 11px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
                                 </svg>
                                 J$${parseFloat(market.total_volume/1000).toFixed(1)}K
                             </span>
-                            <span class="flex items-center gap-1">
-                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <span style="display: flex; align-items: center; gap: 3px; white-space: nowrap;">
+                                <svg style="width: 11px; height: 11px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                                 </svg>
-                                ${market.bettor_count || 0} bettors
+                                ${market.bettor_count || 0}
                             </span>
+                            ${this.isMobile ? `
+                                <span style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                    <div style="width: 40px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #027A40 0%, #027A40 ${yesPercent}%, #ef4444 ${yesPercent}%, #ef4444 100%); box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>
+                                    <span style="color: #027A40; font-weight: 600; font-size: 0.65rem;">${yesPercent}%</span>
+                                </span>
+                            ` : ''}
                         </div>
                     </div>
 
-                    <!-- Right: Probability Bars -->
-                    <div class="flex gap-6 items-center">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold mb-1" style="color: #027A40;">${yesPercent}%</div>
-                            <div class="text-xs text-gray-400 uppercase font-semibold">Yes</div>
+                    <!-- Right: Probability Bars - Desktop Only -->
+                    ${!this.isMobile ? `
+                        <div style="display: flex; gap: 4px; align-items: center;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.95rem; font-weight: 700; color: #027A40; line-height: 1.1; white-space: nowrap;">${yesPercent}%</div>
+                                <div style="font-size: 0.55rem; color: #9ca3af; text-transform: uppercase; font-weight: 600;">Yes</div>
+                            </div>
+                            <div style="width: 1px; height: 32px; background-color: #374151; flex-shrink: 0;"></div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.95rem; font-weight: 700; color: #ef4444; line-height: 1.1; white-space: nowrap;">${noPercent}%</div>
+                                <div style="font-size: 0.55rem; color: #9ca3af; text-transform: uppercase; font-weight: 600;">No</div>
+                            </div>
                         </div>
-                        <div class="h-16 w-px bg-gray-700"></div>
-                        <div class="text-center">
-                            <div class="text-2xl font-bold mb-1 text-red-400">${noPercent}%</div>
-                            <div class="text-xs text-gray-400 uppercase font-semibold">No</div>
-                        </div>
+                    ` : ''}
+
+                    <!-- Share & Bookmark Buttons -->
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <button
+                            onclick="event.stopPropagation(); app.shareMarket('${market.id}', '${market.title.replace(/'/g, "\\'")}'))"
+                            class="share-btn flex-shrink-0"
+                            style="padding: 8px; border-radius: 6px; background: transparent; border: 1px solid #374151; transition: all 0.2s; cursor: pointer;"
+                            onmouseover="this.style.borderColor='#00CB97'; this.style.background='rgba(0, 203, 151, 0.1)'"
+                            onmouseout="this.style.borderColor='#374151'; this.style.background='transparent'"
+                            title="Share this market">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="18" cy="5" r="3"></circle>
+                                <circle cx="6" cy="12" r="3"></circle>
+                                <circle cx="18" cy="19" r="3"></circle>
+                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                            </svg>
+                        </button>
+                        <button
+                            onclick="event.stopPropagation(); app.toggleBookmark('${market.id}')"
+                            class="bookmark-btn flex-shrink-0"
+                            data-market-id="${market.id}"
+                            style="padding: 8px; border-radius: 6px; background: transparent; border: 1px solid #374151; transition: all 0.2s; cursor: pointer;"
+                            onmouseover="this.style.borderColor='#00CB97'; this.style.background='rgba(0, 203, 151, 0.1)'"
+                            onmouseout="this.style.borderColor='#374151'; this.style.background='transparent'"
+                            title="${this.isBookmarked(market.id) ? 'Remove bookmark' : 'Bookmark this market'}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${this.isBookmarked(market.id) ? '#00CB97' : 'none'}" stroke="${this.isBookmarked(market.id) ? '#00CB97' : '#9ca3af'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1852,36 +1966,38 @@ class GoatMouth {
 
     showAuthModal(activeTab = 'login') {
         const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 z-50';
-        modal.style.backdropFilter = 'blur(8px)';
-        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+        modal.className = 'fixed inset-0';
+        modal.style.zIndex = '9999';
+        modal.style.backdropFilter = 'blur(12px)';
+        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.75)';
         modal.style.overflow = 'hidden';
+        modal.style.touchAction = 'none';
         modal.innerHTML = `
-            <div class="min-h-screen flex items-start justify-center px-4" style="padding-top: 180px; padding-bottom: 32px; overflow-y: auto; max-height: 100vh;">
-                <div class="relative rounded-2xl w-full shadow-2xl overflow-hidden" style="max-width: 580px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);">
+            <div class="min-h-screen flex items-center justify-center px-4 py-4" style="touch-action: pan-y;">
+                <div class="relative rounded-2xl w-full shadow-2xl" style="max-width: 580px; max-height: 90vh; display: flex; flex-direction: column; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);">
                     <!-- Watermark Logo Background -->
                     <div class="absolute inset-0 flex items-center justify-center pointer-events-none" style="opacity: 0.04;">
                         <img src="assets/official.png" alt="" style="width: 600px; height: 600px; object-fit: contain; transform: rotate(-15deg);">
                     </div>
 
                     <!-- Content Container -->
-                    <div class="relative z-10 p-8">
+                    <div class="relative z-10" id="auth-modal-content" style="overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1; min-height: 0; padding: 2rem 2rem;">
                         <!-- Close Button -->
-                        <button id="auth-modal-close" class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-700" title="Close">
+                        <button id="auth-modal-close" class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-700" title="Close" style="z-index: 10;">
                             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
                         </button>
 
                         <!-- Logo & Title -->
-                        <div class="text-center mb-6">
-                            <img src="assets/official.png" alt="GoatMouth" class="mx-auto mb-4 logo-no-bg" style="height: 100px; width: 100px; filter: drop-shadow(0 0 30px rgba(2, 122, 64, 0.4));">
+                        <div class="text-center mb-4">
+                            <img src="assets/official.png" alt="GoatMouth" class="mx-auto mb-3 logo-no-bg" id="auth-modal-logo" style="height: 80px; width: 80px; filter: drop-shadow(0 0 30px rgba(2, 122, 64, 0.4));">
                             <h2 class="text-2xl font-bold mb-1 bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">Welcome Back</h2>
                             <p class="text-gray-400 text-xs">Sign in or create an account to start trading</p>
                         </div>
 
                         <!-- Tabs -->
-                        <div class="flex gap-2 mb-6 p-1 rounded-xl" style="background: rgba(0, 0, 0, 0.3);">
+                        <div class="flex gap-2 mb-4 p-1 rounded-xl" style="background: rgba(0, 0, 0, 0.3);">
                             <button id="login-tab" class="auth-tab ${activeTab === 'login' ? 'active' : ''} flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200 text-sm">
                                 Sign In
                             </button>
@@ -2038,31 +2154,33 @@ class GoatMouth {
 
         document.body.appendChild(modal);
 
-        // Prevent body scroll when modal is open
+        // Prevent body scroll when modal is open (especially on mobile)
+        const scrollY = window.scrollY;
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.width = '100%';
         document.body.style.overflow = 'hidden';
 
-        // Responsive padding for modal
-        const modalContainer = modal.querySelector('.min-h-screen');
-        const applyResponsivePadding = () => {
-            if (window.innerWidth <= 768) {
-                // Mobile: more padding from top
-                modalContainer.style.paddingTop = '220px';
-                modalContainer.style.paddingBottom = '32px';
-            } else {
-                // Desktop
-                modalContainer.style.paddingTop = '180px';
-                modalContainer.style.paddingBottom = '32px';
-            }
-        };
-        applyResponsivePadding();
-        window.addEventListener('resize', applyResponsivePadding);
-
-        // No longer need responsive icon positioning since icons are outside inputs
+        // Mobile-specific adjustments
+        const modalContent = modal.querySelector('#auth-modal-content');
+        const modalLogo = modal.querySelector('#auth-modal-logo');
+        if (window.innerWidth <= 768) {
+            modalContent.style.padding = '1.5rem 1.25rem';
+            modalLogo.style.height = '60px';
+            modalLogo.style.width = '60px';
+        }
 
         // Function to close modal and cleanup
         const closeModal = () => {
-            window.removeEventListener('resize', applyResponsivePadding);
+
+            // Restore body scroll and position
+            const scrollY = document.body.style.top;
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
             document.body.style.overflow = '';
+            window.scrollTo(0, parseInt(scrollY || '0') * -1);
+
             modal.remove();
         };
 
@@ -2338,6 +2456,475 @@ class GoatMouth {
     showMarketDetail(marketId) {
         this.marketDetailModal = new MarketDetailModal(this, marketId);
         this.marketDetailModal.show();
+    }
+
+    // Bookmark methods
+    async loadBookmarks() {
+        if (!this.currentUser) {
+            this.bookmarksCache = [];
+            return [];
+        }
+
+        try {
+            const { data, error } = await window.supabaseClient
+                .from('bookmarks')
+                .select('market_id')
+                .eq('user_id', this.currentUser.id);
+
+            if (error) {
+                console.error('Error fetching bookmarks:', error);
+                this.bookmarksCache = [];
+                return [];
+            }
+
+            this.bookmarksCache = data.map(b => b.market_id);
+            console.log('✓ Loaded bookmarks:', this.bookmarksCache.length);
+            return this.bookmarksCache;
+        } catch (error) {
+            console.error('Error fetching bookmarks:', error);
+            this.bookmarksCache = [];
+            return [];
+        }
+    }
+
+    isBookmarked(marketId) {
+        return this.bookmarksCache.includes(marketId);
+    }
+
+    async toggleBookmark(marketId) {
+        // Check if user is logged in
+        if (!this.currentUser) {
+            this.showAuthModal('login');
+            return;
+        }
+
+        try {
+            const isCurrentlyBookmarked = this.isBookmarked(marketId);
+
+            if (isCurrentlyBookmarked) {
+                // Remove bookmark from database
+                const { error } = await window.supabaseClient
+                    .from('bookmarks')
+                    .delete()
+                    .eq('user_id', this.currentUser.id)
+                    .eq('market_id', marketId);
+
+                if (error) throw error;
+
+                // Update cache
+                this.bookmarksCache = this.bookmarksCache.filter(id => id !== marketId);
+                console.log('✓ Removed bookmark:', marketId);
+            } else {
+                // Add bookmark to database
+                const { error } = await window.supabaseClient
+                    .from('bookmarks')
+                    .insert({
+                        user_id: this.currentUser.id,
+                        market_id: marketId
+                    });
+
+                if (error) throw error;
+
+                // Update cache
+                this.bookmarksCache.push(marketId);
+                console.log('✓ Added bookmark:', marketId);
+            }
+
+            // Update UI
+            this.updateBookmarkUI(marketId);
+
+        } catch (error) {
+            console.error('Error toggling bookmark:', error);
+            if (window.showToast) {
+                window.showToast('Failed to update bookmark', 'error');
+            }
+        }
+    }
+
+    updateBookmarkUI(marketId) {
+        const isBookmarked = this.isBookmarked(marketId);
+        const bookmarkBtns = document.querySelectorAll(`.bookmark-btn[data-market-id="${marketId}"]`);
+
+        bookmarkBtns.forEach(btn => {
+            const svg = btn.querySelector('svg');
+            if (svg) {
+                if (isBookmarked) {
+                    svg.setAttribute('fill', '#059669');
+                    svg.setAttribute('stroke', '#059669');
+                    btn.classList.add('bookmarked');
+                } else {
+                    svg.setAttribute('fill', 'none');
+                    svg.setAttribute('stroke', '#ffffff');
+                    btn.classList.remove('bookmarked');
+                }
+            }
+        });
+    }
+
+    async shareMarket(marketId, marketTitle) {
+        try {
+            const marketUrl = `${window.location.origin}/market.html?id=${marketId}`;
+            const shareData = {
+                title: marketTitle,
+                text: `Check out this market on GoatMouth: ${marketTitle}`,
+                url: marketUrl
+            };
+
+            // Check if Web Share API is supported
+            if (navigator.share && this.isMobile) {
+                // Use native share on mobile
+                await navigator.share(shareData);
+                if (window.showToast) {
+                    window.showToast('Shared successfully!', 'success');
+                }
+            } else {
+                // Fallback: Copy to clipboard
+                await navigator.clipboard.writeText(marketUrl);
+                if (window.showToast) {
+                    window.showToast('Link copied to clipboard!', 'success');
+                } else {
+                    alert('Link copied to clipboard!');
+                }
+            }
+        } catch (error) {
+            // User cancelled share or clipboard failed
+            if (error.name !== 'AbortError') {
+                console.error('Share error:', error);
+                if (window.showToast) {
+                    window.showToast('Failed to share market', 'error');
+                }
+            }
+        }
+    }
+
+    async showBookmarksModal() {
+        // Check if user is logged in
+        if (!this.currentUser) {
+            this.showAuthModal('login');
+            return;
+        }
+
+        // Reload bookmarks from database to ensure fresh data
+        await this.loadBookmarks();
+
+        // Load all markets if not already loaded
+        if (!this.markets || this.markets.length === 0) {
+            console.log('Loading markets for bookmarks modal...');
+            this.markets = await this.api.getMarkets({});
+        }
+
+        console.log('=== BOOKMARKS DEBUG ===');
+        console.log('📚 Bookmarks in cache:', this.bookmarksCache);
+        console.log('📊 Total markets available:', this.markets ? this.markets.length : 0);
+
+        if (this.markets && this.markets.length > 0) {
+            console.log('📝 Sample market ID:', this.markets[0].id, '(type:', typeof this.markets[0].id + ')');
+        }
+
+        if (this.bookmarksCache.length > 0) {
+            console.log('📝 Sample bookmark ID:', this.bookmarksCache[0], '(type:', typeof this.bookmarksCache[0] + ')');
+        }
+
+        const bookmarkedMarkets = this.markets ? this.markets.filter(m => {
+            const isMatch = this.bookmarksCache.includes(m.id);
+            if (this.bookmarksCache.length > 0 && this.bookmarksCache.length <= 3) {
+                console.log(`Checking market ${m.id} (${m.title?.substring(0, 30)}...) - Match:`, isMatch);
+            }
+            return isMatch;
+        }) : [];
+
+        console.log('✅ Bookmarked markets found:', bookmarkedMarkets.length);
+        if (bookmarkedMarkets.length > 0) {
+            console.log('First bookmarked market:', bookmarkedMarkets[0].title);
+        }
+        console.log('=== END DEBUG ===');
+
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center';
+        modal.style.cssText = 'backdrop-filter: blur(8px); z-index: 100; padding-top: 80px;';
+
+        modal.innerHTML = `
+            <div class="bg-gray-800 rounded-xl max-w-3xl w-full mx-4 shadow-2xl border border-gray-700 overflow-hidden"
+                 style="max-height: calc(100vh - 100px); animation: slideUp 0.3s ease-out;">
+                <style>
+                    @keyframes slideUp {
+                        from { transform: translateY(20px); opacity: 0; }
+                        to { transform: translateY(0); opacity: 1; }
+                    }
+                </style>
+
+                <!-- Header -->
+                <div class="p-4 border-b border-gray-700" style="background: linear-gradient(135deg, rgba(5, 150, 105, 0.1) 0%, rgba(0, 0, 0, 0.2) 100%);">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#059669" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M18 7v14l-6 -4l-6 4v-14a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4z" />
+                            </svg>
+                            <h2 class="text-xl font-bold" style="color: #fff;">Bookmarked Markets</h2>
+                        </div>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white text-2xl transition" style="padding: 4px 8px;">
+                            &times;
+                        </button>
+                    </div>
+                    <p class="text-sm text-gray-400 mt-1">${bookmarkedMarkets.length} market${bookmarkedMarkets.length !== 1 ? 's' : ''} saved</p>
+                </div>
+
+                <!-- Body -->
+                <div class="p-4 overflow-y-auto" style="max-height: calc(100vh - 200px);">
+                    ${bookmarkedMarkets.length === 0 ? `
+                        <div class="text-center py-16">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#4b5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 16px;">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M18 7v14l-6 -4l-6 4v-14a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4z" />
+                            </svg>
+                            <h3 class="text-xl font-bold text-gray-300 mb-2">No bookmarks yet</h3>
+                            <p class="text-gray-400 mb-6">Start bookmarking markets to keep track of your favorites</p>
+                            <button onclick="this.closest('.fixed').remove()" class="px-6 py-3 rounded-lg font-semibold transition" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #fff;">
+                                Browse Markets
+                            </button>
+                        </div>
+                    ` : `
+                        <div class="flex flex-col gap-3">
+                            ${bookmarkedMarkets.map(market => {
+                                const yesPercent = (market.yes_price * 100).toFixed(0);
+                                const noPercent = (market.no_price * 100).toFixed(0);
+                                const timeLeft = this.getTimeLeft(market.end_date);
+
+                                return `
+                                    <div class="bg-gray-700 rounded-lg border border-gray-600 hover:border-gray-500 transition cursor-pointer overflow-hidden"
+                                         onclick="window.location.href='market.html?id=${market.id}'"
+                                         style="box-shadow: 0 1px 3px rgba(0,0,0,0.3);">
+                                        <div class="flex items-center gap-3 p-3">
+                                            ${market.image_url ? `
+                                                <img src="${market.image_url}" alt="${market.title}" class="w-16 h-16 rounded object-cover flex-shrink-0" />
+                                            ` : `
+                                                <div class="w-16 h-16 rounded bg-gray-600 flex items-center justify-center flex-shrink-0">
+                                                    <span class="text-2xl font-bold text-gray-500">${yesPercent}%</span>
+                                                </div>
+                                            `}
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex items-center gap-2 mb-1">
+                                                    ${market.category ? `<span class="text-xs font-semibold" style="color: #059669;">${market.category}</span>` : ''}
+                                                    <span class="text-xs text-gray-400">${timeLeft}</span>
+                                                </div>
+                                                <h3 class="text-sm font-bold text-white mb-2 line-clamp-2">${market.title}</h3>
+                                                <div class="flex items-center gap-2">
+                                                    <div class="flex items-center gap-1 px-2 py-1 rounded" style="background: rgba(5, 150, 105, 0.12);">
+                                                        <span class="text-xs font-semibold" style="color: #059669;">YES</span>
+                                                        <span class="text-sm font-bold" style="color: #059669;">${yesPercent}¢</span>
+                                                    </div>
+                                                    <div class="flex items-center gap-1 px-2 py-1 rounded" style="background: rgba(239, 68, 68, 0.12);">
+                                                        <span class="text-xs font-semibold" style="color: #ef4444;">NO</span>
+                                                        <span class="text-sm font-bold" style="color: #ef4444;">${noPercent}¢</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button onclick="event.stopPropagation(); app.toggleBookmark('${market.id}'); setTimeout(() => { if(!app.isBookmarked('${market.id}')) { this.closest('.fixed').remove(); } }, 100);"
+                                                    class="p-2 rounded-lg hover:bg-gray-600 transition flex-shrink-0">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#059669" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                    <path d="M18 7v14l-6 -4l-6 4v-14a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4z" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+    }
+
+    async quickBet(marketId, outcome, price) {
+        // Check if user is logged in
+        if (!this.currentUser) {
+            this.showAuthModal('login');
+            return;
+        }
+
+        // Get market data
+        const market = this.markets.find(m => m.id === marketId);
+        if (!market) {
+            alert('Market not found');
+            return;
+        }
+
+        // Create quick bet modal
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+        modal.style.backdropFilter = 'blur(8px)';
+
+        const yesPercent = (market.yes_price * 100).toFixed(0);
+        const noPercent = (market.no_price * 100).toFixed(0);
+        const outcomeColor = outcome === 'yes' ? '#059669' : '#ef4444';
+        const outcomeText = outcome.toUpperCase();
+        const outcomePrice = outcome === 'yes' ? yesPercent : noPercent;
+        const profit = 100 - parseFloat(outcomePrice);
+
+        modal.innerHTML = `
+            <div class="bg-gray-800 rounded-xl max-w-md w-full mx-4 shadow-2xl border border-gray-700 overflow-hidden"
+                 style="animation: slideUp 0.3s ease-out;">
+                <style>
+                    @keyframes slideUp {
+                        from { transform: translateY(20px); opacity: 0; }
+                        to { transform: translateY(0); opacity: 1; }
+                    }
+                </style>
+
+                <!-- Header -->
+                <div class="p-5 border-b border-gray-700" style="background: linear-gradient(135deg, rgba(2, 122, 64, 0.1) 0%, rgba(0, 0, 0, 0.2) 100%);">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-lg font-bold" style="color: ${outcomeColor};">Quick Bet: ${outcomeText}</h3>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                    </div>
+                    <p class="text-sm text-gray-300 line-clamp-2">${market.title}</p>
+                </div>
+
+                <!-- Body -->
+                <div class="p-5">
+                    <!-- Outcome Display -->
+                    <div class="mb-4 p-4 rounded-lg text-center" style="background: linear-gradient(135deg, rgba(${outcome === 'yes' ? '2, 122, 64' : '220, 38, 38'}, 0.15) 0%, rgba(${outcome === 'yes' ? '2, 122, 64' : '220, 38, 38'}, 0.05) 100%); border: 2px solid rgba(${outcome === 'yes' ? '0, 203, 151' : '239, 68, 68'}, 0.3);">
+                        <div class="text-sm font-semibold mb-1" style="color: ${outcomeColor};">${outcomeText}</div>
+                        <div class="text-4xl font-black mb-1" style="color: ${outcomeColor};">${outcomePrice}¢</div>
+                        <div class="text-xs text-gray-400">${profit.toFixed(0)}% potential profit</div>
+                    </div>
+
+                    <!-- Quick Amount Buttons -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold mb-2" style="color: #059669;">Bet Amount</label>
+                        <div class="grid grid-cols-4 gap-2 mb-3">
+                            <button class="quick-amount-btn px-3 py-2 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-700 transition text-sm font-semibold" data-amount="10">$10</button>
+                            <button class="quick-amount-btn px-3 py-2 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-700 transition text-sm font-semibold" data-amount="25">$25</button>
+                            <button class="quick-amount-btn px-3 py-2 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-700 transition text-sm font-semibold" data-amount="50">$50</button>
+                            <button class="quick-amount-btn px-3 py-2 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-700 transition text-sm font-semibold" data-amount="100">$100</button>
+                        </div>
+                        <input type="number" id="quick-bet-amount" placeholder="Or enter custom amount"
+                               class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-green-500"
+                               style="font-size: 16px;" min="1" step="0.01">
+                    </div>
+
+                    <!-- Bet Summary -->
+                    <div id="quick-bet-summary" class="hidden mb-4 p-4 rounded-lg" style="background: linear-gradient(135deg, rgba(0, 203, 151, 0.1) 0%, rgba(99, 27, 221, 0.1) 100%); border: 2px solid rgba(0, 203, 151, 0.3);">
+                        <div class="flex justify-between text-sm mb-2">
+                            <span class="text-gray-400">Shares</span>
+                            <span class="font-semibold" id="quick-summary-shares">-</span>
+                        </div>
+                        <div class="flex justify-between text-sm mb-2">
+                            <span class="text-gray-400">Avg. Price</span>
+                            <span class="font-semibold" id="quick-summary-price">-</span>
+                        </div>
+                        <div class="flex justify-between pt-2 border-t border-gray-600">
+                            <span class="font-semibold">Potential Profit</span>
+                            <span class="font-bold text-green-400" id="quick-summary-profit">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Place Bet Button -->
+                    <button id="quick-place-bet-btn" disabled
+                            class="w-full px-4 py-3 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed text-white transition"
+                            style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+                        Place Bet
+                    </button>
+
+                    <!-- Balance -->
+                    <div class="text-center text-sm text-gray-400 mt-3">
+                        Balance: <span class="font-semibold text-white">J$${parseFloat(this.currentProfile?.balance || 0).toFixed(2)}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Attach event listeners
+        const amountInput = modal.querySelector('#quick-bet-amount');
+        const placeBetBtn = modal.querySelector('#quick-place-bet-btn');
+        const summary = modal.querySelector('#quick-bet-summary');
+
+        let betAmount = 0;
+
+        const updateSummary = () => {
+            if (!betAmount || parseFloat(betAmount) < 1) {
+                summary.classList.add('hidden');
+                placeBetBtn.disabled = true;
+                placeBetBtn.textContent = 'Place Bet';
+                return;
+            }
+
+            const amount = parseFloat(betAmount);
+            const shares = amount / price;
+            const potentialProfit = shares - amount;
+
+            summary.classList.remove('hidden');
+            modal.querySelector('#quick-summary-shares').textContent = shares.toFixed(2);
+            modal.querySelector('#quick-summary-price').textContent = (price * 100).toFixed(1) + '¢';
+            modal.querySelector('#quick-summary-profit').textContent = '+J$' + potentialProfit.toFixed(2);
+
+            placeBetBtn.disabled = false;
+            placeBetBtn.textContent = `Place Bet: J$${amount.toFixed(2)}`;
+        };
+
+        // Quick amount buttons
+        modal.querySelectorAll('.quick-amount-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                betAmount = btn.dataset.amount;
+                amountInput.value = betAmount;
+                updateSummary();
+            });
+        });
+
+        // Amount input
+        amountInput.addEventListener('input', (e) => {
+            betAmount = e.target.value;
+            updateSummary();
+        });
+
+        // Place bet
+        placeBetBtn.addEventListener('click', async () => {
+            const amount = parseFloat(betAmount);
+
+            if (!confirm(`Confirm bet: J$${amount.toFixed(2)} on ${outcomeText} @ ${outcomePrice}¢?`)) {
+                return;
+            }
+
+            try {
+                placeBetBtn.disabled = true;
+                placeBetBtn.textContent = 'Placing bet...';
+
+                await this.api.placeBet(marketId, outcome, amount, price);
+
+                alert('Bet placed successfully!');
+                modal.remove();
+
+                // Refresh markets
+                await this.loadMarkets();
+                this.render();
+
+            } catch (error) {
+                alert('Error placing bet: ' + error.message);
+                placeBetBtn.disabled = false;
+                placeBetBtn.textContent = 'Place Bet';
+            }
+        });
+
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
     }
 
     nextPage() {

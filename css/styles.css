@@ -1113,9 +1113,6 @@ video, iframe {
 }
 
 .live-feed-content {
-    display: flex;
-    align-items: center;
-    justify-content: center;
     min-height: 400px;
 }
 
@@ -1138,6 +1135,90 @@ video, iframe {
 .feed-subtext {
     color: #6b7280;
     font-size: 14px;
+}
+
+/* Twitter Feed Styles */
+.twitter-feed-widget {
+    width: 100%;
+}
+
+.twitter-feed-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.twitter-feed-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.twitter-feed-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.twitter-feed-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+}
+
+.twitter-feed-content::-webkit-scrollbar-thumb {
+    background: rgba(2, 122, 64, 0.5);
+    border-radius: 3px;
+}
+
+.twitter-feed-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(2, 122, 64, 0.7);
+}
+
+.twitter-feed-tweet {
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.twitter-feed-tweet:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(2, 122, 64, 0.3);
+}
+
+.tweet-text {
+    color: #D4D4D4;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin-bottom: 8px;
+}
+
+.tweet-text a {
+    color: #1DA1F2;
+    text-decoration: none;
+}
+
+.tweet-text a:hover {
+    text-decoration: underline;
+}
+
+.tweet-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.75rem;
+}
+
+.twitter-feed-footer {
+    padding-top: 12px;
+    margin-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
 }
 
 /* Admin Panel Button */
@@ -3146,4 +3227,117 @@ video, iframe {
     .stat-label {
         font-size: 0.7rem !important;
     }
+}
+
+/* ====================================
+   BETTING INTERFACE - Market Page
+   ==================================== */
+
+/* Bet Tabs */
+.bet-tab {
+    flex: 1;
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s ease;
+    background: transparent;
+    color: #9ca3af;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.bet-tab:hover {
+    color: #fff;
+}
+
+/* YES tab - Green */
+.bet-tab[data-outcome="yes"].active {
+    color: #00CB97;
+    border-bottom-color: #00CB97;
+    background: rgba(0, 203, 151, 0.1);
+}
+
+.bet-tab[data-outcome="yes"]:hover {
+    color: #00CB97;
+    background: rgba(0, 203, 151, 0.05);
+}
+
+/* NO tab - Red */
+.bet-tab[data-outcome="no"].active {
+    color: #ef4444;
+    border-bottom-color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.bet-tab[data-outcome="no"]:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.05);
+}
+
+/* Quick Bet Buttons */
+.quick-bet-btn {
+    transition: all 0.2s ease;
+}
+
+.quick-bet-btn:hover {
+    transform: translateY(-1px);
+}
+
+/* Dynamic colors based on outcome */
+.outcome-yes .quick-bet-btn:hover {
+    border-color: #00CB97 !important;
+    background: rgba(0, 203, 151, 0.1);
+}
+
+.outcome-no .quick-bet-btn:hover {
+    border-color: #ef4444 !important;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* Bet Summary */
+.bet-summary-yes {
+    background: rgba(0, 203, 151, 0.1) !important;
+    border: 1px solid rgba(0, 203, 151, 0.3) !important;
+}
+
+.bet-summary-no {
+    background: rgba(239, 68, 68, 0.1) !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+
+.bet-summary-yes .border-green-700 {
+    border-color: rgba(0, 203, 151, 0.3) !important;
+}
+
+.bet-summary-no .border-green-700 {
+    border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.bet-summary-yes #summary-profit {
+    color: #00CB97 !important;
+}
+
+.bet-summary-no #summary-profit {
+    color: #ef4444 !important;
+}
+
+/* Place Bet Button */
+.place-bet-yes {
+    background: #00CB97 !important;
+}
+
+.place-bet-yes:hover:not(:disabled) {
+    background: #00b386 !important;
+}
+
+.place-bet-no {
+    background: #ef4444 !important;
+}
+
+.place-bet-no:hover:not(:disabled) {
+    background: #dc2626 !important;
 }

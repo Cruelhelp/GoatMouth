@@ -51,9 +51,20 @@ class MarketDetailModal {
         const timeLeft = this.app.getTimeLeft(market.end_date);
 
         return `
-            <div class="bg-gray-800 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto mobile-market-modal" style="margin: 1rem; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
+            <div class="bg-gray-800 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto mobile-market-modal" style="margin: 1rem; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); position: relative; scrollbar-width: none; -ms-overflow-style: none;">
+                <style>
+                    .mobile-market-modal::-webkit-scrollbar {
+                        display: none;
+                    }
+                </style>
                 <!-- Close Button - Top Right -->
-                <button onclick="document.body.style.overflow=''; this.closest('.fixed').remove();" class="absolute top-4 right-4 z-50 text-gray-400 hover:text-white text-3xl leading-none p-2 rounded-lg hover:bg-gray-700 transition touch-target" style="width: 44px; height: 44px;">&times;</button>
+                <button onclick="document.body.style.overflow=''; this.closest('.fixed').remove();"
+                        class="absolute z-50 text-white font-bold transition touch-target"
+                        style="top: 12px; right: 12px; width: 40px; height: 40px; background: rgba(239, 68, 68, 0.9); border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.2); display: flex; align-items: center; justify-content: center; font-size: 24px; line-height: 1; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);"
+                        onmouseover="this.style.background='rgba(239, 68, 68, 1)'; this.style.transform='scale(1.1)'; this.style.boxShadow='0 6px 16px rgba(239, 68, 68, 0.4)';"
+                        onmouseout="this.style.background='rgba(239, 68, 68, 0.9)'; this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(0, 0, 0, 0.3)';">
+                    &times;
+                </button>
 
                 <!-- Market Image (if available) -->
                 ${market.image_url ? `
@@ -185,31 +196,31 @@ class MarketDetailModal {
                     <h3 class="font-bold mb-4 text-base md:text-lg">Market Odds</h3>
 
                     <!-- Vertical Voting Bars -->
-                    <div style="display: flex; gap: 20px; align-items: flex-end; height: 180px; padding: 0 30px; margin-bottom: 20px;">
+                    <div style="display: flex; gap: 20px; align-items: flex-end; height: 180px; padding: 0 20px; margin-bottom: 20px; overflow: hidden;">
                         <!-- YES Bar -->
-                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%;">
-                            <div style="margin-bottom: auto; padding-bottom: 10px;">
-                                <span style="font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #00CB97;">YES</span>
+                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; min-width: 0; overflow: hidden;">
+                            <div style="margin-bottom: auto; padding-bottom: 10px; overflow: hidden;">
+                                <span style="font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #00CB97; white-space: nowrap;">YES</span>
                             </div>
-                            <div style="width: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; height: 100%;">
+                            <div style="width: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; height: 100%; overflow: hidden;">
                                 <div style="position: absolute; bottom: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, rgba(0, 203, 151, 0.05) 0px, rgba(0, 203, 151, 0.05) 12px, transparent 12px, transparent 24px); border-radius: 10px; opacity: 0.3;"></div>
-                                <div style="width: 100%; background: linear-gradient(180deg, #03924d 0%, #027A40 100%); border-radius: 10px 10px 0 0; transition: all 0.5s ease; box-shadow: 0 -6px 20px rgba(2, 122, 64, 0.6); height: ${yesPercent}%; min-height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; z-index: 10; padding: 12px;">
-                                    <span style="font-size: 2rem; font-weight: 800; color: white; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); line-height: 1;">${yesPercent}%</span>
-                                    <span style="font-size: 0.75rem; color: rgba(255, 255, 255, 0.9); margin-top: 4px;">${(100 - parseFloat(yesPercent)).toFixed(0)}% profit</span>
+                                <div style="width: 100%; background: linear-gradient(180deg, #03924d 0%, #027A40 100%); border-radius: 10px 10px 0 0; transition: all 0.5s ease; box-shadow: 0 -6px 20px rgba(2, 122, 64, 0.6); height: ${yesPercent}%; min-height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; z-index: 10; padding: 8px; overflow: hidden;">
+                                    <span style="font-size: 1.75rem; font-weight: 800; color: white; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); line-height: 1; white-space: nowrap;">${yesPercent}%</span>
+                                    <span style="font-size: 0.7rem; color: rgba(255, 255, 255, 0.9); margin-top: 4px; white-space: nowrap;">${(100 - parseFloat(yesPercent)).toFixed(0)}% profit</span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- NO Bar -->
-                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%;">
-                            <div style="margin-bottom: auto; padding-bottom: 10px;">
-                                <span style="font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #ef4444;">NO</span>
+                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; min-width: 0; overflow: hidden;">
+                            <div style="margin-bottom: auto; padding-bottom: 10px; overflow: hidden;">
+                                <span style="font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #ef4444; white-space: nowrap;">NO</span>
                             </div>
-                            <div style="width: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; height: 100%;">
+                            <div style="width: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; height: 100%; overflow: hidden;">
                                 <div style="position: absolute; bottom: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, rgba(239, 68, 68, 0.05) 0px, rgba(239, 68, 68, 0.05) 12px, transparent 12px, transparent 24px); border-radius: 10px; opacity: 0.3;"></div>
-                                <div style="width: 100%; background: linear-gradient(180deg, #f87171 0%, #ef4444 100%); border-radius: 10px 10px 0 0; transition: all 0.5s ease; box-shadow: 0 -6px 20px rgba(239, 68, 68, 0.6); height: ${noPercent}%; min-height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; z-index: 10; padding: 12px;">
-                                    <span style="font-size: 2rem; font-weight: 800; color: white; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); line-height: 1;">${noPercent}%</span>
-                                    <span style="font-size: 0.75rem; color: rgba(255, 255, 255, 0.9); margin-top: 4px;">${(100 - parseFloat(noPercent)).toFixed(0)}% profit</span>
+                                <div style="width: 100%; background: linear-gradient(180deg, #f87171 0%, #ef4444 100%); border-radius: 10px 10px 0 0; transition: all 0.5s ease; box-shadow: 0 -6px 20px rgba(239, 68, 68, 0.6); height: ${noPercent}%; min-height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; z-index: 10; padding: 8px; overflow: hidden;">
+                                    <span style="font-size: 1.75rem; font-weight: 800; color: white; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); line-height: 1; white-space: nowrap;">${noPercent}%</span>
+                                    <span style="font-size: 0.7rem; color: rgba(255, 255, 255, 0.9); margin-top: 4px; white-space: nowrap;">${(100 - parseFloat(noPercent)).toFixed(0)}% profit</span>
                                 </div>
                             </div>
                         </div>
@@ -322,46 +333,70 @@ class MarketDetailModal {
                 `}
 
                 <!-- Comments Section -->
-                <div class="p-4 md:p-6 border-t border-gray-700">
-                    <h3 class="font-semibold mb-3 text-base md:text-lg">Discussion</h3>
+                <div class="p-4 md:p-6 border-t-2 border-gray-700/50">
+                    <!-- Section Header -->
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-1 h-6 rounded-full" style="background: linear-gradient(180deg, #00CB97 0%, #027A40 100%);"></div>
+                        <h3 class="font-bold text-lg" style="color: #00CB97;">
+                            <i class="fa-solid fa-comments mr-2"></i>Discussion
+                        </h3>
+                    </div>
 
                     <!-- Comment Form -->
                     ${this.app.currentUser ? `
-                        <div class="mb-4">
+                        <div class="mb-5 p-4 rounded-lg border" style="background: linear-gradient(135deg, rgba(31, 41, 55, 0.4) 0%, rgba(17, 24, 39, 0.2) 100%); border: 1px solid rgba(75, 85, 99, 0.4);">
                             <textarea
                                 id="comment-input"
                                 placeholder="Share your thoughts on this market..."
-                                class="w-full px-3 py-2 md:px-4 md:py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-gray-500 resize-none text-sm md:text-base"
+                                class="w-full px-4 py-3 rounded-lg focus:outline-none resize-none text-sm transition border"
+                                style="background: rgba(17, 24, 39, 0.6); border: 1px solid rgba(75, 85, 99, 0.5); color: rgb(229, 231, 235); font-size: 16px;"
                                 rows="3"
                                 maxlength="1000"
-                                style="font-size: 16px;"
+                                onfocus="this.style.borderColor='#00CB97'"
+                                onblur="this.style.borderColor='rgba(75, 85, 99, 0.5)'"
                             ></textarea>
-                            <div class="flex justify-between items-center mt-2">
-                                <span class="text-xs text-gray-400">Max 1000 characters</span>
+                            <div class="flex justify-between items-center mt-3">
+                                <span class="text-xs flex items-center gap-1" style="color: rgb(156, 163, 175);">
+                                    <i class="fa-solid fa-circle-info"></i> Max 1000 characters
+                                </span>
                                 <button
                                     id="post-comment-btn"
-                                    class="px-3 py-2 md:px-4 md:py-2 rounded-lg font-semibold transition text-white touch-target text-xs md:text-sm"
-                                    style="background-color: #00CB97; min-height: 36px;"
-                                    onmouseover="this.style.backgroundColor='#00e5af'"
-                                    onmouseout="this.style.backgroundColor='#00CB97'"
+                                    class="px-4 py-2 rounded-lg font-semibold transition text-white touch-target text-sm flex items-center gap-2 shadow-lg"
+                                    style="background: linear-gradient(135deg, #00CB97 0%, #027A40 100%); min-height: 36px;"
+                                    onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(0, 203, 151, 0.3)'"
+                                    onmouseout="this.style.transform=''; this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.3)'"
                                 >
-                                    Post
+                                    <i class="fa-solid fa-paper-plane"></i>
+                                    Post Comment
                                 </button>
                             </div>
                         </div>
                     ` : `
-                        <div class="mb-4 p-3 md:p-4 bg-gray-700 rounded-lg text-center">
-                            <p class="text-gray-400 mb-2 text-sm md:text-base">Sign in to join the discussion</p>
-                            <button onclick="document.body.style.overflow=''; app.showAuthModal(); this.closest('.fixed').remove();" class="text-xs md:text-sm px-3 py-2 md:px-4 md:py-2 rounded-lg text-white transition touch-target" style="background-color: #027A40; min-height: 36px;" onmouseover="this.style.backgroundColor='#03924d'" onmouseout="this.style.backgroundColor='#027A40'">
-                                Sign In
+                        <div class="mb-5 p-4 rounded-lg text-center border" style="background: linear-gradient(135deg, rgba(31, 41, 55, 0.4) 0%, rgba(17, 24, 39, 0.2) 100%); border: 1px solid rgba(75, 85, 99, 0.4);">
+                            <div class="mb-3">
+                                <i class="fa-solid fa-lock text-4xl" style="color: rgba(156, 163, 175, 0.5);"></i>
+                            </div>
+                            <p class="mb-3 text-sm" style="color: rgb(156, 163, 175);">
+                                <i class="fa-solid fa-user-plus mr-1"></i>
+                                Sign in to join the discussion
+                            </p>
+                            <button onclick="document.body.style.overflow=''; app.showAuthModal(); this.closest('.fixed').remove();"
+                                    class="px-4 py-2 rounded-lg text-white transition touch-target text-sm font-semibold shadow-lg"
+                                    style="background: linear-gradient(135deg, #027A40 0%, #025a30 100%); min-height: 36px;"
+                                    onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(2, 122, 64, 0.3)'"
+                                    onmouseout="this.style.transform=''; this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.3)'">
+                                <i class="fa-solid fa-right-to-bracket mr-2"></i>Sign In
                             </button>
                         </div>
                     `}
 
                     <!-- Comments List -->
                     <div id="comments-list">
-                        <div class="text-center py-4 text-gray-400 text-sm">
-                            Loading comments...
+                        <div class="text-center py-8 rounded-lg" style="background: linear-gradient(135deg, rgba(31, 41, 55, 0.3) 0%, rgba(17, 24, 39, 0.2) 100%);">
+                            <div class="inline-block animate-spin mb-3">
+                                <i class="fa-solid fa-spinner text-2xl" style="color: #00CB97;"></i>
+                            </div>
+                            <p class="text-sm" style="color: rgb(156, 163, 175);">Loading comments...</p>
                         </div>
                     </div>
                 </div>
@@ -518,8 +553,12 @@ class MarketDetailModal {
 
             if (comments.length === 0) {
                 commentsList.innerHTML = `
-                    <div class="text-center py-8 text-gray-400">
-                        <p>No comments yet. Be the first to share your thoughts!</p>
+                    <div class="text-center py-12 rounded-lg" style="background: linear-gradient(135deg, rgba(31, 41, 55, 0.3) 0%, rgba(17, 24, 39, 0.2) 100%);">
+                        <div class="mb-3">
+                            <i class="fa-regular fa-comments text-5xl" style="color: rgba(156, 163, 175, 0.4);"></i>
+                        </div>
+                        <p class="font-medium mb-1" style="color: rgb(156, 163, 175);">No comments yet</p>
+                        <p class="text-sm" style="color: rgba(156, 163, 175, 0.7);">Be the first to share your thoughts!</p>
                     </div>
                 `;
                 return;
@@ -528,8 +567,9 @@ class MarketDetailModal {
             commentsList.innerHTML = comments.map(comment => this.renderComment(comment)).join('');
         } catch (error) {
             commentsList.innerHTML = `
-                <div class="text-center py-4 text-red-400">
-                    Error loading comments
+                <div class="text-center py-8 rounded-lg border" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%); border: 1px solid rgba(239, 68, 68, 0.3);">
+                    <i class="fa-solid fa-exclamation-triangle text-3xl mb-3" style="color: rgb(248, 113, 113);"></i>
+                    <p style="color: rgb(248, 113, 113);">Error loading comments</p>
                 </div>
             `;
         }
@@ -539,27 +579,70 @@ class MarketDetailModal {
         const timeAgo = this.getTimeAgo(comment.created_at);
         const isCurrentUser = this.app.currentUser && comment.user_id === this.app.currentUser.id;
 
+        // Generate user initials and color
+        const initial = comment.user.username.charAt(0).toUpperCase();
+        const userColor = this.getUserColor(comment.user.username);
+
         return `
-            <div class="mb-3 p-3 md:p-4 bg-gray-700 rounded-lg" data-comment-id="${comment.id}">
-                <div class="flex items-start justify-between mb-2">
-                    <div class="flex items-center gap-2">
-                        <svg class="h-6 w-6 md:h-8 md:w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                        </svg>
-                        <div>
-                            <div class="font-semibold text-sm md:text-base" style="color: #00CB97;">@${comment.user.username}</div>
-                            <div class="text-xs text-gray-400">${timeAgo}</div>
+            <div class="mb-3 p-4 rounded-lg border transition-all hover:border-gray-600"
+                 style="background: linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.4) 100%); border: 1px solid rgba(75, 85, 99, 0.3); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);"
+                 data-comment-id="${comment.id}">
+                <div class="flex items-start gap-3">
+                    <!-- User Avatar -->
+                    <div class="flex-shrink-0">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm shadow-lg"
+                             style="background: linear-gradient(135deg, ${userColor} 0%, ${this.darkenColor(userColor)} 100%);">
+                            ${initial}
                         </div>
                     </div>
-                    ${isCurrentUser ? `
-                        <button onclick="event.stopPropagation(); app.marketDetailModal.deleteComment('${comment.id}')" class="text-xs text-red-400 hover:text-red-300 touch-target p-1">
-                            Delete
-                        </button>
-                    ` : ''}
+
+                    <!-- Comment Content -->
+                    <div class="flex-1 min-w-0">
+                        <!-- Header -->
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-semibold text-sm" style="color: #00CB97;">@${comment.user.username}</span>
+                                <span class="text-xs px-2 py-0.5 rounded-full" style="background: rgba(75, 85, 99, 0.3); color: rgb(156, 163, 175);">
+                                    <i class="fa-regular fa-clock" style="font-size: 10px;"></i> ${timeAgo}
+                                </span>
+                            </div>
+                            ${isCurrentUser ? `
+                                <button onclick="event.stopPropagation(); app.marketDetailModal.deleteComment('${comment.id}')"
+                                        class="text-xs px-2 py-1 rounded transition hover:bg-red-500/20 text-red-400 hover:text-red-300 flex items-center gap-1"
+                                        style="min-height: 28px;">
+                                    <i class="fa-solid fa-trash" style="font-size: 10px;"></i>
+                                    <span class="hidden md:inline">Delete</span>
+                                </button>
+                            ` : ''}
+                        </div>
+
+                        <!-- Comment Text -->
+                        <p class="text-sm leading-relaxed whitespace-pre-wrap" style="color: rgb(229, 231, 235);">
+                            ${this.escapeHtml(comment.content)}
+                        </p>
+                    </div>
                 </div>
-                <p class="text-gray-200 whitespace-pre-wrap text-sm md:text-base">${this.escapeHtml(comment.content)}</p>
             </div>
         `;
+    }
+
+    getUserColor(username) {
+        // Generate consistent color from username
+        let hash = 0;
+        for (let i = 0; i < username.length; i++) {
+            hash = username.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const hue = hash % 360;
+        return `hsl(${hue}, 65%, 50%)`;
+    }
+
+    darkenColor(hslColor) {
+        // Darken the color for gradient
+        const match = hslColor.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+        if (match) {
+            return `hsl(${match[1]}, ${match[2]}%, ${Math.max(0, parseInt(match[3]) - 15)}%)`;
+        }
+        return hslColor;
     }
 
     async handlePostComment(modal) {

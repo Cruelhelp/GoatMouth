@@ -34,8 +34,12 @@ class VotingSystem {
             if (this.currentUser) {
                 this.currentProfile = await this.api.getProfile(this.currentUser.id);
             }
+            // Update header UI with user info
+            updateHeaderUI(this.currentUser, this.currentProfile);
         } catch (error) {
             console.log('No user logged in');
+            // Update header UI for logged out state
+            updateHeaderUI(null, null);
         }
     }
 
@@ -450,11 +454,11 @@ class VotingSystem {
         }
 
         const modal = document.createElement('div');
-        modal.className = 'proposal-modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+        modal.className = 'proposal-modal fixed inset-0 bg-black bg-opacity-75 flex items-start justify-center z-50 p-4 overflow-y-auto';
         modal.style.backdropFilter = 'blur(4px)';
         modal.innerHTML = `
-            <div class="bg-gray-800 rounded-2xl p-8 max-w-2xl w-full mx-4 shadow-2xl border-2"
-                 style="border-color: rgba(0, 203, 151, 0.3);">
+            <div class="bg-gray-800 rounded-2xl p-6 md:p-8 max-w-2xl w-full mx-auto my-8 shadow-2xl border-2"
+                 style="border-color: rgba(0, 203, 151, 0.3); max-height: calc(100vh - 4rem); overflow-y: auto;">
                 <!-- Header -->
                 <div class="flex items-center justify-between mb-6">
                     <div class="flex items-center gap-3">
