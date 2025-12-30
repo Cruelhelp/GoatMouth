@@ -55,7 +55,17 @@ class ProfileManager {
         // Update avatar
         const avatarEl = document.getElementById('profileAvatar');
         const username = this.currentProfile.username || this.currentUser.email.split('@')[0];
-        avatarEl.textContent = username.charAt(0).toUpperCase();
+
+        if (this.currentProfile.avatar_url) {
+            // Show uploaded image
+            avatarEl.style.backgroundImage = `url(${this.currentProfile.avatar_url})`;
+            avatarEl.style.backgroundSize = 'cover';
+            avatarEl.style.backgroundPosition = 'center';
+            avatarEl.textContent = '';
+        } else {
+            // Show initial letter
+            avatarEl.textContent = username.charAt(0).toUpperCase();
+        }
 
         // Update header info
         document.getElementById('profileName').textContent = this.currentProfile.display_name || username;

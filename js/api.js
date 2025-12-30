@@ -137,6 +137,24 @@ class GoatMouthAPI {
             }
         }
 
+        // Count unique traders/bettors
+        try {
+            const { data: bets, error: betsError } = await this.db
+                .from('bets')
+                .select('user_id')
+                .eq('market_id', id);
+
+            if (!betsError && bets) {
+                // Count unique user IDs
+                const uniqueTraders = new Set(bets.map(bet => bet.user_id));
+                data.bettor_count = uniqueTraders.size;
+            } else {
+                data.bettor_count = 0;
+            }
+        } catch (err) {
+            data.bettor_count = 0;
+        }
+
         return data;
     }
 
@@ -166,9 +184,10 @@ class GoatMouthAPI {
             throw new Error('Insufficient balance');
         }
 
-        const potentialReturn = outcome === 'yes'
+        const shares = outcome === 'yes'
             ? (amount / price)
             : (amount / (1 - price));
+        const potentialReturn = shares; // Shares equal potential return in prediction markets
 
         // Start transaction
         const { data: bet, error: betError } = await this.db
@@ -179,6 +198,7 @@ class GoatMouthAPI {
                 outcome,
                 amount,
                 price,
+                shares,
                 potential_return: potentialReturn,
                 status: 'matched' // Auto-match for now (later: implement order book)
             })

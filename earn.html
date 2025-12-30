@@ -22,6 +22,14 @@
     <link rel="stylesheet" href="css/mobile.css?v=3.6">
 
     <style>
+        @media (max-width: 768px) {
+            main {
+                padding-top: 140px !important;
+            }
+        }
+    </style>
+
+    <style>
         :root {
             --page-bg: #111827;
             --panel-bg: #1f2937;
@@ -162,13 +170,13 @@
         }
     </style>
 </head>
-<body class="bg-gray-900 text-white">
+<body class="bg-gray-900 text-white" data-page="portfolio">
     <!-- Header Component -->
     <div id="header-container" data-page="earn"></div>
 
 
     <!-- Main Content -->
-    <main class="w-full max-w-[1920px] mx-auto px-2 py-8 pb-20">
+    <main class="w-full max-w-[1920px] mx-auto px-2 pb-20" style="padding-top: 170px;">
         <div class="content-wrapper">
             <!-- Left Column: Banner and Content -->
             <div class="main-column">
@@ -220,6 +228,7 @@
     <script src="js/sidebar-component.js"></script>
     <script src="js/twitter-feed.js"></script>
     <script src="js/mobile-search.js"></script>
+    <script src="js/mobile-nav-component.js"></script>
     <script src="js/banner-carousel.js?v=4.2"></script>
 
     <script>
@@ -253,5 +262,8 @@
             initEarnPage();
         }
     </script>
+
+    <!-- Mobile Bottom Nav -->
+    <div id="mobile-nav-container" data-page="earn"></div>
 </body>
 </html>

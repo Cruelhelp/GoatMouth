@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://syndication.twitter.com; img-src 'self' data: https: blob:; font-src 'self' data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; frame-src https://syndication.twitter.com https://platform.twitter.com; connect-src 'self' https://*.supabase.co https://accounts.google.com https://cdn.jsdelivr.net https://syndication.twitter.com;">
+    <title>Deposit - GoatMouth</title>
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+    <!-- Remix Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="css/output.css?v=3.6">
+    <link rel="stylesheet" href="css/styles.css?v=3.6">
+    <link rel="stylesheet" href="css/mobile.css?v=3.6">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <style>
+        :root {
+            --green: #00CB97;
+            --dark-green: #1a4d2e;
+            --dark-bg: #111827;
+            --card-bg: #1f2937;
+            --border: #374151;
+        }
+
+        body {
+            background: var(--dark-bg);
+            color: #f3f4f6;
+        }
+
+        .deposit-dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem 1rem 6rem;
+        }
+
+        /* Top Grid */
+        .top-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Card Styles */
+        .dash-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.2s;
+            overflow: hidden;
+        }
+
+        .dash-card:hover {
+            border-color: rgba(0, 203, 151, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .card-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .eye-icon {
+            font-size: 1.125rem;
+            cursor: pointer;
+            color: #6b7280;
+            transition: color 0.2s;
+        }
+
+        .eye-icon:hover {
+            color: var(--green);
+        }
+
+        .balance-display {
+            font-size: 3rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 0.25rem;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            overflow: hidden;
+        }
+
+        .balance-display .balance-spinner {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+
+        .balance-display .spinner-circle {
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 3;
+            stroke-dasharray: 50;
+            stroke-dashoffset: 0;
+            stroke-linecap: round;
+            animation: dash 1.5s ease-in-out infinite;
+        }
+
+        .balance-subtext {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 1.5rem;
+        }
+
+        .balance-change {
+            color: var(--green);
+            font-weight: 600;
+        }
+
+        .balance-change.negative {
+            color: #ef4444;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 0.875rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .action-btn.primary {
+            background: var(--dark-green);
+            color: white;
+            border: 1px solid #2d7a4a;
+        }
+
+        .action-btn.primary:hover {
+            background: #27653f;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(26, 77, 46, 0.4);
+        }
+
+        .action-btn.secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border: 1px solid var(--border);
+        }
+
+        .action-btn.secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Tabs */
+        .card-tabs {
+            display: flex;
+            gap: 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .card-tabs span {
+            padding: 0.25rem 0.625rem;
+            border-radius: 4px;
+            color: #6b7280;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .card-tabs span:hover {
+            color: white;
+        }
+
+        .card-tabs span.active {
+            background: rgba(0, 203, 151, 0.15);
+            color: var(--green);
+        }
+
+        /* Chart Area */
+        .chart-area {
+            height: 140px;
+            margin-top: 1rem;
+            position: relative;
+        }
+
+        .chart-area canvas {
+            border-radius: 8px;
+        }
+
+        /* Quick Deposit Grid */
+        .quick-deposit-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .quick-amount {
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-amount:hover {
+            border-color: var(--green);
+            background: rgba(0, 203, 151, 0.1);
+        }
+
+        .quick-amount.active {
+            background: var(--dark-green);
+            border-color: var(--green);
+        }
+
+        /* Table Card */
+        .table-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .table-tabs {
+            display: flex;
+            gap: 2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .table-tabs span {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #6b7280;
+            cursor: pointer;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .table-tabs span:hover {
+            color: white;
+        }
+
+        .table-tabs span.active {
+            color: var(--green);
+            border-bottom-color: var(--green);
+        }
+
+        .table-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            gap: 1rem;
+        }
+
+        .search-container {
+            position: relative;
+            flex: 1;
+            max-width: 300px;
+        }
+
+        .search-container .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+            font-size: 0.875rem;
+            pointer-events: none;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.625rem 1rem 0.625rem 2.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: white;
+            font-size: 0.875rem;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--green);
+        }
+
+        .search-input:focus + .search-icon {
+            color: var(--green);
+        }
+
+        .sort-btn {
+            padding: 0.625rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: #9ca3af;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .sort-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .table-header {
+            display: grid;
+            grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr;
+            gap: 1rem;
+            padding: 0.75rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .transaction-row {
+            display: grid;
+            grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr;
+            gap: 1rem;
+            padding: 1rem;
+            border-bottom: 1px solid rgba(55, 65, 81, 0.3);
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .transaction-row:hover {
+            background: rgba(0, 203, 151, 0.05);
+        }
+
+        .transaction-type {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .transaction-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .transaction-icon.deposit {
+            background: rgba(0, 203, 151, 0.15);
+            color: var(--green);
+        }
+
+        .transaction-icon.withdraw {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        .transaction-details h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .transaction-details p {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .amount-positive {
+            color: var(--green);
+            font-weight: 600;
+        }
+
+        .amount-negative {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.625rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-badge.completed {
+            background: rgba(0, 203, 151, 0.2);
+            color: var(--green);
+        }
+
+        .status-badge.pending {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #6b7280;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            opacity: 0.3;
+            margin-bottom: 1rem;
+        }
+
+        /* Payment Methods */
+        .payment-methods {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .payment-method {
+            background: rgba(0, 0, 0, 0.2);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .payment-method:hover {
+            border-color: var(--green);
+            background: rgba(0, 203, 151, 0.05);
+        }
+
+        .payment-method.active {
+            border-color: var(--green);
+            background: rgba(26, 77, 46, 0.15);
+        }
+
+        .payment-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(0, 203, 151, 0.1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--green);
+        }
+
+        .payment-info h4 {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .payment-info p {
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .deposit-dashboard {
+                padding: 1rem 0.5rem 6rem;
+            }
+
+            .balance-display {
+                font-size: 2rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .quick-deposit-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .table-header,
+            .transaction-row {
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+            }
+
+            .table-header {
+                display: none;
+            }
+
+            .table-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-container {
+                max-width: 100%;
+            }
+
+            main {
+                padding-top: 100px !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Header Component -->
+    <div id="header-container" data-page="deposit"></div>
+
+    <!-- Main Content -->
+    <main class="w-full max-w-[1920px] mx-auto" style="padding-top: 108px;">
+        <div class="deposit-dashboard">
+
+            <!-- TOP ROW -->
+            <div class="top-grid">
+
+                <!-- PORTFOLIO CARD -->
+                <div class="dash-card">
+                    <div class="card-header">
+                        <span class="card-title">Portfolio</span>
+                        <i class="ri-eye-line eye-icon"></i>
+                    </div>
+
+                    <div class="balance-display" id="currentBalance">
+                        <span id="currentBalanceText" style="display: none;">$0.00</span>
+                        <svg class="balance-spinner" id="currentBalanceSpinner" viewBox="0 0 24 24" width="24" height="24">
+                            <circle class="spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none"/>
+                        </svg>
+                    </div>
+                    <div class="balance-subtext">
+                        <span class="balance-change" id="balanceChange">+$0.00</span> Today
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="action-btn primary" onclick="showDepositModal()">
+                            <i class="ri-arrow-down-line"></i> Deposit
+                        </button>
+                        <button class="action-btn secondary" onclick="showWithdrawModal()">
+                            <i class="ri-arrow-up-line"></i> Withdraw
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ACTIVITY CARD -->
+                <div class="dash-card">
+                    <div class="card-header">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="ri-line-chart-line" style="color: var(--green); font-size: 1rem;"></i>
+                            <span class="card-title">Activity</span>
+                        </div>
+
+                        <div class="card-tabs">
+                            <span>1D</span>
+                            <span>1W</span>
+                            <span class="active">1M</span>
+                            <span>ALL</span>
+                        </div>
+                    </div>
+
+                    <div class="balance-display" id="monthActivity">$0.00</div>
+                    <div class="balance-subtext">Past Month</div>
+
+                    <div class="chart-area">
+                        <canvas id="activityChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- TRANSACTIONS SECTION -->
+            <div class="table-card">
+
+                <div class="table-tabs">
+                    <span class="active" data-tab="transactions">Transactions</span>
+                    <span data-tab="pending">Pending</span>
+                    <span data-tab="methods">Payment Methods</span>
+                </div>
+
+                <!-- Transactions Tab -->
+                <div id="transactions-tab" class="tab-content active">
+                    <div class="table-controls">
+                        <div class="search-container">
+                            <i class="ri-search-line search-icon"></i>
+                            <input type="text" class="search-input" placeholder="Search transactions..." id="searchInput" />
+                        </div>
+                        <button class="sort-btn">⇅ Date</button>
+                    </div>
+
+                    <div class="table-header">
+                        <span>TYPE</span>
+                        <span>DATE</span>
+                        <span>AMOUNT</span>
+                        <span>FEE</span>
+                        <span>STATUS</span>
+                    </div>
+
+                    <div id="transactionsList">
+                        <div class="empty-state">
+                            <i class="ri-history-line"></i>
+                            <p>No transactions yet</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pending Tab -->
+                <div id="pending-tab" class="tab-content" style="display: none;">
+                    <div id="pendingList">
+                        <div class="empty-state">
+                            <i class="ri-time-line"></i>
+                            <p>No pending transactions</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Methods Tab -->
+                <div id="methods-tab" class="tab-content" style="display: none;">
+                    <div class="payment-methods">
+                        <div class="payment-method active" data-method="card">
+                            <div class="payment-icon">
+                                <i class="ri-bank-card-line"></i>
+                            </div>
+                            <div class="payment-info">
+                                <h4>Credit/Debit Card</h4>
+                                <p>Instant processing • Visa, Mastercard accepted</p>
+                            </div>
+                        </div>
+
+                        <div class="payment-method" data-method="bank">
+                            <div class="payment-icon">
+                                <i class="ri-bank-line"></i>
+                            </div>
+                            <div class="payment-info">
+                                <h4>Bank Transfer</h4>
+                                <p>1-3 business days • No fees</p>
+                            </div>
+                        </div>
+
+                        <div class="payment-method" data-method="mobile">
+                            <div class="payment-icon">
+                                <i class="ri-smartphone-line"></i>
+                            </div>
+                            <div class="payment-info">
+                                <h4>Mobile Money</h4>
+                                <p>Instant • Available 24/7</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Deposit Modal -->
+    <div id="depositModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; max-width: 500px; width: 90%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem; font-weight: 700;">Deposit Funds</h2>
+                <button onclick="closeDepositModal()" style="background: none; border: none; color: #9ca3af; font-size: 1.5rem; cursor: pointer;">×</button>
+            </div>
+
+            <div class="quick-deposit-grid">
+                <div class="quick-amount" data-amount="500">J$500</div>
+                <div class="quick-amount" data-amount="1000">J$1,000</div>
+                <div class="quick-amount" data-amount="2500">J$2,500</div>
+                <div class="quick-amount" data-amount="5000">J$5,000</div>
+                <div class="quick-amount" data-amount="10000">J$10,000</div>
+                <div class="quick-amount" data-amount="25000">J$25,000</div>
+            </div>
+
+            <input type="number" id="customAmount" placeholder="Or enter custom amount" style="width: 100%; margin-bottom: 1rem; max-width: 100%; padding: 0.625rem 1rem; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border); border-radius: 6px; color: white; font-size: 0.875rem;" />
+
+            <button class="action-btn primary" style="width: 100%;" onclick="processDeposit()">
+                <i class="ri-secure-payment-line"></i> Proceed to Payment
+            </button>
+        </div>
+    </div>
+
+    <!-- Mobile Nav Component -->
+    <div id="mobile-nav-container" data-page="deposit"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/toast.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/shared-components.js"></script>
+    <script src="js/header-component.js"></script>
+    <script src="js/mobile-nav-component.js"></script>
+    <script src="js/deposit.js"></script>
+
+    <script>
+        // Tab switching
+        document.querySelectorAll('.table-tabs span').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+
+                // Update active tab
+                document.querySelectorAll('.table-tabs span').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Update active content
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.style.display = 'none';
+                });
+                document.getElementById(`${tabName}-tab`).style.display = 'block';
+            });
+        });
+
+        // Card tabs - Activity period filter
+        document.querySelectorAll('.card-tabs span').forEach(tab => {
+            tab.addEventListener('click', () => {
+                tab.parentElement.querySelectorAll('span').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Update chart based on selected period
+                const period = tab.textContent.trim();
+                updateActivityChart(period);
+            });
+        });
+
+        // Quick amounts
+        document.querySelectorAll('.quick-amount').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.quick-amount').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('customAmount').value = btn.dataset.amount;
+            });
+        });
+
+        // Payment methods
+        document.querySelectorAll('.payment-method').forEach(method => {
+            method.addEventListener('click', () => {
+                document.querySelectorAll('.payment-method').forEach(m => m.classList.remove('active'));
+                method.classList.add('active');
+            });
+        });
+
+        // Modal functions
+        function showDepositModal() {
+            document.getElementById('depositModal').style.display = 'flex';
+        }
+
+        function closeDepositModal() {
+            document.getElementById('depositModal').style.display = 'none';
+        }
+
+        function showWithdrawModal() {
+            if (window.showToast) {
+                window.showToast('Withdraw feature coming soon!', 'info');
+            } else {
+                alert('Withdraw feature coming soon!');
+            }
+        }
+
+        function processDeposit() {
+            const amount = document.getElementById('customAmount').value;
+            if (!amount || amount < 100) {
+                if (window.showToast) {
+                    window.showToast('Minimum deposit is J$100', 'error');
+                } else {
+                    alert('Minimum deposit is J$100');
+                }
+                return;
+            }
+
+            if (window.showToast) {
+                window.showToast('Processing deposit...', 'info');
+            }
+
+            // TODO: Process actual deposit
+            setTimeout(() => {
+                closeDepositModal();
+                if (window.showToast) {
+                    window.showToast('Deposit successful!', 'success');
+                }
+            }, 1500);
+        }
+
+        // Global chart instance
+        let activityChartInstance = null;
+
+        // Initialize Activity Chart
+        function initActivityChart() {
+            const ctx = document.getElementById('activityChart');
+            if (!ctx) return;
+
+            // Sample data for the past month
+            const labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+            const data = [0, 120, 250, 180]; // Sample activity values
+
+            activityChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Activity',
+                        data: data,
+                        borderColor: '#00CB97',
+                        backgroundColor: 'rgba(0, 203, 151, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#00CB97',
+                        pointBorderColor: '#1f2937',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 6,
+                        pointHoverBackgroundColor: '#00CB97',
+                        pointHoverBorderColor: '#fff',
+                        pointHoverBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: '#1f2937',
+                            titleColor: '#fff',
+                            bodyColor: '#00CB97',
+                            borderColor: '#374151',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return 'J$' + context.parsed.y.toFixed(2);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#6b7280',
+                                font: {
+                                    size: 10
+                                }
+                            },
+                            border: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            display: true,
+                            grid: {
+                                color: 'rgba(55, 65, 81, 0.3)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#6b7280',
+                                font: {
+                                    size: 10
+                                },
+                                callback: function(value) {
+                                    return 'J$' + value;
+                                }
+                            },
+                            border: {
+                                display: false
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+        }
+
+        // Update Activity Chart based on selected period
+        function updateActivityChart(period) {
+            if (!activityChartInstance) return;
+
+            let labels, data, total, periodText;
+
+            switch(period) {
+                case '1D':
+                    labels = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'];
+                    data = [0, 15, 30, 45, 60, 50];
+                    total = data.reduce((sum, val) => sum + val, 0);
+                    periodText = 'Today';
+                    break;
+
+                case '1W':
+                    labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                    data = [0, 20, 40, 60, 80, 100, 90];
+                    total = data.reduce((sum, val) => sum + val, 0);
+                    periodText = 'This Week';
+                    break;
+
+                case '1M':
+                    labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+                    data = [0, 120, 250, 180];
+                    total = data.reduce((sum, val) => sum + val, 0);
+                    periodText = 'Past Month';
+                    break;
+
+                case 'ALL':
+                    labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+                    data = [100, 200, 350, 450, 550, 600];
+                    total = data.reduce((sum, val) => sum + val, 0);
+                    periodText = 'All Time';
+                    break;
+
+                default:
+                    return;
+            }
+
+            // Update chart data
+            activityChartInstance.data.labels = labels;
+            activityChartInstance.data.datasets[0].data = data;
+            activityChartInstance.update();
+
+            // Update balance display
+            document.getElementById('monthActivity').textContent = `J$${total.toFixed(2)}`;
+            document.querySelector('.balance-subtext').textContent = periodText;
+        }
+
+        // Initialize chart on page load
+        document.addEventListener('DOMContentLoaded', initActivityChart);
+    </script>
+</body>
+</html>

@@ -128,27 +128,99 @@ function renderHeader(options = {}) {
         <div class="auth-loading" id="authLoading">
           <div class="auth-spinner"></div>
         </div>
-        <div class="user-badge" id="userBadge" style="display: none;">
-          <span id="currentUserName">User</span>
-          <span id="currentUserRole" class="role-badge">Member</span>
+
+        <!-- Balance Counter (signed-in users only) -->
+        <div class="balance-counter desktop-only" id="balanceCounter" style="display: none;">
+          <div class="balance-label">Cash</div>
+          <div class="balance-amount" id="headerBalance">
+            <div class="balance-spinner" id="headerBalanceSpinner">
+              <svg class="spinner-icon" viewBox="0 0 24 24">
+                <circle class="spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none"/>
+              </svg>
+            </div>
+            <span id="headerBalanceText">J$0.00</span>
+          </div>
         </div>
-        <!-- Bookmarks button (signed-in users only) -->
-        <button class="btn secondary" id="bookmarksBtn" title="Bookmarked Markets" onclick="showBookmarks()" style="display: none;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-            <path d="M18 7v14l-6 -4l-6 4v-14a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4z" />
-          </svg>
-        </button>
-        <!-- Profile and session controls -->
-        <button class="btn secondary" id="profileBtn" title="Profile" onclick="showUserProfile()" style="display: none;">
-          <i class="fa-solid fa-user"></i>
-          <span class="btn-text">Profile</span>
-        </button>
-        ${adminButtonHtml}
-        <button class="btn secondary logout-btn" id="logoutBtn" title="Logout" onclick="handleLogout()" style="display: none;">
-          <i class="fa-solid fa-right-from-bracket"></i>
-          <span class="btn-text logout-text">Logout</span>
-        </button>
+
+        <!-- Deposit Button (desktop only, signed-in users) -->
+        <a href="deposit.html" class="deposit-btn desktop-only" id="depositBtn" style="display: none;">
+          Deposit
+        </a>
+
+        <!-- Notifications Bell (signed-in users only) -->
+        <div class="notifications-container" id="notificationsContainer" style="display: none;">
+          <button class="notification-bell-btn" id="notificationBellBtn" onclick="toggleNotifications()">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="22" height="22">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+            <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+          </button>
+
+          <div class="notifications-dropdown" id="notificationsDropdown">
+            <div class="notifications-header">
+              <h3>Notifications</h3>
+              <button class="mark-all-read-btn" onclick="markAllNotificationsRead()" id="markAllReadBtn" style="display: none;">
+                Mark all read
+              </button>
+            </div>
+            <div class="notifications-list" id="notificationsList">
+              <div class="notifications-empty">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="48" height="48">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+                <p>No notifications</p>
+              </div>
+            </div>
+            <div class="notifications-footer">
+              <a href="#" onclick="event.preventDefault(); viewAllNotifications();">View all notifications</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Separator -->
+        <div class="header-separator desktop-only" id="profileSeparator" style="display: none;"></div>
+
+        <!-- User Profile Dropdown (signed-in users only) -->
+        <div class="user-profile-dropdown" id="userProfileDropdown" style="display: none;">
+          <button class="profile-avatar-btn" id="profileAvatarBtn" onclick="toggleProfileDropdown()">
+            <img id="userAvatarImg" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231f2937'/%3E%3Cpath d='M50 45c8.284 0 15-6.716 15-15s-6.716-15-15-15-15 6.716-15 15 6.716 15 15 15zm0 10c-13.807 0-25 8.059-25 18v7h50v-7c0-9.941-11.193-18-25-18z' fill='%2300CB97'/%3E%3C/svg%3E" alt="Profile" class="avatar-img">
+            <div class="online-indicator"></div>
+            <div class="dropdown-chevron">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </div>
+          </button>
+
+          <div class="profile-dropdown-menu" id="profileDropdownMenu">
+            <div class="dropdown-header">
+              <img id="dropdownAvatarImg" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231f2937'/%3E%3Cpath d='M50 45c8.284 0 15-6.716 15-15s-6.716-15-15-15-15 6.716-15 15 6.716 15 15 15zm0 10c-13.807 0-25 8.059-25 18v7h50v-7c0-9.941-11.193-18-25-18z' fill='%2300CB97'/%3E%3C/svg%3E" alt="Profile" class="dropdown-avatar">
+              <div class="dropdown-user-info">
+                <span id="dropdownUserName" class="dropdown-name">User</span>
+                <span id="dropdownUserRole" class="dropdown-role">Member</span>
+              </div>
+            </div>
+            <div class="dropdown-divider"></div>
+            <a href="#" class="dropdown-item" onclick="event.preventDefault(); closeProfileDropdown(); showUserProfile();">
+              <i class="fa-solid fa-user"></i>
+              <span>My Profile</span>
+            </a>
+            <a href="#" class="dropdown-item" onclick="event.preventDefault(); closeProfileDropdown(); showBookmarks();">
+              <i class="fa-solid fa-bookmark"></i>
+              <span>Bookmarks</span>
+            </a>
+            <a href="admin.html" class="dropdown-item" id="dropdownAdminBtn" style="display: none;" onclick="closeProfileDropdown();">
+              <i class="fa-solid fa-user-shield"></i>
+              <span>Admin Panel</span>
+            </a>
+            <div class="dropdown-divider"></div>
+            <a href="#" class="dropdown-item dropdown-item-danger" onclick="event.preventDefault(); closeProfileDropdown(); handleLogout();">
+              <i class="fa-solid fa-right-from-bracket"></i>
+              <span>Logout</span>
+            </a>
+          </div>
+        </div>
+
         <!-- Login/Signup buttons for non-authenticated users -->
         <div class="auth-buttons" id="authButtons" style="display: none;">
           <button class="auth-btn login-btn" onclick="showAuthModal('login')">
@@ -244,6 +316,18 @@ function renderHeader(options = {}) {
             <a href="how-it-works.html" class="sidebar-category-link">
                 <i class="fa-solid fa-circle-info"></i>
                 How It Works
+            </a>
+            <a href="contact.html" class="sidebar-category-link">
+                <i class="fa-solid fa-envelope"></i>
+                Contact
+            </a>
+            <a href="privacy.html" class="sidebar-category-link">
+                <i class="fa-solid fa-shield-halved"></i>
+                Privacy
+            </a>
+            <a href="terms.html" class="sidebar-category-link">
+                <i class="fa-solid fa-file-contract"></i>
+                Terms
             </a>
         </div>
     </div>

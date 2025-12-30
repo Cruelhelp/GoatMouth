@@ -5,7 +5,8 @@ function renderMobileNav(options = {}) {
     const {
         currentPage = 'markets',
         isAdmin = false,
-        isAuth = false
+        isAuth = false,
+        balance = 0
     } = options;
 
     // Admin navigation (different actions, no duplication with top nav)
@@ -32,11 +33,16 @@ function renderMobileNav(options = {}) {
                         </svg>
                         <span>Search</span>
                     </button>
-                    <a href="voting.html" class="mobile-nav-item ${currentPage === 'voting' ? 'active' : ''}">
+                    <a href="deposit.html" class="mobile-nav-item ${currentPage === 'deposit' ? 'active' : ''}" id="mobileNavWalletAdmin">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
                         </svg>
-                        <span>Voting</span>
+                        <span class="mobile-wallet-text">
+                            <svg class="mobile-balance-spinner${balance > 0 ? ' hidden' : ''}" viewBox="0 0 24 24" width="12" height="12">
+                                <circle class="spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none"/>
+                            </svg>
+                            <span class="mobile-balance-text">${balance > 0 ? 'J$' + balance.toFixed(2) : ''}</span>
+                        </span>
                     </a>
                     <button class="mobile-nav-item" onclick="toggleMobileSidebar()">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,25 +77,103 @@ function renderMobileNav(options = {}) {
                     </svg>
                     <span>Search</span>
                 </button>
-                ${isAuth ? `
-                    <button class="mobile-nav-item" onclick="openUpdatesModal()">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                <a href="deposit.html" class="mobile-nav-item ${currentPage === 'deposit' ? 'active' : ''}" id="mobileNavWallet">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    </svg>
+                    <span class="mobile-wallet-text">
+                        <svg class="mobile-balance-spinner${balance > 0 ? ' hidden' : ''}" viewBox="0 0 24 24" width="12" height="12">
+                            <circle class="spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none"/>
                         </svg>
-                        <span>Updates</span>
-                    </button>
-                ` : `
-                    <button class="mobile-nav-item" onclick="toggleMobileSidebar()">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/>
-                        </svg>
-                        <span>More</span>
-                    </button>
-                `}
+                        <span class="mobile-balance-text">${balance > 0 ? 'J$' + balance.toFixed(2) : ''}</span>
+                    </span>
+                </a>
             </div>
         </nav>
     `;
 }
+
+// Function to update mobile nav balance
+function updateMobileNavBalance(balance) {
+    // Don't update if trying to set to 0 when we already have a stored non-zero balance
+    if ((balance === 0 || balance === undefined || balance === null) &&
+        window._mobileNavBalance &&
+        window._mobileNavBalance > 0) {
+        console.log('[MobileNav] Ignoring attempt to set balance to 0, keeping:', window._mobileNavBalance);
+        return;
+    }
+
+    console.log('[MobileNav] Updating balance to:', balance);
+
+    const mobileNavWallet = document.getElementById('mobileNavWallet');
+    const mobileNavWalletAdmin = document.getElementById('mobileNavWalletAdmin');
+    const mobileWalletBalance = document.getElementById('mobileWalletBalance');
+
+    const balanceText = `J$${(balance || 0).toFixed(2)}`;
+
+    // Update regular user mobile nav
+    if (mobileNavWallet) {
+        const spinner = mobileNavWallet.querySelector('.mobile-balance-spinner');
+        const balanceTextEl = mobileNavWallet.querySelector('.mobile-balance-text');
+
+        if (balance > 0) {
+            if (spinner) spinner.classList.add('hidden');
+            if (balanceTextEl) {
+                balanceTextEl.textContent = balanceText;
+                balanceTextEl.style.display = 'inline';
+            }
+        } else {
+            if (spinner) spinner.classList.remove('hidden');
+            if (balanceTextEl) balanceTextEl.style.display = 'none';
+        }
+    }
+
+    // Update admin mobile nav
+    if (mobileNavWalletAdmin) {
+        const spinner = mobileNavWalletAdmin.querySelector('.mobile-balance-spinner');
+        const balanceTextEl = mobileNavWalletAdmin.querySelector('.mobile-balance-text');
+
+        if (balance > 0) {
+            if (spinner) spinner.classList.add('hidden');
+            if (balanceTextEl) {
+                balanceTextEl.textContent = balanceText;
+                balanceTextEl.style.display = 'inline';
+            }
+        } else {
+            if (spinner) spinner.classList.remove('hidden');
+            if (balanceTextEl) balanceTextEl.style.display = 'none';
+        }
+    }
+
+    // Also update app.js mobile nav balance
+    const mobileNavWalletApp = document.getElementById('mobileNavWalletApp');
+    if (mobileNavWalletApp) {
+        const spinner = mobileNavWalletApp.querySelector('.mobile-balance-spinner');
+        const balanceTextEl = mobileNavWalletApp.querySelector('.mobile-balance-text');
+
+        if (balance > 0) {
+            if (spinner) spinner.classList.add('hidden');
+            if (balanceTextEl) {
+                balanceTextEl.textContent = balanceText;
+                balanceTextEl.style.display = 'inline';
+            }
+        } else {
+            if (spinner) spinner.classList.remove('hidden');
+            if (balanceTextEl) balanceTextEl.style.display = 'none';
+        }
+    } else if (mobileWalletBalance) {
+        // Fallback for old version
+        mobileWalletBalance.textContent = balanceText;
+    }
+
+    // Update stored balance
+    if (balance !== undefined && balance !== null) {
+        window._mobileNavBalance = balance;
+    }
+}
+
+// Make it globally available
+window.updateMobileNavBalance = updateMobileNavBalance;
 
 // Auto-inject mobile nav on page load (mobile only)
 document.addEventListener('DOMContentLoaded', async function() {
@@ -110,6 +194,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Check if user is authenticated
         let isAuth = false;
         let isAdmin = false;
+        let balance = 0;
 
         if (typeof window.supabaseClient !== 'undefined') {
             try {
@@ -117,15 +202,18 @@ document.addEventListener('DOMContentLoaded', async function() {
                 if (session) {
                     isAuth = true;
 
-                    // Check if admin
+                    // Check if admin and get balance
                     const { data: profile } = await window.supabaseClient
                         .from('profiles')
-                        .select('role')
+                        .select('role, balance')
                         .eq('id', session.user.id)
                         .single();
 
-                    if (profile && profile.role === 'admin') {
-                        isAdmin = true;
+                    if (profile) {
+                        if (profile.role === 'admin') {
+                            isAdmin = true;
+                        }
+                        balance = profile.balance || 0;
                     }
                 }
             } catch (error) {
@@ -137,7 +225,16 @@ document.addEventListener('DOMContentLoaded', async function() {
         mobileNavContainer.innerHTML = renderMobileNav({
             currentPage,
             isAdmin,
-            isAuth
+            isAuth,
+            balance
         });
+
+        console.log('[MobileNav] Rendered with balance:', balance);
+
+        // Trigger a custom event to notify that mobile nav is ready
+        window.dispatchEvent(new CustomEvent('mobileNavReady', { detail: { balance } }));
+
+        // Store the balance globally so other scripts don't overwrite with 0
+        window._mobileNavBalance = balance;
     }
 });

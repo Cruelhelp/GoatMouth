@@ -101,10 +101,14 @@ class MarketPage {
     populateMarketData() {
         const market = this.market;
 
-        // Breadcrumb market title
+        // Breadcrumb
         const breadcrumbTitle = document.getElementById('breadcrumb-market-title');
         if (breadcrumbTitle) {
             breadcrumbTitle.textContent = market.title;
+        }
+        const breadcrumbCategory = document.getElementById('breadcrumb-category');
+        if (breadcrumbCategory) {
+            breadcrumbCategory.textContent = market.category || 'General';
         }
 
         // Hero section
@@ -346,11 +350,11 @@ class MarketPage {
                 .from('bets')
                 .select(`
                     *,
-                    user:profiles(username)
+                    user:profiles(username, avatar_url)
                 `)
                 .eq('market_id', this.marketId)
                 .order('created_at', { ascending: false })
-                .limit(10);
+                .limit(15);
 
             if (error) throw error;
 
@@ -380,29 +384,37 @@ class MarketPage {
         const timeAgo = this.getTimeAgo(bet.created_at);
         const outcome = bet.outcome.toUpperCase();
         const outcomeColor = bet.outcome === 'yes' ? '#00CB97' : '#ef4444';
+        const outcomeBg = bet.outcome === 'yes' ? 'rgba(0, 203, 151, 0.1)' : 'rgba(239, 68, 68, 0.1)';
         const shares = parseFloat(bet.shares).toFixed(2);
         const price = (parseFloat(bet.price) * 100).toFixed(0);
+        const totalAmount = (parseFloat(bet.amount) || 0).toFixed(2);
+
+        const avatarUrl = bet.user?.avatar_url || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231f2937'/%3E%3Cpath d='M50 45c8.284 0 15-6.716 15-15s-6.716-15-15-15-15 6.716-15 15 6.716 15 15 15zm0 10c-13.807 0-25 8.059-25 18v7h50v-7c0-9.941-11.193-18-25-18z' fill='%2300CB97'/%3E%3C/svg%3E";
 
         return `
             <div class="activity-item">
+                <div class="flex items-start gap-3 flex-1 min-w-0">
+                    <img src="${avatarUrl}" alt="${bet.user?.username || 'User'}" class="w-10 h-10 rounded-full object-cover flex-shrink-0" style="background: #1f2937; border: 2px solid ${outcomeColor};">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                            <span class="font-semibold text-sm" style="color: #00CB97;">@${bet.user?.username || 'Anonymous'}</span>
+                            <span class="text-xs text-gray-500">•</span>
+                            <span class="text-xs text-gray-400 whitespace-nowrap">${timeAgo}</span>
+                        </div>
+                        <div class="text-sm text-gray-300 mb-1">
+                            Bought <span class="font-semibold whitespace-nowrap" style="color: ${outcomeColor};">${shares} ${outcome}</span> shares
+                        </div>
+                        <div class="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
+                            <span class="whitespace-nowrap">Price: <span class="font-semibold text-white">${price}¢</span></span>
+                            <span>•</span>
+                            <span class="whitespace-nowrap">Total: <span class="font-semibold text-white">J$${totalAmount}</span></span>
+                        </div>
+                    </div>
+                </div>
                 <div class="flex-shrink-0">
-                    <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background: rgba(${bet.outcome === 'yes' ? '0, 203, 151' : '239, 68, 68'}, 0.2);">
-                        <i class="ri-${bet.outcome === 'yes' ? 'arrow-up' : 'arrow-down'}-line text-xl" style="color: ${outcomeColor};"></i>
+                    <div class="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap" style="background: ${outcomeBg}; color: ${outcomeColor};">
+                        ${outcome}
                     </div>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 mb-1">
-                        <span class="font-semibold text-sm" style="color: #00CB97;">@${bet.user?.username || 'Anonymous'}</span>
-                        <span class="text-xs text-gray-500">•</span>
-                        <span class="text-xs text-gray-400">${timeAgo}</span>
-                    </div>
-                    <div class="text-sm text-gray-300">
-                        Bought <span class="font-semibold">${shares} ${outcome}</span> shares at <span class="font-semibold">${price}¢</span>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <div class="font-bold" style="color: ${outcomeColor};">${outcome}</div>
-                    <div class="text-xs text-gray-400">${price}¢</div>
                 </div>
             </div>
         `;
@@ -440,13 +452,13 @@ class MarketPage {
         const timeAgo = this.getTimeAgo(comment.created_at);
         const isCurrentUser = this.currentUser && comment.user_id === this.currentUser.id;
 
+        const avatarUrl = comment.user.avatar_url || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231f2937'/%3E%3Cpath d='M50 45c8.284 0 15-6.716 15-15s-6.716-15-15-15-15 6.716-15 15 6.716 15 15 15zm0 10c-13.807 0-25 8.059-25 18v7h50v-7c0-9.941-11.193-18-25-18z' fill='%2300CB97'/%3E%3C/svg%3E";
+
         return `
             <div class="mb-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
                 <div class="flex items-start justify-between mb-2">
                     <div class="flex items-center gap-2">
-                        <div class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
-                            <i class="ri-user-line text-gray-400"></i>
-                        </div>
+                        <img src="${avatarUrl}" alt="${comment.user.username}" class="w-10 h-10 rounded-full object-cover" style="background: #1f2937;">
                         <div>
                             <div class="font-semibold" style="color: #00CB97;">@${comment.user.username}</div>
                             <div class="text-xs text-gray-400">${timeAgo}</div>

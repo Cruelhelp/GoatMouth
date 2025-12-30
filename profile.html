@@ -323,6 +323,7 @@
 
             .stat-value {
                 font-size: 1rem;
+                overflow: hidden;
             }
 
             .stat-label {
@@ -334,12 +335,24 @@
             }
 
             .profile-tabs {
-                gap: 0;
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 0.5rem;
+                border-bottom: none;
+                overflow-x: visible;
             }
 
             .profile-tab {
-                padding: 0.5rem 0.75rem;
-                font-size: 0.75rem;
+                padding: 0.5rem 0.25rem;
+                font-size: 0.7rem;
+                border-bottom: none;
+                border-radius: 6px;
+                text-align: center;
+            }
+
+            .profile-tab.active {
+                background: rgba(0, 203, 151, 0.1);
+                border-bottom: none;
             }
         }
     </style>
@@ -702,6 +715,10 @@
     <script src="js/footer-component.js"></script>
     <script src="js/sidebar-component.js"></script>
     <script src="js/twitter-feed.js"></script>
+    <script src="js/mobile-nav-component.js"></script>
     <script src="js/profile.js"></script>
+
+    <!-- Mobile Bottom Nav -->
+    <div id="mobile-nav-container" data-page="profile"></div>
 </body>
 </html>

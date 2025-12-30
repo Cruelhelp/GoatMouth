@@ -224,6 +224,15 @@ class GoatMouth {
 
                 // Update header with user info
                 this.updateUserInfo();
+
+                // Ensure mobile nav balance is updated
+                setTimeout(() => {
+                    const mobileWalletBalance = document.getElementById('mobileWalletBalance');
+                    if (mobileWalletBalance && this.currentProfile) {
+                        const balance = this.currentProfile.balance || 0;
+                        mobileWalletBalance.textContent = `J$${balance.toFixed(2)}`;
+                    }
+                }, 200);
             }
         } catch (error) {
             console.log('No user logged in');
@@ -292,6 +301,32 @@ class GoatMouth {
 
         if (mobileAvatarInitial && this.currentProfile) {
             mobileAvatarInitial.textContent = this.currentProfile.username.charAt(0).toUpperCase();
+        }
+
+        // Update mobile nav wallet balance
+        const mobileNavWalletApp = document.getElementById('mobileNavWalletApp');
+        if (mobileNavWalletApp && this.currentProfile) {
+            const balance = this.currentProfile.balance || 0;
+            console.log('[App.js updateUserInfo] Updating mobile nav balance to:', balance);
+
+            const spinner = mobileNavWalletApp.querySelector('.mobile-balance-spinner');
+            const balanceTextEl = mobileNavWalletApp.querySelector('.mobile-balance-text');
+
+            if (balance > 0) {
+                if (spinner) spinner.classList.add('hidden');
+                if (balanceTextEl) {
+                    balanceTextEl.textContent = `J$${balance.toFixed(2)}`;
+                    balanceTextEl.style.display = 'inline';
+                }
+            } else {
+                if (spinner) spinner.classList.remove('hidden');
+                if (balanceTextEl) balanceTextEl.style.display = 'none';
+            }
+        } else {
+            console.log('[App.js updateUserInfo] Cannot update balance:', {
+                hasElement: !!mobileNavWalletApp,
+                hasProfile: !!this.currentProfile
+            });
         }
     }
 
@@ -395,6 +430,35 @@ class GoatMouth {
 
         // Mobile Navigation
         if (this.isMobile) {
+            // Check if mobile nav already exists to prevent re-rendering
+            const existingMobileNav = document.querySelector('.mobile-bottom-nav');
+            if (existingMobileNav) {
+                console.log('[App.js] Mobile nav already exists, skipping re-render');
+                // Just update the balance if profile is loaded
+                if (this.currentProfile) {
+                    const mobileNavWalletApp = document.getElementById('mobileNavWalletApp');
+                    if (mobileNavWalletApp) {
+                        const balance = this.currentProfile.balance || 0;
+                        console.log('[App.js] Updating existing mobile nav balance to:', balance);
+
+                        const spinner = mobileNavWalletApp.querySelector('.mobile-balance-spinner');
+                        const balanceTextEl = mobileNavWalletApp.querySelector('.mobile-balance-text');
+
+                        if (balance > 0) {
+                            if (spinner) spinner.classList.add('hidden');
+                            if (balanceTextEl) {
+                                balanceTextEl.textContent = `J$${balance.toFixed(2)}`;
+                                balanceTextEl.style.display = 'inline';
+                            }
+                        } else {
+                            if (spinner) spinner.classList.remove('hidden');
+                            if (balanceTextEl) balanceTextEl.style.display = 'none';
+                        }
+                    }
+                }
+                return;
+            }
+            console.log('[App.js] Creating mobile nav for first time');
 
             mainNav.innerHTML = `
                 <!-- Mobile Header - Redesigned -->
@@ -531,27 +595,43 @@ class GoatMouth {
                             </svg>
                             <span>Search</span>
                         </button>
-                        ${isAuth ? `
-                            <button class="mobile-nav-item" onclick="app.toggleMobileMenu()">
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/>
+                        <a href="deposit.html" class="mobile-nav-item ${window.location.pathname.includes('deposit.html') ? 'active' : ''}" id="mobileNavWalletApp">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
+                            <span class="mobile-wallet-text">
+                                <svg class="mobile-balance-spinner" viewBox="0 0 24 24" width="12" height="12">
+                                    <circle class="spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none"/>
                                 </svg>
-                                <span>More</span>
-                            </button>
-                        ` : `
-                            <button class="mobile-nav-item" onclick="openUpdatesModal()">
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                                </svg>
-                                <span>Updates</span>
-                            </button>
-                        `}
+                                <span id="mobileWalletBalance" class="mobile-balance-text" style="display: none;">J$0.00</span>
+                            </span>
+                        </a>
                     </div>
                 </nav>
             `;
 
             // Append bottom nav to body
             document.body.appendChild(bottomNav.firstElementChild);
+
+            console.log('[App.js Mobile Nav] Appended to body');
+
+            // Update balance if profile is already loaded
+            setTimeout(() => {
+                console.log('[App.js Mobile Nav] Timeout fired, checking profile...');
+                if (this.currentProfile) {
+                    const mobileWalletBalance = document.getElementById('mobileWalletBalance');
+                    if (mobileWalletBalance) {
+                        const balance = this.currentProfile.balance || 0;
+                        console.log('[App.js Mobile Nav] Setting balance to:', balance, 'Profile:', this.currentProfile);
+                        mobileWalletBalance.textContent = `J$${balance.toFixed(2)}`;
+                    } else {
+                        console.log('[App.js Mobile Nav] mobileWalletBalance element not found');
+                    }
+                } else {
+                    console.log('[App.js Mobile Nav] currentProfile not loaded yet');
+                }
+            }, 100);
+
             return;
         }
 
@@ -941,6 +1021,13 @@ class GoatMouth {
 
     async renderContent() {
         const app = document.getElementById('app');
+        const bannerContainer = document.getElementById('banner-container');
+
+        // Show banner on all pages
+        if (bannerContainer) bannerContainer.classList.remove('hidden');
+
+        // Set page-specific class on body for CSS targeting
+        document.body.setAttribute('data-page', this.currentView);
 
         switch (this.currentView) {
             case 'markets':
@@ -1508,23 +1595,70 @@ class GoatMouth {
             const bets = await this.api.getUserBets(this.currentUser.id);
 
             container.innerHTML = `
-                <h1 class="text-3xl font-bold mb-6">Your Activity</h1>
-                ${bets.length === 0 ? '<p class="text-gray-400">No bets yet</p>' : `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+                    <h1 class="text-3xl font-bold">Your Activity</h1>
+                    <div class="text-sm text-gray-400" style="overflow: hidden;">
+                        <span class="font-semibold text-white">${bets.length}</span> total bets
+                    </div>
+                </div>
+                ${bets.length === 0 ? `
+                    <div class="text-center py-12 bg-gray-800 rounded-xl border border-gray-700">
+                        <i class="ri-history-line text-6xl text-gray-600 mb-4"></i>
+                        <p class="text-gray-400 text-lg">No bets yet</p>
+                        <p class="text-gray-500 text-sm mt-2">Start betting on markets to see your activity here</p>
+                    </div>
+                ` : `
                     <div class="space-y-3">
-                        ${bets.map(bet => `
-                            <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <h3 class="font-semibold mb-1">${bet.markets.title}</h3>
-                                        <p class="text-sm text-gray-400">${new Date(bet.created_at).toLocaleString()}</p>
+                        ${bets.map(bet => {
+                            const outcomeColor = bet.outcome === 'yes' ? '#00CB97' : '#ef4444';
+                            const outcomeBg = bet.outcome === 'yes' ? 'rgba(0, 203, 151, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+                            const price = parseFloat(bet.price);
+                            const amount = parseFloat(bet.amount);
+                            // Calculate shares from amount and price
+                            const shares = bet.outcome === 'yes'
+                                ? (amount / price).toFixed(2)
+                                : (amount / (1 - price)).toFixed(2);
+                            const priceDisplay = (price * 100).toFixed(1);
+                            const amountDisplay = amount.toFixed(2);
+                            const potentialReturn = parseFloat(bet.potential_return || shares).toFixed(2);
+
+                            return `
+                            <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 hover:border-gray-600 transition-all duration-200 hover:transform hover:scale-[1.01]">
+                                <div class="flex justify-between items-start gap-4">
+                                    <div class="flex-1 min-w-0">
+                                        <a href="market.html?id=${bet.market_id}" class="block group">
+                                            <h3 class="font-semibold mb-2 text-white group-hover:text-green-400 transition-colors">${bet.markets.title}</h3>
+                                        </a>
+                                        <div class="flex items-center gap-3 text-sm text-gray-400 mb-3 flex-wrap">
+                                            <span class="whitespace-nowrap"><i class="ri-time-line"></i> ${new Date(bet.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                        </div>
+                                        <div class="flex items-center gap-4 text-sm flex-wrap">
+                                            <div class="flex items-center gap-2 whitespace-nowrap">
+                                                <span class="text-gray-400">Shares:</span>
+                                                <span class="font-semibold text-white">${shares}</span>
+                                            </div>
+                                            <div class="flex items-center gap-2 whitespace-nowrap">
+                                                <span class="text-gray-400">Price:</span>
+                                                <span class="font-semibold text-white">${priceDisplay}¢</span>
+                                            </div>
+                                            <div class="flex items-center gap-2 whitespace-nowrap">
+                                                <span class="text-gray-400">Total:</span>
+                                                <span class="font-semibold text-white">J$${amountDisplay}</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="text-right">
-                                        <p class="text-sm ${bet.outcome === 'yes' ? 'text-green-400' : 'text-red-400'} font-semibold">${bet.outcome.toUpperCase()}</p>
-                                        <p class="text-sm">J$${parseFloat(bet.amount).toFixed(2)} @ ${(parseFloat(bet.price) * 100).toFixed(1)}¢</p>
+                                    <div class="flex flex-col items-end gap-2 flex-shrink-0">
+                                        <div class="px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap" style="background: ${outcomeBg}; color: ${outcomeColor};">
+                                            ${bet.outcome.toUpperCase()}
+                                        </div>
+                                        <div class="text-right whitespace-nowrap">
+                                            <div class="text-xs text-gray-400">Potential</div>
+                                            <div class="text-sm font-semibold" style="color: ${outcomeColor};">J$${potentialReturn}</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        `).join('')}
+                        `}).join('')}
                     </div>
                 `}
             `;
@@ -1560,12 +1694,12 @@ class GoatMouth {
                                         </div>
                                         <div>
                                             <div class="font-semibold">${user.username || 'Anonymous'}</div>
-                                            <div class="text-sm text-gray-400">${user.total_bets || 0} bets placed</div>
+                                            <div class="text-sm text-gray-400" style="overflow: hidden;">${user.total_bets || 0} bets placed</div>
                                         </div>
                                     </div>
                                     <div class="text-right">
                                         <div class="text-xl font-bold" style="color: #027A40;">$${(user.balance || 0).toFixed(2)}</div>
-                                        <div class="text-sm text-gray-400">Balance</div>
+                                        <div class="text-sm text-gray-400" style="overflow: hidden;">Balance</div>
                                     </div>
                                 </div>
                             `).join('')}
@@ -1682,8 +1816,8 @@ class GoatMouth {
                                             <p class="text-sm ${pos.outcome === 'yes' ? 'text-green-400' : 'text-red-400'} font-semibold">${pos.outcome.toUpperCase()}</p>
                                         </div>
                                         <div class="text-right">
-                                            <p class="text-sm text-gray-400">Shares: ${parseFloat(pos.shares).toFixed(2)}</p>
-                                            <p class="text-sm text-gray-400">Avg: ${(parseFloat(pos.avg_price) * 100).toFixed(1)}¢</p>
+                                            <p class="text-sm text-gray-400" style="overflow: hidden;">Shares: ${parseFloat(pos.shares).toFixed(2)}</p>
+                                            <p class="text-sm text-gray-400" style="overflow: hidden;">Avg: ${(parseFloat(pos.avg_price) * 100).toFixed(1)}¢</p>
                                             <p class="text-sm font-semibold">Value: J$${parseFloat(pos.current_value).toFixed(2)}</p>
                                         </div>
                                     </div>
@@ -2763,8 +2897,11 @@ class GoatMouth {
 
         // Create quick bet modal
         const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center';
         modal.style.backdropFilter = 'blur(8px)';
+        modal.style.zIndex = '10001';
+        modal.style.paddingTop = '60px';
+        modal.style.paddingBottom = '20px';
 
         const yesPercent = (market.yes_price * 100).toFixed(0);
         const noPercent = (market.no_price * 100).toFixed(0);
@@ -2774,8 +2911,8 @@ class GoatMouth {
         const profit = 100 - parseFloat(outcomePrice);
 
         modal.innerHTML = `
-            <div class="bg-gray-800 rounded-xl max-w-md w-full mx-4 shadow-2xl border border-gray-700 overflow-hidden"
-                 style="animation: slideUp 0.3s ease-out;">
+            <div class="bg-gray-800 rounded-xl w-full mx-4 shadow-2xl border border-gray-700 overflow-y-auto"
+                 style="max-width: 440px; max-height: 90vh; animation: slideUp 0.3s ease-out;">
                 <style>
                     @keyframes slideUp {
                         from { transform: translateY(20px); opacity: 0; }
@@ -2784,20 +2921,20 @@ class GoatMouth {
                 </style>
 
                 <!-- Header -->
-                <div class="p-5 border-b border-gray-700" style="background: linear-gradient(135deg, rgba(2, 122, 64, 0.1) 0%, rgba(0, 0, 0, 0.2) 100%);">
-                    <div class="flex items-center justify-between mb-3">
+                <div class="p-4 border-b border-gray-700" style="background: linear-gradient(135deg, rgba(2, 122, 64, 0.1) 0%, rgba(0, 0, 0, 0.2) 100%);">
+                    <div class="flex items-center justify-between mb-2">
                         <h3 class="text-lg font-bold" style="color: ${outcomeColor};">Quick Bet: ${outcomeText}</h3>
-                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
                     </div>
                     <p class="text-sm text-gray-300 line-clamp-2">${market.title}</p>
                 </div>
 
                 <!-- Body -->
-                <div class="p-5">
+                <div class="p-4">
                     <!-- Outcome Display -->
-                    <div class="mb-4 p-4 rounded-lg text-center" style="background: linear-gradient(135deg, rgba(${outcome === 'yes' ? '2, 122, 64' : '220, 38, 38'}, 0.15) 0%, rgba(${outcome === 'yes' ? '2, 122, 64' : '220, 38, 38'}, 0.05) 100%); border: 2px solid rgba(${outcome === 'yes' ? '0, 203, 151' : '239, 68, 68'}, 0.3);">
-                        <div class="text-sm font-semibold mb-1" style="color: ${outcomeColor};">${outcomeText}</div>
-                        <div class="text-4xl font-black mb-1" style="color: ${outcomeColor};">${outcomePrice}¢</div>
+                    <div class="mb-4 p-3 rounded-lg text-center" style="background: linear-gradient(135deg, rgba(${outcome === 'yes' ? '2, 122, 64' : '220, 38, 38'}, 0.15) 0%, rgba(${outcome === 'yes' ? '2, 122, 64' : '220, 38, 38'}, 0.05) 100%); border: 2px solid rgba(${outcome === 'yes' ? '0, 203, 151' : '239, 68, 68'}, 0.3);">
+                        <div class="text-xs font-semibold mb-1" style="color: ${outcomeColor};">${outcomeText}</div>
+                        <div class="text-3xl font-black mb-1" style="color: ${outcomeColor};">${outcomePrice}¢</div>
                         <div class="text-xs text-gray-400">${profit.toFixed(0)}% potential profit</div>
                     </div>
 
@@ -2805,18 +2942,18 @@ class GoatMouth {
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-2" style="color: #059669;">Bet Amount</label>
                         <div class="grid grid-cols-4 gap-2 mb-3">
-                            <button class="quick-amount-btn px-3 py-2 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-700 transition text-sm font-semibold" data-amount="10">$10</button>
-                            <button class="quick-amount-btn px-3 py-2 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-700 transition text-sm font-semibold" data-amount="25">$25</button>
-                            <button class="quick-amount-btn px-3 py-2 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-700 transition text-sm font-semibold" data-amount="50">$50</button>
-                            <button class="quick-amount-btn px-3 py-2 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-700 transition text-sm font-semibold" data-amount="100">$100</button>
+                            <button class="quick-amount-btn px-2 py-2 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-700 transition text-sm font-semibold" data-amount="10">$10</button>
+                            <button class="quick-amount-btn px-2 py-2 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-700 transition text-sm font-semibold" data-amount="25">$25</button>
+                            <button class="quick-amount-btn px-2 py-2 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-700 transition text-sm font-semibold" data-amount="50">$50</button>
+                            <button class="quick-amount-btn px-2 py-2 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-700 transition text-sm font-semibold" data-amount="100">$100</button>
                         </div>
                         <input type="number" id="quick-bet-amount" placeholder="Or enter custom amount"
-                               class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-green-500"
+                               class="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-green-500 text-sm"
                                style="font-size: 16px;" min="1" step="0.01">
                     </div>
 
                     <!-- Bet Summary -->
-                    <div id="quick-bet-summary" class="hidden mb-4 p-4 rounded-lg" style="background: linear-gradient(135deg, rgba(0, 203, 151, 0.1) 0%, rgba(99, 27, 221, 0.1) 100%); border: 2px solid rgba(0, 203, 151, 0.3);">
+                    <div id="quick-bet-summary" class="hidden mb-4 p-3 rounded-lg" style="background: linear-gradient(135deg, rgba(0, 203, 151, 0.1) 0%, rgba(99, 27, 221, 0.1) 100%); border: 2px solid rgba(0, 203, 151, 0.3);">
                         <div class="flex justify-between text-sm mb-2">
                             <span class="text-gray-400">Shares</span>
                             <span class="font-semibold" id="quick-summary-shares">-</span>
@@ -2826,20 +2963,20 @@ class GoatMouth {
                             <span class="font-semibold" id="quick-summary-price">-</span>
                         </div>
                         <div class="flex justify-between pt-2 border-t border-gray-600">
-                            <span class="font-semibold">Potential Profit</span>
-                            <span class="font-bold text-green-400" id="quick-summary-profit">-</span>
+                            <span class="font-semibold text-sm">Potential Profit</span>
+                            <span class="font-bold text-green-400 text-sm" id="quick-summary-profit">-</span>
                         </div>
                     </div>
 
                     <!-- Place Bet Button -->
                     <button id="quick-place-bet-btn" disabled
-                            class="w-full px-4 py-3 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed text-white transition"
+                            class="w-full px-4 py-2.5 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed text-white transition"
                             style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
                         Place Bet
                     </button>
 
                     <!-- Balance -->
-                    <div class="text-center text-sm text-gray-400 mt-3">
+                    <div class="text-center text-xs text-gray-400 mt-3">
                         Balance: <span class="font-semibold text-white">J$${parseFloat(this.currentProfile?.balance || 0).toFixed(2)}</span>
                     </div>
                 </div>
