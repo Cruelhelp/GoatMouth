@@ -502,6 +502,9 @@
             }
         }
     </style>
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2580594240598942"
+         crossorigin="anonymous"></script>
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
 
@@ -521,9 +524,16 @@
             <div style="display: flex; align-items: center; gap: 0.4rem; padding: 0 0 0.75rem 0; font-size: 0.75rem; overflow: hidden;"><a href="index.html" style="color: #00CB97; text-decoration: none; flex-shrink: 0;">←</a><span style="color: #6b7280; flex-shrink: 0;">Markets</span><span style="color: #4b5563; flex-shrink: 0;">/</span><span id="breadcrumb-category" style="color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; flex-shrink: 1;">Category</span><span style="color: #4b5563; flex-shrink: 0;">/</span><span id="breadcrumb-market-title" style="color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0;">Loading market...</span></div>
 
             <!-- Loading State -->
-            <div id="loading-state" class="text-center py-20">
-                <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-green-500"></div>
-                <p class="mt-4 text-gray-400">Loading market details...</p>
+            <div id="loading-state" class="py-6">
+                <div class="skeleton-container">
+                    <div class="skeleton skeleton-heading w-2/3 mb-6"></div>
+                    <div class="skeleton skeleton-chart mb-6"></div>
+                    <div class="skeleton-stats">
+                        <div class="skeleton-stat-card"></div>
+                        <div class="skeleton-stat-card"></div>
+                        <div class="skeleton-stat-card"></div>
+                    </div>
+                </div>
             </div>
 
             <!-- Error State -->

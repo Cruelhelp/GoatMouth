@@ -199,7 +199,7 @@ class DepositManager {
             const btn = document.getElementById('proceedDepositBtn');
             const originalText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Processing...';
+            btn.innerHTML = '<div class="skeleton skeleton-inline-sm inline-block mr-2"></div>Processing...';
 
             // TODO: Integrate with payment gateway
             // For now, simulate a successful deposit

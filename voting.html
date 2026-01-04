@@ -864,6 +864,9 @@
             }
         }
     </style>
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2580594240598942"
+         crossorigin="anonymous"></script>
 </head>
 <body class="bg-gray-900 text-white" data-page="voting">
     <!-- Temporary element to prevent voting.js auto-init -->
@@ -884,7 +887,7 @@
                     </button>
                     <div class="banner-content">
                         <div class="banner-spinner" id="bannerSpinner">
-                            <div class="spinner-ring"></div>
+                            <div class="skeleton skeleton-banner"></div>
                         </div>
                     </div>
                 </div>
@@ -951,10 +954,36 @@
 
         <!-- Proposals -->
         <div class="proposals-grid" id="proposals-container">
-            <div class="inline-loader">
-                <div class="spinner-container">
-                    <div class="spinner-glow"></div>
-                    <div class="spinner-text">Loading proposals...</div>
+            <div class="skeleton-list">
+                <div class="skeleton-card">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex-1">
+                            <div class="skeleton skeleton-text-lg w-3/4 mb-2"></div>
+                            <div class="skeleton skeleton-text-sm w-1/2"></div>
+                        </div>
+                        <div class="skeleton skeleton-badge"></div>
+                    </div>
+                    <div class="skeleton skeleton-box-sm mb-3"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex-1">
+                            <div class="skeleton skeleton-text-lg w-3/4 mb-2"></div>
+                            <div class="skeleton skeleton-text-sm w-1/2"></div>
+                        </div>
+                        <div class="skeleton skeleton-badge"></div>
+                    </div>
+                    <div class="skeleton skeleton-box-sm mb-3"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex-1">
+                            <div class="skeleton skeleton-text-lg w-3/4 mb-2"></div>
+                            <div class="skeleton skeleton-text-sm w-1/2"></div>
+                        </div>
+                        <div class="skeleton skeleton-badge"></div>
+                    </div>
+                    <div class="skeleton skeleton-box-sm mb-3"></div>
                 </div>
             </div>
         </div>

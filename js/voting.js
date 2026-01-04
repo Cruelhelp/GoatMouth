@@ -157,14 +157,7 @@ class VotingSystem {
             return;
         }
 
-        container.innerHTML = `
-            <div class="inline-loader">
-                <div class="spinner-container">
-                    <div class="spinner-glow"></div>
-                    <div class="spinner-text">Loading proposals...</div>
-                </div>
-            </div>
-        `;
+        container.innerHTML = window.SkeletonLoaders.proposalList(3);
 
         try {
             // Get proposals based on current tab

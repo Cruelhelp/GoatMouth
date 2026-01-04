@@ -193,7 +193,7 @@ class MarketPage {
         if (typeof LightweightCharts === 'undefined') {
             console.error('TradingView Lightweight Charts library not loaded');
             console.log('Available window properties:', Object.keys(window).filter(k => k.toLowerCase().includes('chart')));
-            chartContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #9ca3af;">Chart library loading...</div>';
+            chartContainer.innerHTML = window.SkeletonLoaders.chart(300);
             return;
         }
 

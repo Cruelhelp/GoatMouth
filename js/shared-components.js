@@ -620,6 +620,238 @@ function showBookmarks() {
     }
 }
 
+// ============================================
+// SKELETON LOADER UTILITIES - Global
+// ============================================
+
+/**
+ * Skeleton loader generator functions
+ * Use these to create consistent loading states across the platform
+ */
+
+// Generate skeleton for market card
+function createMarketCardSkeleton() {
+    return `
+        <div class="skeleton-market-card">
+            <div class="flex items-start gap-3 mb-3">
+                <div class="skeleton skeleton-avatar-sm"></div>
+                <div class="flex-1">
+                    <div class="skeleton skeleton-text w-3/4 mb-2"></div>
+                    <div class="skeleton skeleton-text-sm w-1/2"></div>
+                </div>
+            </div>
+            <div class="skeleton skeleton-box-md mb-3"></div>
+            <div class="flex justify-between items-center">
+                <div class="skeleton skeleton-badge"></div>
+                <div class="skeleton skeleton-text-sm w-20"></div>
+            </div>
+        </div>
+    `;
+}
+
+// Generate skeleton for market grid (multiple cards)
+function createMarketGridSkeleton(count = 6) {
+    const skeletons = Array(count).fill(null).map(() => createMarketCardSkeleton()).join('');
+    return `<div class="skeleton-grid">${skeletons}</div>`;
+}
+
+// Generate skeleton for chart
+function createChartSkeleton(height = 300) {
+    return `
+        <div class="skeleton-chart" style="height: ${height}px;"></div>
+    `;
+}
+
+// Generate skeleton for comment/activity item
+function createCommentSkeleton() {
+    return `
+        <div class="skeleton-comment">
+            <div class="skeleton skeleton-avatar-sm"></div>
+            <div class="flex-1">
+                <div class="skeleton skeleton-text w-1/4 mb-2"></div>
+                <div class="skeleton skeleton-text-sm w-full mb-1"></div>
+                <div class="skeleton skeleton-text-sm w-3/4"></div>
+            </div>
+        </div>
+    `;
+}
+
+// Generate skeleton for comment list
+function createCommentListSkeleton(count = 5) {
+    return Array(count).fill(null).map(() => createCommentSkeleton()).join('');
+}
+
+// Generate skeleton for profile section
+function createProfileSkeleton() {
+    return `
+        <div class="skeleton-profile">
+            <div class="skeleton skeleton-avatar-lg"></div>
+            <div class="flex-1">
+                <div class="skeleton skeleton-heading w-1/3 mb-2"></div>
+                <div class="skeleton skeleton-text w-1/2 mb-1"></div>
+                <div class="skeleton skeleton-text-sm w-2/3"></div>
+            </div>
+        </div>
+    `;
+}
+
+// Generate skeleton for stats cards
+function createStatsSkeletonGrid(count = 4) {
+    const skeletons = Array(count).fill(null).map(() => `
+        <div class="skeleton-stat-card">
+            <div class="skeleton skeleton-text-sm w-1/2 mb-3"></div>
+            <div class="skeleton skeleton-text-lg w-2/3"></div>
+        </div>
+    `).join('');
+    return `<div class="skeleton-stats">${skeletons}</div>`;
+}
+
+// Generate skeleton for table rows
+function createTableRowSkeleton(columns = 4) {
+    const cells = Array(columns).fill(null).map((_, i) => {
+        const width = i === 0 ? 'w-1/4' : 'flex-1';
+        return `<div class="skeleton skeleton-text ${width}"></div>`;
+    }).join('');
+    return `<div class="skeleton-table-row">${cells}</div>`;
+}
+
+// Generate skeleton for table
+function createTableSkeleton(rows = 5, columns = 4) {
+    return Array(rows).fill(null).map(() => createTableRowSkeleton(columns)).join('');
+}
+
+// Generate skeleton for banner
+function createBannerSkeleton() {
+    return `<div class="skeleton skeleton-banner"></div>`;
+}
+
+// Generate skeleton for inline balance/text
+function createInlineSkeleton(size = 'md') {
+    const sizeClass = size === 'sm' ? 'skeleton-inline-sm' : size === 'lg' ? 'skeleton-inline-lg' : 'skeleton-inline';
+    return `<div class="skeleton ${sizeClass}"></div>`;
+}
+
+// Generate skeleton for button
+function createButtonSkeleton(size = 'md') {
+    const sizeClass = size === 'sm' ? 'skeleton-button-sm' : 'skeleton-button';
+    return `<div class="skeleton ${sizeClass}"></div>`;
+}
+
+// Generate skeleton for list items
+function createListSkeleton(count = 5) {
+    const items = Array(count).fill(null).map(() => `
+        <div class="skeleton-card">
+            <div class="skeleton skeleton-text w-3/4 mb-2"></div>
+            <div class="skeleton skeleton-text-sm w-1/2"></div>
+        </div>
+    `).join('');
+    return `<div class="skeleton-list">${items}</div>`;
+}
+
+// Generate skeleton for proposals/voting items
+function createProposalSkeleton() {
+    return `
+        <div class="skeleton-card">
+            <div class="flex justify-between items-start mb-3">
+                <div class="flex-1">
+                    <div class="skeleton skeleton-text-lg w-3/4 mb-2"></div>
+                    <div class="skeleton skeleton-text-sm w-1/2"></div>
+                </div>
+                <div class="skeleton skeleton-badge"></div>
+            </div>
+            <div class="skeleton skeleton-box-sm mb-3"></div>
+            <div class="flex gap-2">
+                <div class="skeleton skeleton-button-sm flex-1"></div>
+                <div class="skeleton skeleton-button-sm flex-1"></div>
+            </div>
+        </div>
+    `;
+}
+
+// Generate skeleton for proposals list
+function createProposalListSkeleton(count = 3) {
+    return Array(count).fill(null).map(() => createProposalSkeleton()).join('');
+}
+
+// Generate skeleton for deposit/wallet section
+function createWalletSkeleton() {
+    return `
+        <div class="skeleton-container">
+            <div class="skeleton skeleton-heading w-1/3 mb-4"></div>
+            <div class="skeleton-stats">
+                <div class="skeleton-stat-card">
+                    <div class="skeleton skeleton-text-sm w-1/2 mb-3"></div>
+                    <div class="skeleton skeleton-text-lg w-3/4"></div>
+                </div>
+                <div class="skeleton-stat-card">
+                    <div class="skeleton skeleton-text-sm w-1/2 mb-3"></div>
+                    <div class="skeleton skeleton-text-lg w-3/4"></div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Generate full page skeleton loader with centered content
+function createPageSkeleton(message = 'Loading...') {
+    return `
+        <div class="inline-loader">
+            <div class="skeleton-container">
+                <div class="flex flex-col items-center justify-center gap-4">
+                    <div class="skeleton skeleton-box-md w-64"></div>
+                    <div class="skeleton skeleton-text w-48"></div>
+                    ${message ? `<p class="text-gray-400 text-sm mt-2">${message}</p>` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Generic skeleton box generator
+function createSkeletonBox(width = '100%', height = '4rem', className = '') {
+    return `<div class="skeleton skeleton-box ${className}" style="width: ${width}; height: ${height};"></div>`;
+}
+
+// Utility function to show skeleton in container
+function showSkeleton(containerId, skeletonHtml) {
+    const container = document.getElementById(containerId);
+    if (container) {
+        container.innerHTML = skeletonHtml;
+    }
+}
+
+// Utility function to hide skeleton and show content
+function hideSkeleton(containerId, contentHtml) {
+    const container = document.getElementById(containerId);
+    if (container) {
+        container.innerHTML = contentHtml;
+    }
+}
+
+// Export skeleton creators to window for global access
+window.SkeletonLoaders = {
+    marketCard: createMarketCardSkeleton,
+    marketGrid: createMarketGridSkeleton,
+    chart: createChartSkeleton,
+    comment: createCommentSkeleton,
+    commentList: createCommentListSkeleton,
+    profile: createProfileSkeleton,
+    stats: createStatsSkeletonGrid,
+    tableRow: createTableRowSkeleton,
+    table: createTableSkeleton,
+    banner: createBannerSkeleton,
+    inline: createInlineSkeleton,
+    button: createButtonSkeleton,
+    list: createListSkeleton,
+    proposal: createProposalSkeleton,
+    proposalList: createProposalListSkeleton,
+    wallet: createWalletSkeleton,
+    page: createPageSkeleton,
+    box: createSkeletonBox,
+    show: showSkeleton,
+    hide: hideSkeleton
+};
+
 // ============ Global Initialization ============
 // Auto-initialize banner on pages that have banner container
 if (document.readyState === 'loading') {
@@ -635,3 +867,4 @@ if (document.readyState === 'loading') {
 }
 
 console.log('✓ Shared components loaded');
+console.log('✓ Skeleton loaders initialized');

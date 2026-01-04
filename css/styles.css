@@ -399,6 +399,264 @@ span.font-semibold {
 }
 
 /* ============================================ */
+/* SKELETON LOADING SYSTEM - Global */
+/* ============================================ */
+
+/* Base skeleton pulse animation */
+@keyframes skeleton-pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.4;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes skeleton-shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+/* Base skeleton element */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        rgba(31, 41, 55, 0.9) 0%,
+        rgba(55, 65, 81, 0.9) 50%,
+        rgba(31, 41, 55, 0.9) 100%
+    );
+    background-size: 1000px 100%;
+    animation: skeleton-shimmer 2s infinite linear;
+    border-radius: 0.375rem;
+}
+
+.skeleton-pulse {
+    background: rgba(31, 41, 55, 0.9);
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+    border-radius: 0.375rem;
+}
+
+/* Skeleton text lines */
+.skeleton-text {
+    height: 0.875rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.skeleton-text-lg {
+    height: 1.25rem;
+    margin-bottom: 0.75rem;
+    border-radius: 0.25rem;
+}
+
+.skeleton-text-sm {
+    height: 0.75rem;
+    margin-bottom: 0.375rem;
+    border-radius: 0.25rem;
+}
+
+/* Skeleton heading */
+.skeleton-heading {
+    height: 1.5rem;
+    margin-bottom: 1rem;
+    border-radius: 0.375rem;
+    width: 60%;
+}
+
+/* Skeleton avatar/circle */
+.skeleton-avatar {
+    border-radius: 50%;
+}
+
+.skeleton-avatar-sm {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+}
+
+.skeleton-avatar-md {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+}
+
+.skeleton-avatar-lg {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+}
+
+/* Skeleton card (for market cards) */
+.skeleton-card {
+    background: rgba(31, 41, 55, 0.5);
+    border: 1px solid rgba(55, 65, 81, 0.5);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+/* Skeleton market card layout */
+.skeleton-market-card {
+    background: rgba(31, 41, 55, 0.5);
+    border: 1px solid rgba(55, 65, 81, 0.5);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    min-height: 220px;
+}
+
+/* Skeleton chart */
+.skeleton-chart {
+    height: 300px;
+    border-radius: 0.75rem;
+    background: linear-gradient(
+        90deg,
+        rgba(31, 41, 55, 0.9) 0%,
+        rgba(55, 65, 81, 0.9) 50%,
+        rgba(31, 41, 55, 0.9) 100%
+    );
+    background-size: 1000px 100%;
+    animation: skeleton-shimmer 2s infinite linear;
+}
+
+/* Skeleton button */
+.skeleton-button {
+    height: 2.5rem;
+    width: 100%;
+    border-radius: 0.5rem;
+}
+
+.skeleton-button-sm {
+    height: 2rem;
+    width: 100%;
+    border-radius: 0.375rem;
+}
+
+/* Skeleton table row */
+.skeleton-table-row {
+    display: flex;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(55, 65, 81, 0.3);
+}
+
+/* Skeleton badge */
+.skeleton-badge {
+    height: 1.5rem;
+    width: 4rem;
+    border-radius: 9999px;
+}
+
+/* Skeleton grid container */
+.skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem 0;
+}
+
+/* Skeleton list */
+.skeleton-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Skeleton inline (for balance, small loaders) */
+.skeleton-inline {
+    display: inline-block;
+    vertical-align: middle;
+    width: 4rem;
+    height: 1rem;
+    border-radius: 0.25rem;
+}
+
+.skeleton-inline-sm {
+    width: 3rem;
+    height: 0.75rem;
+}
+
+.skeleton-inline-lg {
+    width: 6rem;
+    height: 1.25rem;
+}
+
+/* Skeleton box (generic) */
+.skeleton-box {
+    border-radius: 0.5rem;
+}
+
+.skeleton-box-sm {
+    height: 4rem;
+    border-radius: 0.5rem;
+}
+
+.skeleton-box-md {
+    height: 8rem;
+    border-radius: 0.5rem;
+}
+
+.skeleton-box-lg {
+    height: 12rem;
+    border-radius: 0.5rem;
+}
+
+/* Skeleton comment/activity item */
+.skeleton-comment {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: rgba(31, 41, 55, 0.3);
+    border-radius: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+/* Skeleton profile section */
+.skeleton-profile {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: rgba(31, 41, 55, 0.5);
+    border-radius: 0.75rem;
+}
+
+/* Skeleton stats grid */
+.skeleton-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.skeleton-stat-card {
+    background: rgba(31, 41, 55, 0.5);
+    border: 1px solid rgba(55, 65, 81, 0.5);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    min-height: 80px;
+}
+
+/* Skeleton banner */
+.skeleton-banner {
+    height: 200px;
+    border-radius: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Skeleton container (wrapper) */
+.skeleton-container {
+    width: 100%;
+    padding: 1rem;
+}
+
+/* ============================================ */
 /* COMPREHENSIVE MOBILE OPTIMIZATIONS */
 /* ============================================ */
 

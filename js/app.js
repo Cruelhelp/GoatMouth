@@ -1057,14 +1057,7 @@ class GoatMouth {
     }
 
     async renderMarkets(container) {
-        container.innerHTML = `
-            <div class="inline-loader">
-                <div class="spinner-container">
-                    <div class="spinner-glow"></div>
-                    <div class="spinner-text">Loading markets...</div>
-                </div>
-            </div>
-        `;
+        container.innerHTML = window.SkeletonLoaders.marketGrid(6);
 
         try {
             let filters = { status: 'active' };
@@ -1526,14 +1519,7 @@ class GoatMouth {
             return;
         }
 
-        container.innerHTML = `
-            <div class="inline-loader">
-                <div class="spinner-container">
-                    <div class="spinner-glow"></div>
-                    <div class="spinner-text">Loading portfolio...</div>
-                </div>
-            </div>
-        `;
+        container.innerHTML = window.SkeletonLoaders.list(5);
 
         try {
             const positions = await this.api.getUserPositions(this.currentUser.id);
@@ -1582,14 +1568,7 @@ class GoatMouth {
             return;
         }
 
-        container.innerHTML = `
-            <div class="inline-loader">
-                <div class="spinner-container">
-                    <div class="spinner-glow"></div>
-                    <div class="spinner-text">Loading activity...</div>
-                </div>
-            </div>
-        `;
+        container.innerHTML = window.SkeletonLoaders.commentList(5);
 
         try {
             const bets = await this.api.getUserBets(this.currentUser.id);
@@ -1668,14 +1647,7 @@ class GoatMouth {
     }
 
     async renderLeaderboard(container) {
-        container.innerHTML = `
-            <div class="inline-loader">
-                <div class="spinner-container">
-                    <div class="spinner-glow"></div>
-                    <div class="spinner-text">Loading leaderboard...</div>
-                </div>
-            </div>
-        `;
+        container.innerHTML = window.SkeletonLoaders.list(10);
 
         try {
             // Fetch top users by balance or total bets
@@ -1721,12 +1693,8 @@ class GoatMouth {
         }
 
         container.innerHTML = `
-            <div class="inline-loader">
-                <div class="spinner-container">
-                    <div class="spinner-glow"></div>
-                    <div class="spinner-text">Loading profile...</div>
-                </div>
-            </div>
+            ${window.SkeletonLoaders.profile()}
+            ${window.SkeletonLoaders.stats(4)}
         `;
 
         try {
@@ -2021,12 +1989,7 @@ class GoatMouth {
                         <section class="panel">
                             <div class="panel-title">Market Proposals</div>
                             <div id="proposals-container">
-                                <div class="inline-loader">
-                                    <div class="spinner-container">
-                                        <div class="spinner-glow"></div>
-                                        <div class="spinner-text">Loading proposals...</div>
-                                    </div>
-                                </div>
+                                ${window.SkeletonLoaders.proposalList(3)}
                             </div>
                         </section>
 
@@ -3221,9 +3184,9 @@ class GoatMouth {
                 const originalText = submitBtn.textContent;
 
                 try {
-                    // Show loading spinner
+                    // Show loading state
                     submitBtn.disabled = true;
-                    submitBtn.innerHTML = '<div class="spinner-glow inline-block w-5 h-5 mr-2"></div>Updating...';
+                    submitBtn.innerHTML = '<div class="skeleton skeleton-inline-sm inline-block mr-2"></div>Updating...';
 
                     const formData = new FormData(e.target);
                     let imageUrl = market.image_url; // Keep existing image by default
@@ -3421,9 +3384,9 @@ class GoatMouth {
             const originalText = submitBtn.textContent;
 
             try {
-                // Show loading spinner
+                // Show loading state
                 submitBtn.disabled = true;
-                submitBtn.innerHTML = '<div class="spinner-glow inline-block w-5 h-5 mr-2"></div>Creating...';
+                submitBtn.innerHTML = '<div class="skeleton skeleton-inline-sm inline-block mr-2"></div>Creating...';
 
                 const formData = new FormData(e.target);
                 let imageUrl = null;
