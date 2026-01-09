@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://cdn.quilljs.com https://pagead2.googlesyndication.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://cdn.quilljs.com; img-src 'self' data: https: blob:; font-src 'self' data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://accounts.google.com https://cdn.jsdelivr.net https://goatmouth-odds-api.onrender.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.quilljs.com https://pagead2.googlesyndication.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://cdn.quilljs.com; img-src 'self' data: https: blob:; font-src 'self' data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://accounts.google.com https://cdn.jsdelivr.net https://goatmouth-odds-api.onrender.com;">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -28,21 +28,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Tailwind CSS (for content rendering) -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS (compiled) -->
+    <link rel="stylesheet" href="css/output.css?v=4.2">
+    <link rel="stylesheet" href="css/styles.css?v=4.2">
+    <link rel="stylesheet" href="css/admin.css">
     <script>
-        // Suppress Tailwind CDN production warning
-        if (window.tailwind) {
-            window.tailwind.config = { corePlugins: { preflight: false } };
-        }
-        // Suppress console warning
-        const originalWarn = console.warn;
-        console.warn = function(...args) {
-            if (args[0]?.includes?.('cdn.tailwindcss.com should not be used in production')) {
-                return;
-            }
-            originalWarn.apply(console, args);
-        };
+        // Reserved for future configuration
     </script>
 
     <style>
@@ -4623,14 +4614,240 @@
                     </div>
                     <div class="section-banner-content">
                         <h2>API & Insights</h2>
-                        <p>Odds API health, telemetry, and guidance insights</p>
+                        <p>ML Controls, Odds API health, Market analytics, and guidance insights</p>
                     </div>
                 </div>
-                <div id="admin-content-api">
-                    <div class="skeleton-list">
-                        <div class="skeleton-card"></div>
-                        <div class="skeleton-card"></div>
-                        <div class="skeleton-card"></div>
+
+                <div id="admin-content-api" style="padding: 20px;">
+                    <!-- API Health Status -->
+                    <div class="card" style="margin-bottom: 20px;">
+                        <h3 style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                            <i class="fa-solid fa-heart-pulse" style="color: var(--accent);"></i>
+                            API Health Status
+                        </h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div class="stat-card">
+                                <div class="stat-value" id="api-status">
+                                    <i class="fa-solid fa-circle-notch fa-spin"></i>
+                                </div>
+                                <div class="stat-label">Status</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="api-uptime">--</div>
+                                <div class="stat-label">Uptime</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="api-response-time">--</div>
+                                <div class="stat-label">Avg Response Time</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="api-requests">--</div>
+                                <div class="stat-label">Total Requests (24h)</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 15px; display: flex; gap: 10px;">
+                            <button class="btn secondary" id="run-health-check">
+                                <i class="fa-solid fa-heart-pulse"></i> Run Health Check
+                            </button>
+                            <button class="btn secondary" id="refresh-api-stats">
+                                <i class="fa-solid fa-rotate"></i> Refresh Stats
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ML Controls Section -->
+                    <div class="card" style="margin-bottom: 20px;">
+                        <h3 style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                            <i class="fa-solid fa-brain" style="color: #9c27b0;"></i>
+                            Machine Learning Controls
+                        </h3>
+
+                        <div style="display: grid; gap: 20px;">
+                            <!-- Model Configuration -->
+                            <div>
+                                <h4 style="margin-bottom: 10px; color: var(--fg); font-size: 14px;">
+                                    <i class="fa-solid fa-sliders"></i> Model Configuration
+                                </h4>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                                    <div>
+                                        <label class="form-label">House Margin (%)</label>
+                                        <input type="number" id="ml-house-margin" class="form-input" min="0" max="10" step="0.1" value="2.0">
+                                        <small style="color: var(--muted); font-size: 11px;">Platform fee percentage</small>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Default Pool Size</label>
+                                        <input type="number" id="ml-pool-size" class="form-input" min="100" max="10000" step="100" value="1000">
+                                        <small style="color: var(--muted); font-size: 11px;">Liquidity pool initialization</small>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Volatility Factor</label>
+                                        <input type="number" id="ml-volatility" class="form-input" min="0" max="2" step="0.05" value="1.0">
+                                        <small style="color: var(--muted); font-size: 11px;">Price sensitivity multiplier</small>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Min Liquidity Threshold</label>
+                                        <input type="number" id="ml-min-liquidity" class="form-input" min="10" max="500" step="10" value="100">
+                                        <small style="color: var(--muted); font-size: 11px;">Minimum pool balance</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Feature Weights -->
+                            <div>
+                                <h4 style="margin-bottom: 10px; color: var(--fg); font-size: 14px;">
+                                    <i class="fa-solid fa-weight-scale"></i> Feature Weights
+                                </h4>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                                    <div>
+                                        <label class="form-label">Volume Weight</label>
+                                        <input type="range" id="ml-volume-weight" min="0" max="100" value="40"
+                                               style="width: 100%;" oninput="document.getElementById('volume-weight-val').textContent = this.value + '%'">
+                                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--muted);">
+                                            <span>0%</span>
+                                            <span id="volume-weight-val">40%</span>
+                                            <span>100%</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Momentum Weight</label>
+                                        <input type="range" id="ml-momentum-weight" min="0" max="100" value="30"
+                                               style="width: 100%;" oninput="document.getElementById('momentum-weight-val').textContent = this.value + '%'">
+                                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--muted);">
+                                            <span>0%</span>
+                                            <span id="momentum-weight-val">30%</span>
+                                            <span>100%</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Sentiment Weight</label>
+                                        <input type="range" id="ml-sentiment-weight" min="0" max="100" value="20"
+                                               style="width: 100%;" oninput="document.getElementById('sentiment-weight-val').textContent = this.value + '%'">
+                                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--muted);">
+                                            <span>0%</span>
+                                            <span id="sentiment-weight-val">20%</span>
+                                            <span>100%</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Time Decay Weight</label>
+                                        <input type="range" id="ml-time-weight" min="0" max="100" value="10"
+                                               style="width: 100%;" oninput="document.getElementById('time-weight-val').textContent = this.value + '%'">
+                                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--muted);">
+                                            <span>0%</span>
+                                            <span id="time-weight-val">10%</span>
+                                            <span>100%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Model Actions -->
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button class="btn primary" id="save-ml-config">
+                                    <i class="fa-solid fa-save"></i> Save Configuration
+                                </button>
+                                <button class="btn secondary" id="reset-ml-config">
+                                    <i class="fa-solid fa-rotate-left"></i> Reset to Defaults
+                                </button>
+                                <button class="btn secondary" id="test-ml-model">
+                                    <i class="fa-solid fa-flask"></i> Test Model
+                                </button>
+                                <button class="btn" id="export-ml-config" style="background: #607d8b; color: white;">
+                                    <i class="fa-solid fa-download"></i> Export Config
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Market Analytics -->
+                    <div class="card" style="margin-bottom: 20px;">
+                        <h3 style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                            <i class="fa-solid fa-chart-line" style="color: #2196f3;"></i>
+                            Market Analytics & Insights
+                        </h3>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px;">
+                            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                <div class="stat-value" id="total-markets-stat">--</div>
+                                <div class="stat-label">Total Markets</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                                <div class="stat-value" id="active-markets-stat">--</div>
+                                <div class="stat-label">Active Markets</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                                <div class="stat-value" id="total-volume-stat">--</div>
+                                <div class="stat-label">Total Volume (24h)</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                                <div class="stat-value" id="total-bets-stat">--</div>
+                                <div class="stat-label">Total Bets (24h)</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                                <div class="stat-value" id="avg-odds-stat">--</div>
+                                <div class="stat-label">Avg Odds</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);">
+                                <div class="stat-value" id="liquidity-stat">--</div>
+                                <div class="stat-label">Total Liquidity</div>
+                            </div>
+                        </div>
+
+                        <!-- Top Markets Table -->
+                        <div>
+                            <h4 style="margin-bottom: 10px; color: var(--fg); font-size: 14px;">
+                                <i class="fa-solid fa-fire"></i> Top Performing Markets
+                            </h4>
+                            <div style="overflow-x: auto;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="border-bottom: 2px solid var(--border);">
+                                            <th style="padding: 10px; text-align: left; font-size: 12px; color: var(--muted);">Market</th>
+                                            <th style="padding: 10px; text-align: left; font-size: 12px; color: var(--muted);">Volume</th>
+                                            <th style="padding: 10px; text-align: left; font-size: 12px; color: var(--muted);">Bets</th>
+                                            <th style="padding: 10px; text-align: left; font-size: 12px; color: var(--muted);">YES Price</th>
+                                            <th style="padding: 10px; text-align: left; font-size: 12px; color: var(--muted);">Liquidity</th>
+                                            <th style="padding: 10px; text-align: left; font-size: 12px; color: var(--muted);">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="top-markets-table">
+                                        <tr>
+                                            <td colspan="6" style="padding: 20px; text-align: center; color: var(--muted);">
+                                                <i class="fa-solid fa-spinner fa-spin"></i> Loading market data...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 15px;">
+                            <button class="btn secondary" id="refresh-market-analytics">
+                                <i class="fa-solid fa-rotate"></i> Refresh Analytics
+                            </button>
+                            <button class="btn secondary" id="export-market-data" style="margin-left: 10px;">
+                                <i class="fa-solid fa-file-export"></i> Export Data
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Telemetry & Logs -->
+                    <div class="card">
+                        <h3 style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                            <i class="fa-solid fa-terminal" style="color: #ff9800;"></i>
+                            API Telemetry & Logs
+                        </h3>
+                        <div id="telemetry-logs" style="background: #000; color: #0f0; padding: 15px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 12px; max-height: 300px; overflow-y: auto;">
+                            <div style="color: #888;">Waiting for telemetry data...</div>
+                        </div>
+                        <div style="margin-top: 10px; display: flex; gap: 10px;">
+                            <button class="btn secondary" id="clear-logs">
+                                <i class="fa-solid fa-trash"></i> Clear Logs
+                            </button>
+                            <button class="btn secondary" id="download-logs">
+                                <i class="fa-solid fa-download"></i> Download Logs
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -4660,6 +4877,7 @@
     <script src="js/auth-guard.js"></script>
     <script src="js/admin-banners.js"></script>
     <script src="js/admin.js"></script>
+    <script src="js/admin-ml-insights.js"></script>
 
     <script>
         // Mobile menu toggle
