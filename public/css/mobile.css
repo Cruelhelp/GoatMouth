@@ -24,12 +24,19 @@
     bottom: 0;
     background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(4px);
-    z-index: 998;
+    z-index: 1999;
     display: none;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .mobile-menu-overlay.active {
     display: block;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 .mobile-menu {
@@ -40,14 +47,14 @@
     max-width: 320px;
     height: 100vh;
     background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-    z-index: 999;
+    z-index: 2000;
     transition: right 0.3s ease;
     overflow-y: auto;
     box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
 }
 
 .mobile-menu.active {
-    right: 0;
+    right: 0 !important;
 }
 
 /* Responsive breakpoints */
