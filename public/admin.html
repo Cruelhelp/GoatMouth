@@ -1108,9 +1108,9 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 98;
-            backdrop-filter: blur(2px);
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            backdrop-filter: blur(4px);
         }
 
         .mobile-overlay.active {
@@ -1151,15 +1151,30 @@
             }
 
             .logo-text {
-                font-size: 18px;
+                font-size: 16px;
             }
 
             .user-badge {
-                display: none !important;
+                padding: 4px 8px !important;
+                font-size: 11px !important;
+                gap: 4px !important;
+            }
+
+            .user-badge i {
+                display: none;
+            }
+
+            .user-badge span {
+                font-size: 11px;
+            }
+
+            .role-badge {
+                padding: 2px 6px;
+                font-size: 9px;
             }
 
             .user-info {
-                gap: 8px;
+                gap: 6px;
             }
 
             .user-info .btn {
@@ -1189,13 +1204,18 @@
                 gap: 8px;
                 transition: left 0.3s ease;
                 overflow-y: auto;
-                z-index: 99;
+                z-index: 101;
                 border-right: 1px solid var(--border);
-                background: var(--bg) !important;
+                background: var(--bg2) !important;
+                box-shadow: 4px 0 12px rgba(0, 0, 0, 0.5);
             }
 
             .menubar.active {
-                left: 0;
+                left: 0 !important;
+            }
+
+            .mobile-overlay {
+                z-index: 100 !important;
             }
 
             .menubar button {
@@ -1386,6 +1406,19 @@
 
         @media (max-width: 480px) {
             .logo-text {
+                font-size: 14px;
+            }
+
+            .user-badge {
+                padding: 3px 6px !important;
+                font-size: 10px !important;
+            }
+
+            .user-badge span {
+                font-size: 10px !important;
+            }
+
+            .role-badge {
                 display: none;
             }
 
@@ -6251,10 +6284,11 @@
                             description,
                             category,
                             image_url: imageUrl,
-                            resolution_date: resolutionDate,
-                            initial_liquidity: parseFloat(liquidity),
-                            fee_percentage: parseFloat(fee),
-                            options: options,
+                            end_date: resolutionDate,
+                            yes_price: 0.5,
+                            no_price: 0.5,
+                            total_volume: 0,
+                            bettor_count: 0,
                             status: 'active',
                             created_at: new Date().toISOString()
                         };
