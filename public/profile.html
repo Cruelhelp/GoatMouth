@@ -376,13 +376,13 @@
                 <div class="profile-avatar">
                     <div class="avatar-circle" id="profileAvatar">U</div>
                     <label class="avatar-upload" title="Change Avatar">
-                        <input type="file" id="avatarInput" accept="image/*" style="display: none;">
-                        <i class="fas fa-camera" style="color: white; font-size: 0.875rem;"></i>
+                        <input type="file" id="avatarInput" accept="image/*" class="hidden">
+                        <i class="fas fa-camera text-white text-sm"></i>
                     </label>
                 </div>
                 <div class="profile-info">
                     <h1 id="profileName">Loading...</h1>
-                    <p style="color: #9ca3af; font-size: 0.875rem;" id="profileEmail">email@example.com</p>
+                    <p class="text-gray-400 text-sm" id="profileEmail">email@example.com</p>
                     <div class="profile-stats">
                         <div class="stat-item">
                             <div class="stat-value" id="totalBets">0</div>
@@ -435,7 +435,7 @@
                         <div class="form-group">
                             <label class="form-label">Email</label>
                             <input type="email" id="email" class="form-input" disabled>
-                            <small style="color: #9ca3af; font-size: 0.75rem;">Contact support to change email</small>
+                            <small class="text-gray-400 text-xs">Contact support to change email</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Bio</label>
@@ -460,7 +460,7 @@
                         <div class="form-group">
                             <label class="form-label">New Password</label>
                             <input type="password" id="newPassword" class="form-input" required minlength="8">
-                            <small style="color: #9ca3af; font-size: 0.75rem;">At least 8 characters</small>
+                            <small class="text-gray-400 text-xs">At least 8 characters</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Confirm New Password</label>
@@ -483,7 +483,7 @@
                             <i class="ri-error-warning-line"></i> Disabled
                         </span>
                     </div>
-                    <button class="btn btn-secondary" style="margin-top: 1rem;" id="enable2FABtn">
+                    <button class="btn btn-secondary mt-4" id="enable2FABtn">
                         <i class="ri-shield-line"></i> Enable 2FA
                     </button>
                 </div>
@@ -501,7 +501,7 @@
                             </span>
                         </div>
                     </div>
-                    <button class="btn btn-danger" style="margin-top: 1rem;" id="logoutAllBtn">
+                    <button class="btn btn-danger mt-4" id="logoutAllBtn">
                         <i class="ri-logout-box-line"></i> Sign Out All Devices
                     </button>
                 </div>
@@ -513,9 +513,9 @@
                     <h3><i class="ri-wallet-line"></i> Wallet Balance</h3>
                     <div class="info-row">
                         <div class="info-label">Available Balance</div>
-                        <div class="info-value" style="font-size: 1.5rem; color: var(--green);" id="walletBalance">J$0.00</div>
+                        <div class="info-value text-2xl text-green-400" id="walletBalance">J$0.00</div>
                     </div>
-                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                    <div class="flex gap-4 mt-4">
                         <button class="btn btn-primary" id="depositBtn">
                             <i class="ri-add-line"></i> Deposit Funds
                         </button>
@@ -528,9 +528,9 @@
                 <div class="settings-card">
                     <h3><i class="ri-bank-card-line"></i> Payment Methods</h3>
                     <div id="paymentMethods">
-                        <div style="text-align: center; padding: 2rem; color: #9ca3af;">
-                            <i class="ri-bank-card-line" style="font-size: 3rem; opacity: 0.5;"></i>
-                            <p style="margin-top: 1rem;">No payment methods added</p>
+                        <div class="text-center p-8 text-gray-400">
+                            <i class="ri-bank-card-line text-5xl opacity-50"></i>
+                            <p class="mt-4">No payment methods added</p>
                         </div>
                     </div>
                     <button class="btn btn-secondary" id="addPaymentBtn">
@@ -541,9 +541,9 @@
                 <div class="settings-card">
                     <h3><i class="ri-file-list-line"></i> Transaction History</h3>
                     <div id="transactionHistory">
-                        <div style="text-align: center; padding: 2rem; color: #9ca3af;">
-                            <i class="ri-history-line" style="font-size: 3rem; opacity: 0.5;"></i>
-                            <p style="margin-top: 1rem;">No transactions yet</p>
+                        <div class="text-center p-8 text-gray-400">
+                            <i class="ri-history-line text-5xl opacity-50"></i>
+                            <p class="mt-4">No transactions yet</p>
                         </div>
                     </div>
                 </div>
@@ -594,7 +594,7 @@
                             <div class="info-value">Theme</div>
                             <div class="info-label">Choose your preferred theme</div>
                         </div>
-                        <select class="form-input" style="width: auto;" id="themeSelect">
+                        <select class="form-input w-auto" id="themeSelect">
                             <option value="dark">Dark</option>
                             <option value="light">Light (Coming Soon)</option>
                         </select>
@@ -619,9 +619,9 @@
                 <div class="settings-card">
                     <h3><i class="ri-history-line"></i> Recent Activity</h3>
                     <div id="recentActivity">
-                        <div style="text-align: center; padding: 2rem; color: #9ca3af;">
-                            <i class="ri-history-line" style="font-size: 3rem; opacity: 0.5;"></i>
-                            <p style="margin-top: 1rem;">No recent activity</p>
+                        <div class="text-center p-8 text-gray-400">
+                            <i class="ri-history-line text-5xl opacity-50"></i>
+                            <p class="mt-4">No recent activity</p>
                         </div>
                     </div>
                 </div>

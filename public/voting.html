@@ -886,13 +886,13 @@
 </head>
 <body class="bg-gray-900 text-white" data-page="voting">
     <!-- Temporary element to prevent voting.js auto-init -->
-    <div id="app" style="display: none;"></div>
+    <div id="app" class="hidden"></div>
 
     <!-- Header Component -->
     <div id="header-container" data-page="voting"></div>
 
     <!-- Main Content -->
-    <main class="w-full max-w-[1920px] mx-auto px-2 pb-20" style="padding-top: 170px;">
+    <main class="w-full max-w-[1920px] mx-auto px-2 pb-20 pt-[170px]">
         <div class="content-wrapper">
             <!-- Left Column: Main Content -->
             <div class="main-column">
@@ -926,10 +926,10 @@
                 <div class="voting-container">
                     <!-- Banner - Compact -->
                     <div class="bg-gray-800 rounded-lg p-4 border border-gray-700 mb-4">
-                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.875rem;">
+                        <div class="flex justify-between items-center flex-wrap gap-3.5">
                             <div>
-                                <h1 class="text-2xl font-bold mb-1" style="color: #ffffff;">Community Voting</h1>
-                                <p class="text-sm" style="color: #ffffff;">Shape the future of GoatMouth by voting on market proposals</p>
+                                <h1 class="text-2xl font-bold mb-1 text-white">Community Voting</h1>
+                                <p class="text-sm text-white">Shape the future of GoatMouth by voting on market proposals</p>
                             </div>
                             <div id="suggest-market-btn"></div>
                         </div>
@@ -962,7 +962,7 @@
         <!-- Tabs -->
         <div class="vote-tabs">
             <button class="vote-tab active" data-tab="active">
-                <div style="width: 8px; height: 8px; border-radius: 50%; background: currentColor;"></div>
+                <div class="w-2 h-2 rounded-full bg-current"></div>
                 Active Proposals
             </button>
             <div class="vote-tabs-secondary">

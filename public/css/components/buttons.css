@@ -1,0 +1,85 @@
+/* Button Components */
+
+/* Primary Button - Goat Teal */
+.btn-primary {
+    @apply bg-goat-teal text-white px-5 py-2.5 rounded-lg font-semibold text-sm;
+    @apply transition-all duration-200 ease-in-out;
+    @apply hover:bg-goat-teal-hover hover:-translate-y-0.5 hover:shadow-goat-glow;
+    @apply active:translate-y-0;
+    @apply inline-flex items-center gap-2;
+    @apply cursor-pointer border-none;
+}
+
+/* Secondary Button - Gray */
+.btn-secondary {
+    @apply bg-gray-700 text-gray-200 px-5 py-2.5 rounded-lg font-semibold text-sm;
+    @apply transition-all duration-200 ease-in-out;
+    @apply hover:bg-gray-600 hover:-translate-y-0.5;
+    @apply active:translate-y-0;
+    @apply inline-flex items-center gap-2;
+    @apply cursor-pointer border-none;
+}
+
+/* Danger Button - Red */
+.btn-danger {
+    @apply bg-red-600 text-white px-5 py-2.5 rounded-lg font-semibold text-sm;
+    @apply transition-all duration-200 ease-in-out;
+    @apply hover:bg-red-700 hover:-translate-y-0.5;
+    @apply hover:shadow-[0_4px_12px_rgba(229,57,53,0.3)];
+    @apply active:translate-y-0;
+    @apply inline-flex items-center gap-2;
+    @apply cursor-pointer border-none;
+}
+
+/* Purple Button - Goat Purple */
+.btn-purple {
+    @apply bg-goat-purple text-white px-5 py-2.5 rounded-lg font-semibold text-sm;
+    @apply transition-all duration-200 ease-in-out;
+    @apply hover:bg-purple-700 hover:-translate-y-0.5;
+    @apply hover:shadow-[0_4px_12px_rgba(99,27,221,0.3)];
+    @apply active:translate-y-0;
+    @apply inline-flex items-center gap-2;
+    @apply cursor-pointer border-none;
+}
+
+/* Small Button Variant */
+.btn-sm {
+    @apply px-3 py-1.5 text-xs;
+}
+
+/* Large Button Variant */
+.btn-lg {
+    @apply px-6 py-3 text-base;
+}
+
+/* Outline Button */
+.btn-outline {
+    @apply bg-transparent border-2 border-goat-teal text-goat-teal;
+    @apply hover:bg-goat-teal hover:text-white;
+}
+
+/* Icon-only Button */
+.btn-icon {
+    @apply p-2 rounded-lg bg-gray-700 text-gray-200;
+    @apply transition-all duration-200;
+    @apply hover:bg-gray-600 hover:-translate-y-0.5;
+}
+
+/* Admin Panel Buttons */
+.btn-admin {
+    @apply bg-admin-accent text-white px-5 py-2.5 rounded-md font-semibold text-sm;
+    @apply transition-all duration-200;
+    @apply hover:bg-admin-accent-hover hover:-translate-y-0.5 hover:shadow-admin-card;
+    @apply active:translate-y-0;
+    @apply inline-flex items-center gap-2;
+    @apply cursor-pointer border-none;
+}
+
+.btn-admin-secondary {
+    @apply bg-admin-bg3 text-admin-fg px-5 py-2.5 rounded-md font-semibold text-sm;
+    @apply transition-all duration-200;
+    @apply hover:bg-admin-border;
+    @apply active:translate-y-0;
+    @apply inline-flex items-center gap-2;
+    @apply cursor-pointer border-none;
+}

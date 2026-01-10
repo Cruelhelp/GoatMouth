@@ -538,7 +538,7 @@
     <div id="header-container" data-page="deposit"></div>
 
     <!-- Main Content -->
-    <main class="w-full max-w-[1920px] mx-auto" style="padding-top: 108px;">
+    <main class="w-full max-w-[1920px] mx-auto pt-[108px]">
         <div class="deposit-dashboard">
 
             <!-- TOP ROW -->
@@ -552,7 +552,7 @@
                     </div>
 
                     <div class="balance-display" id="currentBalance">
-                        <span id="currentBalanceText" style="display: none;">$0.00</span>
+                        <span id="currentBalanceText" class="hidden">$0.00</span>
                         <svg class="balance-spinner" id="currentBalanceSpinner" viewBox="0 0 24 24" width="24" height="24">
                             <circle class="spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none"/>
                         </svg>
@@ -574,8 +574,8 @@
                 <!-- ACTIVITY CARD -->
                 <div class="dash-card">
                     <div class="card-header">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="ri-line-chart-line" style="color: var(--green); font-size: 1rem;"></i>
+                        <div class="flex items-center gap-2">
+                            <i class="ri-line-chart-line text-green-400 text-base"></i>
                             <span class="card-title">Activity</span>
                         </div>
 
@@ -633,7 +633,7 @@
                 </div>
 
                 <!-- Pending Tab -->
-                <div id="pending-tab" class="tab-content" style="display: none;">
+                <div id="pending-tab" class="tab-content hidden">
                     <div id="pendingList">
                         <div class="empty-state">
                             <i class="ri-time-line"></i>
@@ -643,7 +643,7 @@
                 </div>
 
                 <!-- Payment Methods Tab -->
-                <div id="methods-tab" class="tab-content" style="display: none;">
+                <div id="methods-tab" class="tab-content hidden">
                     <div class="payment-methods">
                         <div class="payment-method active" data-method="card">
                             <div class="payment-icon">
@@ -683,11 +683,11 @@
     </main>
 
     <!-- Deposit Modal -->
-    <div id="depositModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
-        <div style="background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; max-width: 500px; width: 90%;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h2 style="font-size: 1.25rem; font-weight: 700;">Deposit Funds</h2>
-                <button onclick="closeDepositModal()" style="background: none; border: none; color: #9ca3af; font-size: 1.5rem; cursor: pointer;">×</button>
+    <div id="depositModal" class="hidden fixed inset-0 bg-black/80 z-[9999] items-center justify-center">
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-8 max-w-[500px] w-[90%]">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold">Deposit Funds</h2>
+                <button onclick="closeDepositModal()" class="bg-transparent border-none text-gray-400 text-2xl cursor-pointer hover:text-white">×</button>
             </div>
 
             <div class="quick-deposit-grid">
@@ -699,9 +699,9 @@
                 <div class="quick-amount" data-amount="25000">J$25,000</div>
             </div>
 
-            <input type="number" id="customAmount" placeholder="Or enter custom amount" style="width: 100%; margin-bottom: 1rem; max-width: 100%; padding: 0.625rem 1rem; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border); border-radius: 6px; color: white; font-size: 0.875rem;" />
+            <input type="number" id="customAmount" placeholder="Or enter custom amount" class="w-full mb-4 px-4 py-2.5 bg-black/30 border border-gray-700 rounded-md text-white text-sm" />
 
-            <button class="action-btn primary" style="width: 100%;" onclick="processDeposit()">
+            <button class="action-btn primary w-full" onclick="processDeposit()">
                 <i class="ri-secure-payment-line"></i> Proceed to Payment
             </button>
         </div>

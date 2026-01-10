@@ -522,11 +522,11 @@
     </div>
 
     <!-- Main Content -->
-    <main style="margin-top: 120px; padding-bottom: 100px;">
+    <main class="mt-[120px] pb-[100px]">
         <div class="market-container">
 
             <!-- Breadcrumb Navigation -->
-            <div style="display: flex; align-items: center; gap: 0.4rem; padding: 0 0 0.75rem 0; font-size: 0.75rem; overflow: hidden;"><a href="index.html" style="color: #00CB97; text-decoration: none; flex-shrink: 0;">←</a><span style="color: #6b7280; flex-shrink: 0;">Markets</span><span style="color: #4b5563; flex-shrink: 0;">/</span><span id="breadcrumb-category" style="color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; flex-shrink: 1;">Category</span><span style="color: #4b5563; flex-shrink: 0;">/</span><span id="breadcrumb-market-title" style="color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0;">Loading market...</span></div>
+            <div class="flex items-center gap-1.5 pb-3 text-xs overflow-hidden"><a href="index.html" class="text-goat-teal no-underline shrink-0">←</a><span class="text-gray-500 shrink-0">Markets</span><span class="text-gray-600 shrink-0">/</span><span id="breadcrumb-category" class="text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap max-w-[120px] shrink">Category</span><span class="text-gray-600 shrink-0">/</span><span id="breadcrumb-market-title" class="text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0">Loading market...</span></div>
 
             <!-- Loading State -->
             <div id="loading-state" class="py-6">
@@ -555,48 +555,44 @@
             <div id="market-content" class="hidden">
 
                 <!-- Market Hero Section -->
-                <div class="market-hero" style="position: relative; overflow: hidden;">
+                <div class="market-hero relative overflow-hidden">
                     <!-- Background Image -->
-                    <div id="hero-bg-image" style="position: absolute; inset: 0; z-index: 1; opacity: 0; transition: opacity 0.3s ease;"></div>
+                    <div id="hero-bg-image" class="absolute inset-0 z-[1] opacity-0 transition-opacity duration-300"></div>
 
                     <!-- Dark green overlay -->
-                    <div style="position: absolute; inset: 0; background: linear-gradient(135deg, rgba(2, 122, 64, 0.3) 0%, rgba(0, 0, 0, 0.4) 100%); z-index: 2;"></div>
+                    <div class="absolute inset-0 bg-gradient-to-br from-[rgba(2,122,64,0.3)] to-[rgba(0,0,0,0.4)] z-[2]"></div>
 
                     <!-- Content (relative to appear above background) -->
-                    <div style="position: relative; z-index: 3;">
+                    <div class="relative z-[3]">
                         <div class="flex items-center gap-2 mb-2">
-                            <span id="category-badge" class="text-xs px-2.5 py-1 rounded-md font-semibold"
-                                  style="background-color: rgba(2, 122, 64, 0.85); color: #fff; border: 1px solid rgba(0, 203, 151, 0.4); backdrop-filter: blur(10px);">
+                            <span id="category-badge" class="text-xs px-2.5 py-1 rounded-md font-semibold bg-[rgba(2,122,64,0.85)] text-white border border-[rgba(0,203,151,0.4)] backdrop-blur-[10px]">
                                 Category
                             </span>
-                            <span id="market-status" class="text-xs px-2.5 py-1 rounded-md font-semibold"
-                                  style="background-color: rgba(34, 197, 94, 0.8); color: #fff; border: 1px solid rgba(74, 222, 128, 0.4); backdrop-filter: blur(10px);">
+                            <span id="market-status" class="text-xs px-2.5 py-1 rounded-md font-semibold bg-[rgba(34,197,94,0.8)] text-white border border-[rgba(74,222,128,0.4)] backdrop-blur-[10px]">
                                 Active
                             </span>
                         </div>
-                        <h1 id="market-title" class="text-2xl md:text-3xl font-extrabold mb-2 leading-tight text-white"
-                            style="text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 0, 0, 0.6);">
+                        <h1 id="market-title" class="text-2xl md:text-3xl font-extrabold mb-2 leading-tight text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.8),0_0_20px_rgba(0,0,0,0.6)]">
                             Loading...
                         </h1>
-                        <p id="market-description" class="text-sm leading-relaxed mb-3"
-                           style="color: #e5e7eb; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);">
+                        <p id="market-description" class="text-sm leading-relaxed mb-3 text-gray-200 [text-shadow:0_1px_8px_rgba(0,0,0,0.8)]">
                             Loading description...
                         </p>
 
                         <!-- Market Stats Row -->
                         <div class="flex flex-wrap gap-2">
-                            <div class="stat-badge" style="background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(10px); border: 1px solid rgba(0, 203, 151, 0.25);">
-                                <i class="ri-line-chart-line" style="color: #00CB97;"></i>
+                            <div class="stat-badge bg-black/75 backdrop-blur-[10px] border border-goat-teal/25">
+                                <i class="ri-line-chart-line text-goat-teal"></i>
                                 <span class="text-gray-300">Volume:</span>
                                 <span class="font-semibold text-white" id="stat-volume">J$0</span>
                             </div>
-                            <div class="stat-badge" style="background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(10px); border: 1px solid rgba(0, 203, 151, 0.25);">
-                                <i class="ri-group-line" style="color: #00CB97;"></i>
+                            <div class="stat-badge bg-black/75 backdrop-blur-[10px] border border-goat-teal/25">
+                                <i class="ri-group-line text-goat-teal"></i>
                                 <span class="text-gray-300">Traders:</span>
                                 <span class="font-semibold text-white" id="stat-traders">0</span>
                             </div>
-                            <div class="stat-badge" style="background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(10px); border: 1px solid rgba(0, 203, 151, 0.25);">
-                                <i class="ri-time-line" style="color: #00CB97;"></i>
+                            <div class="stat-badge bg-black/75 backdrop-blur-[10px] border border-goat-teal/25">
+                                <i class="ri-time-line text-goat-teal"></i>
                                 <span class="text-gray-300">Ends:</span>
                                 <span class="font-semibold text-white" id="stat-time">-</span>
                             </div>
@@ -621,34 +617,34 @@
                                     <button class="timeframe-btn" data-timeframe="all">ALL</button>
                                 </div>
                             </div>
-                            <div style="position: relative;">
+                            <div class="relative">
                                 <!-- Y-axis label -->
-                                <div style="position: absolute; left: -30px; top: 50%; transform: translateY(-50%) rotate(-90deg); font-size: 11px; font-weight: 600; color: #9ca3af; white-space: nowrap;">
+                                <div class="absolute left-[-30px] top-1/2 -translate-y-1/2 -rotate-90 text-[11px] font-semibold text-gray-400 whitespace-nowrap">
                                     PRICE (¢)
                                 </div>
                                 <!-- Chart container -->
-                                <div id="priceChart" style="position: relative; height: 400px; width: 100%;"></div>
+                                <div id="priceChart" class="relative h-[400px] w-full"></div>
                                 <!-- X-axis label -->
-                                <div style="text-align: center; margin-top: 8px; font-size: 11px; font-weight: 600; color: #9ca3af;">
+                                <div class="text-center mt-2 text-[11px] font-semibold text-gray-400">
                                     TIME
                                 </div>
                             </div>
                         </div>
 
                         <!-- Current Odds -->
-                        <div class="section-card" style="margin-top: 1rem;">
+                        <div class="section-card mt-4">
                             <h3 class="text-xl font-bold mb-4">Current Odds</h3>
                             <div class="grid grid-cols-2 gap-4">
                                 <!-- YES Odds -->
-                                <div class="text-center p-6 rounded-xl" style="background: linear-gradient(135deg, rgba(0, 203, 151, 0.1) 0%, rgba(0, 203, 151, 0.05) 100%); border: 2px solid rgba(0, 203, 151, 0.3);">
+                                <div class="text-center p-6 rounded-xl bg-gradient-to-br from-goat-teal/10 to-goat-teal/5 border-2 border-goat-teal/30">
                                     <div class="text-sm font-semibold text-green-400 mb-2">YES</div>
-                                    <div class="price-indicator" style="color: #00CB97;" id="yes-price">--¢</div>
+                                    <div class="price-indicator text-goat-teal" id="yes-price">--¢</div>
                                     <div class="text-sm text-gray-400 mt-2" id="yes-profit">--% profit</div>
                                 </div>
                                 <!-- NO Odds -->
-                                <div class="text-center p-6 rounded-xl" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%); border: 2px solid rgba(239, 68, 68, 0.3);">
+                                <div class="text-center p-6 rounded-xl bg-gradient-to-br from-red-500/10 to-red-500/5 border-2 border-red-500/30">
                                     <div class="text-sm font-semibold text-red-400 mb-2">NO</div>
-                                    <div class="price-indicator" style="color: #ef4444;" id="no-price">--¢</div>
+                                    <div class="price-indicator text-red-500" id="no-price">--¢</div>
                                     <div class="text-sm text-gray-400 mt-2" id="no-profit">--% profit</div>
                                 </div>
                             </div>
@@ -656,11 +652,11 @@
 
                         <!-- Recent Activity -->
                         <div class="section-card">
-                            <button class="accordion-header" onclick="toggleActivityAccordion()" style="width: 100%; display: flex; align-items: center; justify-content: space-between; background: none; border: none; padding: 0; margin-bottom: 1rem; cursor: pointer;">
-                                <h3 class="text-xl font-bold" style="margin: 0; color: white;">Recent Activity</h3>
-                                <i class="ri-arrow-down-s-line accordion-chevron" id="activity-chevron" style="font-size: 1.5rem; color: #9ca3af; transition: transform 0.3s ease;"></i>
+                            <button class="accordion-header w-full flex items-center justify-between bg-transparent border-none p-0 mb-4 cursor-pointer" onclick="toggleActivityAccordion()">
+                                <h3 class="text-xl font-bold m-0 text-white">Recent Activity</h3>
+                                <i class="ri-arrow-down-s-line accordion-chevron text-2xl text-gray-400 transition-transform duration-300" id="activity-chevron"></i>
                             </button>
-                            <div id="activity-feed" class="accordion-content" style="max-height: 600px; overflow-y: auto; overflow-x: hidden; transition: max-height 0.3s ease;">
+                            <div id="activity-feed" class="accordion-content max-h-[600px] overflow-y-auto overflow-x-hidden transition-[max-height] duration-300">
                                 <div class="text-center py-8 text-gray-400">
                                     <i class="ri-history-line text-4xl mb-2"></i>
                                     <p>No recent activity</p>
@@ -754,8 +750,8 @@
                         <div class="section-card">
                             <!-- Section Header -->
                             <div class="flex items-center gap-2 mb-4">
-                                <div class="w-1 h-6 rounded-full" style="background: linear-gradient(180deg, #00CB97 0%, #027A40 100%);"></div>
-                                <h3 class="font-bold text-lg" style="color: #00CB97;">
+                                <div class="w-1 h-6 rounded-full bg-gradient-to-b from-goat-teal to-[#027A40]"></div>
+                                <h3 class="font-bold text-lg text-goat-teal">
                                     <i class="fa-solid fa-comments mr-2"></i>Discussion
                                 </h3>
                             </div>
@@ -827,8 +823,7 @@
                                         type="number"
                                         id="bet-amount"
                                         placeholder="Enter bet amount (J$)"
-                                        class="w-full px-5 py-4 bg-gray-800 border border-gray-600 rounded-lg mb-4 focus:outline-none focus:border-gray-500"
-                                        style="font-size: 1.25rem; font-weight: 600; text-align: center;"
+                                        class="w-full px-5 py-4 bg-gray-800 border border-gray-600 rounded-lg mb-4 focus:outline-none focus:border-gray-500 text-xl font-semibold text-center"
                                         min="1"
                                         step="0.01"
                                         autofocus
@@ -915,11 +910,11 @@
                                     <div class="text-xs mt-1">Copy</div>
                                 </button>
                                 <button class="p-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-center" title="Twitter">
-                                    <i class="ri-twitter-x-line text-xl" style="color: #1DA1F2;"></i>
+                                    <i class="ri-twitter-x-line text-xl text-[#1DA1F2]"></i>
                                     <div class="text-xs mt-1">Twitter</div>
                                 </button>
                                 <button class="p-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-center" title="WhatsApp">
-                                    <i class="ri-whatsapp-line text-xl" style="color: #25D366;"></i>
+                                    <i class="ri-whatsapp-line text-xl text-[#25D366]"></i>
                                     <div class="text-xs mt-1">WhatsApp</div>
                                 </button>
                             </div>

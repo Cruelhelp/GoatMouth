@@ -1,0 +1,128 @@
+/* Badge Components */
+
+/* Base Badge */
+.badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md;
+    @apply text-xs font-semibold uppercase tracking-wide;
+}
+
+/* Teal Badge */
+.badge-teal {
+    @apply bg-goat-teal/20 text-goat-teal border border-goat-teal/30;
+}
+
+/* Purple Badge */
+.badge-purple {
+    @apply bg-goat-purple/20 text-goat-purple border border-goat-purple/30;
+}
+
+/* Yellow Badge */
+.badge-yellow {
+    @apply bg-goat-yellow/20 text-goat-yellow border border-goat-yellow/30;
+}
+
+/* Success Badge - Green */
+.badge-success {
+    @apply bg-green-500/20 text-green-400 border border-green-500/30;
+}
+
+/* Error Badge - Red */
+.badge-error {
+    @apply bg-red-500/20 text-red-400 border border-red-500/30;
+}
+
+/* Warning Badge - Orange */
+.badge-warning {
+    @apply bg-orange-500/20 text-orange-400 border border-orange-500/30;
+}
+
+/* Info Badge - Blue */
+.badge-info {
+    @apply bg-blue-500/20 text-blue-400 border border-blue-500/30;
+}
+
+/* Gray Badge */
+.badge-gray {
+    @apply bg-gray-700/50 text-gray-300 border border-gray-600;
+}
+
+/* Category Badge (for market categories) */
+.badge-category {
+    @apply bg-gray-700 text-gray-200 px-3 py-1 rounded-full;
+    @apply text-xs font-medium;
+    @apply hover:bg-goat-teal hover:text-white;
+    @apply transition-colors duration-200;
+}
+
+/* Status Badge (for market status) */
+.badge-open {
+    @apply bg-green-500/20 text-green-400 border border-green-500/30;
+}
+
+.badge-closed {
+    @apply bg-red-500/20 text-red-400 border border-red-500/30;
+}
+
+.badge-pending {
+    @apply bg-yellow-500/20 text-yellow-400 border border-yellow-500/30;
+}
+
+.badge-resolved {
+    @apply bg-blue-500/20 text-blue-400 border border-blue-500/30;
+}
+
+/* Admin Role Badge */
+.badge-role {
+    @apply bg-admin-accent text-white px-2 py-0.5 rounded;
+    @apply text-[11px] font-semibold uppercase;
+}
+
+/* User Badge (in admin header) */
+.user-badge {
+    @apply bg-admin-bg3 px-3 py-1.5 rounded-md;
+    @apply flex items-center gap-2;
+    @apply transition-all duration-200;
+    @apply hover:bg-admin-border hover:-translate-y-0.5;
+    @apply hover:shadow-admin-card;
+}
+
+/* Trend Badge (for stats) */
+.trend-badge {
+    @apply px-2 py-1 rounded-md inline-flex items-center gap-1;
+    @apply text-sm font-semibold;
+}
+
+.trend-up {
+    @apply bg-green-500/10 text-green-400;
+}
+
+.trend-down {
+    @apply bg-red-500/10 text-red-400;
+}
+
+/* Small Badge Variant */
+.badge-sm {
+    @apply text-[10px] px-2 py-0.5;
+}
+
+/* Large Badge Variant */
+.badge-lg {
+    @apply text-sm px-3 py-1.5;
+}
+
+/* Dot Badge (indicator) */
+.badge-dot {
+    @apply w-2 h-2 rounded-full inline-block;
+}
+
+.badge-dot-green {
+    @apply bg-green-400;
+}
+
+.badge-dot-red {
+    @apply bg-red-400;
+}
+
+.badge-dot-yellow {
+    @apply bg-yellow-400;
+}

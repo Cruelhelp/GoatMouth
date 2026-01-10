@@ -1,0 +1,86 @@
+/* Card Components */
+
+/* Market Card */
+.market-card {
+    @apply bg-gray-800 border border-gray-700 rounded-xl p-4;
+    @apply transition-all duration-300 ease-in-out;
+    @apply hover:border-goat-teal hover:shadow-goat-glow hover:-translate-y-1;
+    @apply cursor-pointer;
+}
+
+/* Stat Card */
+.stat-card {
+    @apply bg-gray-800 border border-gray-700 rounded-xl p-6;
+    @apply transition-all duration-300 ease-in-out;
+    @apply hover:border-goat-teal hover:shadow-goat-glow hover:-translate-y-1;
+    @apply relative overflow-hidden;
+}
+
+.stat-card-clickable {
+    @apply cursor-pointer;
+    @apply hover:-translate-y-2 hover:scale-[1.02];
+    @apply hover:shadow-goat-glow-lg;
+    @apply active:-translate-y-1 active:scale-[1.01];
+}
+
+/* Admin Panel Cards */
+.admin-card {
+    @apply bg-admin-bg2 border border-admin-border rounded-lg p-3;
+    @apply transition-all duration-200;
+}
+
+.admin-stat-card {
+    @apply bg-gradient-to-br from-admin-bg2 to-admin-bg3;
+    @apply border border-admin-border rounded-xl p-6;
+    @apply transition-all duration-300 ease-in-out;
+    @apply relative overflow-hidden;
+}
+
+.admin-stat-card::before {
+    content: '';
+    @apply absolute top-0 right-0 w-24 h-24;
+    @apply bg-admin-accent opacity-5 rounded-full;
+    @apply transition-all duration-300;
+    transform: translate(30%, -30%);
+    z-index: 0;
+}
+
+.admin-stat-card:hover::before {
+    transform: translate(20%, -20%) scale(1.2);
+    @apply opacity-10;
+}
+
+.admin-stat-card:hover {
+    @apply bg-gradient-to-br from-admin-bg3 to-admin-bg2;
+    @apply -translate-y-1 shadow-admin-card-hover;
+}
+
+/* Chart Container */
+.chart-container {
+    @apply bg-admin-bg2 border border-admin-border rounded-xl p-6 mb-6;
+}
+
+/* Info Card */
+.info-card {
+    @apply bg-gray-800 border border-gray-700 rounded-lg p-4;
+    @apply hover:border-gray-600 transition-colors duration-200;
+}
+
+/* Card Header */
+.card-header {
+    @apply flex items-center justify-between mb-4;
+}
+
+.card-title {
+    @apply text-lg font-semibold text-white;
+}
+
+/* Card Body */
+.card-body {
+    @apply space-y-3;
+}
+
+/* Card Footer */
+.card-footer {
+    @apply flex items-center justify-between mt-4 pt-4 border-t border-gray-700;
+}
