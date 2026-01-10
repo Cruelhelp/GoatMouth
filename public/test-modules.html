@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ES Modules Test</title>
+</head>
+<body>
+    <h1>ES Modules Test Page</h1>
+    <div id="output"></div>
+
+    <!-- Load Supabase first (non-module) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+
+    <!-- Test ES Module -->
+    <script type="module">
+        // Import auth utilities
+        import { checkAuth, getUserProfile } from '../src/utils/auth.js';
+        import { getTimeAgo, formatDate } from '../src/utils/time.js';
+        import { formatDecimalOdds } from '../src/utils/odds.js';
+        import { getLocal, setLocal } from '../src/utils/storage.js';
+
+        const output = document.getElementById('output');
+
+        // Test 1: Storage Utils
+        setLocal('test_key', 'test_value');
+        const retrieved = getLocal('test_key');
+        output.innerHTML += `<p>✅ Storage test: ${retrieved === 'test_value' ? 'PASS' : 'FAIL'}</p>`;
+
+        // Test 2: Time Utils
+        const testDate = new Date();
+        const timeAgo = getTimeAgo(testDate);
+        output.innerHTML += `<p>✅ Time test: ${timeAgo === 'Just now' ? 'PASS' : 'FAIL'} (${timeAgo})</p>`;
+
+        // Test 3: Odds Utils
+        const odds = formatDecimalOdds(1.85);
+        output.innerHTML += `<p>✅ Odds test: ${odds === '1.85' ? 'PASS' : 'FAIL'} (${odds})</p>`;
+
+        // Test 4: Auth Utils (async)
+        try {
+            const user = await checkAuth();
+            output.innerHTML += `<p>✅ Auth test: ${user ? 'User logged in' : 'No user'}</p>`;
+        } catch (error) {
+            output.innerHTML += `<p>❌ Auth test error: ${error.message}</p>`;
+        }
+
+        output.innerHTML += `<h2 style="color: green;">All tests completed!</h2>`;
+    </script>
+</body>
+</html>
