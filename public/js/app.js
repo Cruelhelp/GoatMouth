@@ -1,4 +1,6 @@
 // Main Application Controller
+// Uses utilities loaded globally by utils-loader.js
+
 class GoatMouth {
     constructor() {
         this.api = null;
@@ -11,14 +13,18 @@ class GoatMouth {
         this.bannerCarousel = null;
         this.marketOffset = 0; // For pagination
         this.marketsPerPage = 25; // 5x5 grid
-        this.viewMode = localStorage.getItem('marketViewMode') || 'grid'; // 'grid' or 'list'
+        this.viewMode = (window.getLocal && window.getLocal('marketViewMode')) || localStorage.getItem('marketViewMode') || 'grid'; // 'grid' or 'list'
         this.bookmarksCache = []; // Cache bookmarked market IDs
         this.init();
     }
 
     toggleViewMode() {
         this.viewMode = this.viewMode === 'grid' ? 'list' : 'grid';
-        localStorage.setItem('marketViewMode', this.viewMode);
+        if (window.setLocal) {
+            window.setLocal('marketViewMode', this.viewMode);
+        } else {
+            localStorage.setItem('marketViewMode', this.viewMode);
+        }
         this.renderMarkets(document.getElementById('app'));
     }
 
@@ -177,13 +183,18 @@ class GoatMouth {
         // If we have an access token, this is an OAuth callback
         if (accessToken) {
             // Check if this OAuth was initiated from GoatMouth
-            const oauthApp = localStorage.getItem('oauth_app');
-            const oauthRedirect = localStorage.getItem('oauth_redirect');
+            const oauthApp = (window.getLocal && window.getLocal('oauth_app')) || localStorage.getItem('oauth_app');
+            const oauthRedirect = (window.getLocal && window.getLocal('oauth_redirect')) || localStorage.getItem('oauth_redirect');
 
             // If OAuth was initiated from GoatMouth but we're on a different site, redirect back
             if (oauthApp === 'goatmouth' && oauthRedirect && !window.location.origin.includes(oauthRedirect)) {
-                localStorage.removeItem('oauth_app');
-                localStorage.removeItem('oauth_redirect');
+                if (window.removeLocal) {
+                    window.removeLocal('oauth_app');
+                    window.removeLocal('oauth_redirect');
+                } else {
+                    localStorage.removeItem('oauth_app');
+                    localStorage.removeItem('oauth_redirect');
+                }
                 window.location.href = `${oauthRedirect}/index.html`;
                 return;
             }
