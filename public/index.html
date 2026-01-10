@@ -43,7 +43,7 @@
             <div class="main-column">
                 <!-- Banner Placeholder -->
                 <div id="banner-container" class="banner-placeholder">
-                    <button class="banner-close-btn hidden" onclick="closeBanner()" title="Close banner">
+                    <button class="banner-close-btn hidden" title="Close banner">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
                     <div class="banner-content">
@@ -62,7 +62,7 @@
 
                 <!-- Reopen Banner Button (shows when banner is closed) -->
                 <div id="banner-reopen-container" class="banner-reopen-container hidden">
-                    <button class="banner-reopen-btn" onclick="reopenBanner()" title="Show banner">
+                    <button class="banner-reopen-btn" title="Show banner">
                         <i class="fa-solid fa-image"></i>
                         <span class="reopen-text">Show Banner</span>
                     </button>
@@ -182,6 +182,12 @@
         window.addEventListener('DOMContentLoaded', () => {
             const savedMode = localStorage.getItem('marketViewMode') || 'grid';
             updateViewModeButtons(savedMode);
+
+            // Banner button event listeners
+            const closeBtn = document.querySelector('.banner-close-btn');
+            const reopenBtn = document.querySelector('.banner-reopen-btn');
+            if (closeBtn) closeBtn.addEventListener('click', closeBanner);
+            if (reopenBtn) reopenBtn.addEventListener('click', reopenBanner);
 
             // Listen for banner updates from admin panel (cross-tab)
             window.addEventListener('storage', (e) => {

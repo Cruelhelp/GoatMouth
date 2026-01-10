@@ -60,12 +60,12 @@
             </div>
         </div>
         <div class="user-info">
-            <div class="user-badge cursor-pointer" onclick="adminPanel.showAdminProfileModal()" title="View Profile">
+            <div class="user-badge cursor-pointer" id="adminProfileBtn" title="View Profile">
                 <i class="fa-solid fa-user mr-2"></i>
                 <span id="admin-username">Admin</span>
                 <span class="role-badge">Admin</span>
             </div>
-            <button class="btn secondary" onclick="window.location.href='index.html'" title="Back to App">
+            <button class="btn secondary" id="backToAppBtn" title="Back to App">
                 <i class="fa-solid fa-home"></i>
                 <span class="btn-text">Home</span>
             </button>
@@ -78,33 +78,33 @@
 
     <!-- Single Unified Navigation Bar -->
     <div class="menubar">
-        <button class="active" onclick="switchView('dashboard')">
+        <button class="active" data-view="dashboard">
             <i class="fa-solid fa-chart-line"></i> Dashboard
         </button>
-        <button onclick="switchView('markets')">
+        <button data-view="markets">
             <i class="fa-solid fa-chart-simple"></i> Markets
         </button>
-        <button onclick="switchView('banners')">
+        <button data-view="banners">
             <i class="fa-solid fa-image"></i> Banners
         </button>
-        <button onclick="switchView('users')">
+        <button data-view="users">
             <i class="fa-solid fa-users"></i> Users
         </button>
-        <button onclick="switchView('activity')">
+        <button data-view="activity">
             <i class="fa-solid fa-clock-rotate-left"></i> Activity
         </button>
-        <button onclick="switchView('transactions')">
+        <button data-view="transactions">
             <i class="fa-solid fa-receipt"></i> Transactions
         </button>
-        <button onclick="switchView('messages')">
+        <button data-view="messages">
             <i class="fa-solid fa-envelope"></i> Messages
             <span id="unread-badge" class="badge info hidden">0</span>
         </button>
-        <button onclick="switchView('voting')">
+        <button data-view="voting">
             <i class="fa-solid fa-check-circle"></i> Voting
             <span id="pending-proposals-badge" class="badge warning hidden">0</span>
         </button>
-        <button onclick="switchView('api')">
+        <button data-view="api">
             <i class="fa-solid fa-signal"></i> API & Insights
         </button>
     </div>
@@ -127,7 +127,7 @@
 
                 <!-- Stats Cards with Visual Enhancements -->
                 <div class="stats-grid">
-                    <div class="stat-card clickable-card" onclick="switchView('users')" title="Click to manage users">
+                    <div class="stat-card clickable-card" data-view="users" title="Click to manage users">
                         <div class="stat-icon">
                             <i class="fa-solid fa-users"></i>
                         </div>
@@ -144,8 +144,8 @@
                         </div>
                     </div>
 
-                    <div class="stat-card clickable-card" onclick="switchView('markets')" title="Click to manage markets">
-                        <div class="stat-icon" style="background: #2196f3; box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);">
+                    <div class="stat-card clickable-card" data-view="markets" title="Click to manage markets">
+                        <div class="stat-icon bg-[#2196f3] shadow-[0_4px_12px_rgba(33,150,243,0.3)]">
                             <i class="fa-solid fa-chart-line"></i>
                         </div>
                         <h3><i class="fa-solid fa-chart-simple"></i> Active Markets</h3>
@@ -161,8 +161,8 @@
                         </div>
                     </div>
 
-                    <div class="stat-card clickable-card" onclick="switchView('transactions')" title="Click to view transactions">
-                        <div class="stat-icon" style="background: #ff9800; box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);">
+                    <div class="stat-card clickable-card" data-view="transactions" title="Click to view transactions">
+                        <div class="stat-icon bg-[#ff9800] shadow-[0_4px_12px_rgba(255,152,0,0.3)]">
                             <i class="fa-solid fa-receipt"></i>
                         </div>
                         <h3><i class="fa-solid fa-coins"></i> Transactions</h3>
@@ -178,8 +178,8 @@
                         </div>
                     </div>
 
-                    <div class="stat-card clickable-card" onclick="switchView('messages')" title="Click to view messages">
-                        <div class="stat-icon" style="background: #9c27b0; box-shadow: 0 4px 12px rgba(156, 39, 176, 0.3);">
+                    <div class="stat-card clickable-card" data-view="messages" title="Click to view messages">
+                        <div class="stat-icon bg-[#9c27b0] shadow-[0_4px_12px_rgba(156,39,176,0.3)]">
                             <i class="fa-solid fa-envelope"></i>
                         </div>
                         <h3><i class="fa-solid fa-message"></i> Messages</h3>
@@ -200,11 +200,11 @@
                 <div class="charts-grid">
                     <div class="chart-container">
                         <h3><i class="fa-solid fa-chart-area"></i> Activity Overview</h3>
-                        <canvas id="activityChart" style="max-height: 300px;"></canvas>
+                        <canvas id="activityChart" class="max-h-[300px]"></canvas>
                     </div>
                     <div class="chart-container">
                         <h3><i class="fa-solid fa-chart-pie"></i> Market Distribution</h3>
-                        <canvas id="marketChart" style="max-height: 300px;"></canvas>
+                        <canvas id="marketChart" class="max-h-[300px]"></canvas>
                     </div>
                 </div>
 
@@ -236,10 +236,10 @@
 
                 <!-- Market Tabs -->
                 <div class="market-tabs">
-                    <button class="market-tab active" data-tab="create" onclick="switchMarketTab('create')">
+                    <button class="market-tab active" data-tab="create" >
                         <i class="fa-solid fa-plus-circle"></i> Create Market
                     </button>
-                    <button class="market-tab" data-tab="all" onclick="switchMarketTab('all')">
+                    <button class="market-tab" data-tab="all" >
                         <i class="fa-solid fa-list"></i> All Markets
                     </button>
                 </div>
@@ -261,7 +261,7 @@
                                     </div>
                                     <div class="preview-market-content">
                                         <div class="preview-market-header">
-                                            <div style="flex: 1;">
+                                            <div class="flex-1">
                                                 <h3 class="preview-market-title" id="previewTitle">Market Title</h3>
                                                 <span class="preview-market-category" id="previewCategory">SPORTS</span>
                                             </div>
@@ -317,7 +317,7 @@
 
                                     <div class="market-form-group">
                                         <label class="market-form-label required">Description</label>
-                                        <div id="marketDescriptionEditor" style="background: var(--bg); border: 2px solid var(--border); border-radius: 8px; min-height: 150px;"></div>
+                                        <div id="marketDescriptionEditor" class="bg-admin-bg border-2 border-admin-border rounded-lg min-h-[150px]"></div>
                                         <div class="market-form-help">Explain the market conditions clearly - supports rich text formatting</div>
                                     </div>
 
@@ -357,7 +357,7 @@
                                                 >
                                                 <i class="fa-solid fa-cloud-arrow-up"></i>
                                                 <span>Click to upload image</span>
-                                                <small style="color: var(--muted);">PNG, JPG up to 5MB</small>
+                                                <small class="text-gray-500">PNG, JPG up to 5MB</small>
                                             </label>
                                         </div>
                                         <div class="market-form-help">Upload a relevant image for the market</div>
@@ -394,7 +394,7 @@
                                     <button
                                         type="button"
                                         class="market-add-option"
-                                        onclick="addMarketOption()"
+                                        id="addMarketOptionBtn"
                                     >
                                         <i class="fa-solid fa-plus"></i> Add Another Option
                                     </button>
@@ -449,7 +449,7 @@
 
                                 <!-- Form Actions -->
                                 <div class="market-form-actions">
-                                    <button type="button" class="market-cancel-btn" onclick="resetMarketForm()">
+                                    <button type="button" class="market-cancel-btn" id="resetMarketBtn">
                                         <i class="fa-solid fa-times"></i> Reset
                                     </button>
                                     <button type="submit" class="market-submit-btn">
@@ -489,16 +489,16 @@
                 <div class="banner-editor-grid">
                     <!-- Left: Live Preview -->
                     <div class="banner-preview-section">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                            <h3 style="color: var(--accent); font-size: 16px; font-weight: 600; margin: 0;">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-admin-accent text-base font-semibold m-0">
                                 <i class="fa-solid fa-eye"></i> Live Site Preview
                             </h3>
                             <!-- Preview Mode Toggle -->
-                            <div style="display: flex; gap: 8px; background: var(--bg2); border-radius: 8px; padding: 4px;">
-                                <button id="desktopModeBtn" class="banner-quick-btn active" onclick="switchPreviewMode('desktop')" style="padding: 8px 16px;">
+                            <div class="flex gap-2 bg-admin-bg2 rounded-lg p-1">
+                                <button id="desktopModeBtn" class="banner-quick-btn active" class="px-4 py-2">
                                     <i class="fa-solid fa-desktop"></i> Desktop
                                 </button>
-                                <button id="mobileModeBtn" class="banner-quick-btn" onclick="switchPreviewMode('mobile')" style="padding: 8px 16px;">
+                                <button id="mobileModeBtn" class="banner-quick-btn" class="px-4 py-2">
                                     <i class="fa-solid fa-mobile-screen-button"></i> Mobile
                                 </button>
                             </div>
@@ -507,7 +507,7 @@
                             <!-- Mock Header -->
                             <div class="banner-mock-header">
                                 <div class="banner-mock-logo"></div>
-                                <div style="flex: 1; font-weight: 700; color: #FFD700; font-size: 18px;">GoatMouth</div>
+                                <div class="flex-1 font-bold text-[#FFD700] text-lg">GoatMouth</div>
                             </div>
 
                             <!-- Mock Navigation -->
@@ -519,10 +519,10 @@
 
                             <!-- BANNER CONTAINER (1:1 exact size) -->
                             <div id="bannerLivePreview" class="banner-live-container">
-                                <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--muted); text-align: center;">
+                                <div class="flex items-center justify-center h-full text-gray-500 text-center">
                                     <div>
-                                        <i class="fa-solid fa-image" style="font-size: 32px; margin-bottom: 8px; opacity: 0.3;"></i>
-                                        <p style="font-size: 13px;">Select or upload a banner to preview</p>
+                                        <i class="fa-solid fa-image" class="text-3xl mb-2 opacity-30"></i>
+                                        <p class="text-[13px]">Select or upload a banner to preview</p>
                                     </div>
                                 </div>
                             </div>
@@ -536,36 +536,36 @@
                         </div>
 
                         <!-- Position Info -->
-                        <div style="display: flex; gap: 12px; margin-top: 12px;">
-                            <div style="flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
-                                <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px;">HORIZONTAL</div>
-                                <div id="posXDisplay" style="font-size: 18px; font-weight: 700; color: var(--accent);">50%</div>
+                        <div class="flex gap-3 mt-3">
+                            <div class="flex-1 bg-admin-bg2 border border-admin-border rounded-lg p-3">
+                                <div class="text-[11px] text-gray-500 mb-1">HORIZONTAL</div>
+                                <div id="posXDisplay" class="text-lg font-bold text-admin-accent">50%</div>
                             </div>
-                            <div style="flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
-                                <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px;">VERTICAL</div>
-                                <div id="posYDisplay" style="font-size: 18px; font-weight: 700; color: var(--accent);">50%</div>
+                            <div class="flex-1 bg-admin-bg2 border border-admin-border rounded-lg p-3">
+                                <div class="text-[11px] text-gray-500 mb-1">VERTICAL</div>
+                                <div id="posYDisplay" class="text-lg font-bold text-admin-accent">50%</div>
                             </div>
-                            <div style="flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
-                                <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px;">STATUS</div>
-                                <div id="bannerStatus" style="font-size: 18px; font-weight: 700; color: var(--success);">Ready</div>
+                            <div class="flex-1 bg-admin-bg2 border border-admin-border rounded-lg p-3">
+                                <div class="text-[11px] text-gray-500 mb-1">STATUS</div>
+                                <div id="bannerStatus" class="text-lg font-bold text-green-400">Ready</div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Right: Control Panel -->
                     <div class="banner-control-panel">
-                        <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 20px;">
+                        <h3 class="text-base font-bold text-white mb-5">
                             <i class="fa-solid fa-sliders"></i> Quick Controls
                         </h3>
 
                         <!-- Upload Section -->
                         <div class="banner-control-section">
                             <label class="banner-control-label">Upload Banner</label>
-                            <input type="file" id="bannerUploadInput" accept="image/*" style="display: none;">
-                            <button class="btn" style="width: 100%; justify-content: center;" onclick="document.getElementById('bannerUploadInput').click()">
+                            <input type="file" id="bannerUploadInput" accept="image/*" class="hidden">
+                            <button class="btn" class="w-full justify-center" id="bannerUploadBtn">
                                 <i class="fa-solid fa-cloud-arrow-up"></i> Choose Image
                             </button>
-                            <div id="uploadInfo" style="margin-top: 8px; font-size: 11px; color: var(--muted); text-align: center;">
+                            <div id="uploadInfo" class="mt-2 text-[11px] text-gray-500 text-center">
                                 Recommended: 1920×100px
                             </div>
                         </div>
@@ -574,13 +574,13 @@
                         <div class="banner-control-section">
                             <label class="banner-control-label">Position Presets</label>
                             <div class="banner-quick-actions">
-                                <button class="banner-quick-btn" onclick="setBannerPosition('top')">
+                                <button class="banner-quick-btn" data-position="top">
                                     <i class="fa-solid fa-arrow-up"></i> Top
                                 </button>
-                                <button class="banner-quick-btn active" onclick="setBannerPosition('center')">
+                                <button class="banner-quick-btn active" data-position="center">
                                     <i class="fa-solid fa-circle-dot"></i> Center
                                 </button>
-                                <button class="banner-quick-btn" onclick="setBannerPosition('bottom')">
+                                <button class="banner-quick-btn" data-position="bottom">
                                     <i class="fa-solid fa-arrow-down"></i> Bottom
                                 </button>
                             </div>
@@ -589,20 +589,20 @@
                         <!-- Fine Tune -->
                         <div class="banner-control-section">
                             <label class="banner-control-label">Fine Tune</label>
-                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
-                                <button class="banner-quick-btn" style="grid-column: 2;" onclick="adjustBannerPosition('up')">
+                            <div class="grid grid-cols-3 gap-2">
+                                <button class="banner-quick-btn" class="col-start-2" data-direction="up">
                                     <i class="fa-solid fa-chevron-up"></i>
                                 </button>
-                                <button class="banner-quick-btn" onclick="adjustBannerPosition('left')">
+                                <button class="banner-quick-btn" data-direction="left">
                                     <i class="fa-solid fa-chevron-left"></i>
                                 </button>
-                                <button class="banner-quick-btn" onclick="setBannerPosition('center')" title="Reset">
+                                <button class="banner-quick-btn" data-position="center" title="Reset">
                                     <i class="fa-solid fa-rotate-right"></i>
                                 </button>
-                                <button class="banner-quick-btn" onclick="adjustBannerPosition('right')">
+                                <button class="banner-quick-btn" data-direction="right">
                                     <i class="fa-solid fa-chevron-right"></i>
                                 </button>
-                                <button class="banner-quick-btn" style="grid-column: 2;" onclick="adjustBannerPosition('down')">
+                                <button class="banner-quick-btn" class="col-start-2" data-direction="down">
                                     <i class="fa-solid fa-chevron-down"></i>
                                 </button>
                             </div>
@@ -611,43 +611,43 @@
                         <!-- Image Fit -->
                         <div class="banner-control-section">
                             <label class="banner-control-label">How Image Fills Container</label>
-                            <div style="display: grid; gap: 8px;">
-                                <button class="banner-quick-btn active" id="fit-cover" onclick="setImageFit('cover')" style="text-align: left; padding: 12px;">
-                                    <div style="font-weight: 700; margin-bottom: 2px;">Cover (Recommended)</div>
-                                    <div style="font-size: 10px; opacity: 0.7;">Fills container, crops if needed</div>
+                            <div class="grid gap-2">
+                                <button class="banner-quick-btn active" id="fit-cover" class="text-left p-3">
+                                    <div class="font-bold mb-0.5">Cover (Recommended)</div>
+                                    <div class="text-[10px] opacity-70">Fills container, crops if needed</div>
                                 </button>
-                                <button class="banner-quick-btn" id="fit-contain" onclick="setImageFit('contain')" style="text-align: left; padding: 12px;">
-                                    <div style="font-weight: 700; margin-bottom: 2px;">Contain</div>
-                                    <div style="font-size: 10px; opacity: 0.7;">Shows full image, may have empty space</div>
+                                <button class="banner-quick-btn" id="fit-contain" class="text-left p-3">
+                                    <div class="font-bold mb-0.5">Contain</div>
+                                    <div class="text-[10px] opacity-70">Shows full image, may have empty space</div>
                                 </button>
-                                <button class="banner-quick-btn" id="fit-fill" onclick="setImageFit('fill')" style="text-align: left; padding: 12px;">
-                                    <div style="font-weight: 700; margin-bottom: 2px;">Stretch to Fill</div>
-                                    <div style="font-size: 10px; opacity: 0.7;">Stretches to fit exactly</div>
+                                <button class="banner-quick-btn" id="fit-fill" class="text-left p-3">
+                                    <div class="font-bold mb-0.5">Stretch to Fill</div>
+                                    <div class="text-[10px] opacity-70">Stretches to fit exactly</div>
                                 </button>
-                                <button class="banner-quick-btn" id="fit-none" onclick="setImageFit('none')" style="text-align: left; padding: 12px;">
-                                    <div style="font-weight: 700; margin-bottom: 2px;">Original Size</div>
-                                    <div style="font-size: 10px; opacity: 0.7;">No scaling, use position controls</div>
+                                <button class="banner-quick-btn" id="fit-none" class="text-left p-3">
+                                    <div class="font-bold mb-0.5">Original Size</div>
+                                    <div class="text-[10px] opacity-70">No scaling, use position controls</div>
                                 </button>
                             </div>
                         </div>
 
                         <!-- Image Scale (for 'none' fit type) -->
-                        <div class="banner-control-section" id="scaleControls" style="display: none;">
+                        <div class="banner-control-section" id="scaleControls" class="hidden">
                             <label class="banner-control-label">Image Scale</label>
                             <input type="range" id="imageScale" min="50" max="200" value="100" step="10"
-                                   style="width: 100%; margin-bottom: 8px;"
+                                   class="w-full mb-2"
                                    oninput="updateImageScale(this.value)">
-                            <div style="text-align: center; font-size: 12px; color: var(--muted);">
+                            <div class="text-center text-xs text-gray-500">
                                 Scale: <span id="scaleValue">100</span>%
                             </div>
                         </div>
 
                         <!-- Save Actions -->
                         <div class="banner-control-section">
-                            <button class="btn" style="width: 100%; justify-content: center; background: var(--success);" onclick="saveBanner()">
+                            <button class="btn" class="w-full justify-center bg-green-400" id="saveBannerBtn">
                                 <i class="fa-solid fa-floppy-disk"></i> Save Banner
                             </button>
-                            <button class="btn secondary" style="width: 100%; justify-content: center; margin-top: 8px;" onclick="clearBanner()">
+                            <button class="btn secondary" class="w-full justify-center mt-2" id="clearBannerBtn">
                                 <i class="fa-solid fa-trash"></i> Clear
                             </button>
                         </div>
@@ -655,27 +655,27 @@
                 </div>
 
                 <!-- Debug Info -->
-                <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                        <h4 style="font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase;">
+                <div class="bg-admin-bg2 border border-admin-border rounded-lg p-4 mb-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-[13px] font-semibold text-gray-500 uppercase">
                             <i class="fa-solid fa-bug"></i> System Status
                         </h4>
-                        <button class="btn secondary btn-sm" onclick="checkSystemStatus()">
+                        <button class="btn secondary btn-sm" id="checkSystemStatusBtn">
                             <i class="fa-solid fa-rotate"></i> Check
                         </button>
                     </div>
-                    <div id="systemStatus" style="font-family: monospace; font-size: 11px; color: var(--muted);">
+                    <div id="systemStatus" class="font-mono text-[11px] text-gray-500">
                         Click "Check" to view system status
                     </div>
                 </div>
 
                 <!-- Banner List -->
                 <div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-                        <h3 style="font-size: 16px; font-weight: 600; color: #fff;">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-base font-semibold text-white">
                             <i class="fa-solid fa-list"></i> Your Banners
                         </h3>
-                        <button class="btn secondary" onclick="loadBannerList()">
+                        <button class="btn secondary" data-action="load-banner-list">
                             <i class="fa-solid fa-rotate"></i> Refresh
                         </button>
                     </div>
@@ -700,38 +700,38 @@
                     </div>
                 </div>
 
-                <div style="max-width: 800px; margin-top: 24px;">
+                <div class="max-w-[800px] mt-6">
                     <!-- Current Image Preview -->
-                    <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-                        <h3 style="color: var(--accent); margin-bottom: 16px; font-size: 16px; font-weight: 600;">
+                    <div class="bg-admin-bg2 border border-admin-border rounded-xl p-6 mb-6">
+                        <h3 class="text-admin-accent mb-4 text-base font-semibold">
                             <i class="fa-solid fa-image"></i> Current Background
                         </h3>
-                        <div id="votingHeroPreview" style="width: 100%; height: 200px; background: linear-gradient(135deg, #1f2937 0%, #111827 100%); border-radius: 8px; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; color: var(--muted);">
-                            <div style="text-align: center;">
-                                <i class="fa-solid fa-image" style="font-size: 48px; opacity: 0.3; margin-bottom: 12px;"></i>
+                        <div id="votingHeroPreview" class="w-full h-[200px] bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg bg-cover bg-center flex items-center justify-center text-gray-500">
+                            <div class="text-center">
+                                <i class="fa-solid fa-image" class="text-5xl opacity-30 mb-3"></i>
                                 <p>No background image set</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Upload Section -->
-                    <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 24px;">
-                        <h3 style="color: var(--accent); margin-bottom: 16px; font-size: 16px; font-weight: 600;">
+                    <div class="bg-admin-bg2 border border-admin-border rounded-xl p-6">
+                        <h3 class="text-admin-accent mb-4 text-base font-semibold">
                             <i class="fa-solid fa-cloud-arrow-up"></i> Upload New Background
                         </h3>
-                        <input type="file" id="votingHeroUpload" accept="image/*" style="display: none;">
-                        <button class="btn" style="width: 100%; justify-content: center; margin-bottom: 16px;" onclick="document.getElementById('votingHeroUpload').click()">
+                        <input type="file" id="votingHeroUpload" accept="image/*" class="hidden">
+                        <button class="btn" class="w-full justify-center mb-4" id="votingHeroUploadBtn">
                             <i class="fa-solid fa-cloud-arrow-up"></i> Choose Image
                         </button>
-                        <div style="display: flex; gap: 12px;">
-                            <button class="btn secondary" style="flex: 1; justify-content: center;" onclick="saveVotingHeroImage()">
+                        <div class="flex gap-3">
+                            <button class="btn secondary" class="flex-1 justify-center" id="saveVotingHeroBtn">
                                 <i class="fa-solid fa-save"></i> Save
                             </button>
-                            <button class="btn secondary" style="flex: 1; justify-content: center;" onclick="removeVotingHeroImage()">
+                            <button class="btn secondary" class="flex-1 justify-center" id="removeVotingHeroBtn">
                                 <i class="fa-solid fa-trash"></i> Remove
                             </button>
                         </div>
-                        <div id="votingHeroStatus" style="margin-top: 16px; font-size: 14px;"></div>
+                        <div id="votingHeroStatus" class="mt-4 text-sm"></div>
                     </div>
                 </div>
             </section>
@@ -848,14 +848,14 @@
                     </div>
                 </div>
 
-                <div id="admin-content-api" style="padding: 4px;">
+                <div id="admin-content-api" class="p-1">
                     <!-- API Health Status -->
-                    <div class="card" style="margin-bottom: 20px;">
-                        <h3 style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                            <i class="fa-solid fa-heart-pulse" style="color: var(--accent);"></i>
+                    <div class="card" class="mb-5">
+                        <h3 class="flex items-center gap-2.5 mb-[15px]">
+                            <i class="fa-solid fa-heart-pulse" class="text-admin-accent"></i>
                             API Health Status
                         </h3>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                        <div class="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-[15px]">
                             <div class="stat-card">
                                 <div class="stat-value" id="api-status">
                                     <i class="fa-solid fa-circle-notch fa-spin"></i>
@@ -875,7 +875,7 @@
                                 <div class="stat-label">Total Requests (24h)</div>
                             </div>
                         </div>
-                        <div style="margin-top: 15px; display: flex; gap: 10px;">
+                        <div class="mt-[15px] flex gap-2.5">
                             <button class="btn secondary" id="run-health-check">
                                 <i class="fa-solid fa-heart-pulse"></i> Run Health Check
                             </button>
@@ -886,53 +886,53 @@
                     </div>
 
                     <!-- ML Controls Section -->
-                    <div class="card" style="margin-bottom: 20px;">
-                        <h3 style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                            <i class="fa-solid fa-brain" style="color: #9c27b0;"></i>
+                    <div class="card" class="mb-5">
+                        <h3 class="flex items-center gap-2.5 mb-[15px]">
+                            <i class="fa-solid fa-brain" class="text-[#9c27b0]"></i>
                             Machine Learning Controls
                         </h3>
 
-                        <div style="display: grid; gap: 20px;">
+                        <div class="grid gap-5">
                             <!-- Model Configuration -->
                             <div>
-                                <h4 style="margin-bottom: 10px; color: var(--fg); font-size: 14px;">
+                                <h4 class="mb-2.5 text-admin-fg text-sm">
                                     <i class="fa-solid fa-sliders"></i> Model Configuration
                                 </h4>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                                <div class="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-[15px]">
                                     <div>
                                         <label class="form-label">House Margin (%)</label>
                                         <input type="number" id="ml-house-margin" class="form-input" min="0" max="10" step="0.1" value="2.0">
-                                        <small style="color: var(--muted); font-size: 11px;">Platform fee percentage</small>
+                                        <small class="text-gray-500 text-[11px]">Platform fee percentage</small>
                                     </div>
                                     <div>
                                         <label class="form-label">Default Pool Size</label>
                                         <input type="number" id="ml-pool-size" class="form-input" min="100" max="10000" step="100" value="1000">
-                                        <small style="color: var(--muted); font-size: 11px;">Liquidity pool initialization</small>
+                                        <small class="text-gray-500 text-[11px]">Liquidity pool initialization</small>
                                     </div>
                                     <div>
                                         <label class="form-label">Volatility Factor</label>
                                         <input type="number" id="ml-volatility" class="form-input" min="0" max="2" step="0.05" value="1.0">
-                                        <small style="color: var(--muted); font-size: 11px;">Price sensitivity multiplier</small>
+                                        <small class="text-gray-500 text-[11px]">Price sensitivity multiplier</small>
                                     </div>
                                     <div>
                                         <label class="form-label">Min Liquidity Threshold</label>
                                         <input type="number" id="ml-min-liquidity" class="form-input" min="10" max="500" step="10" value="100">
-                                        <small style="color: var(--muted); font-size: 11px;">Minimum pool balance</small>
+                                        <small class="text-gray-500 text-[11px]">Minimum pool balance</small>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Feature Weights -->
                             <div>
-                                <h4 style="margin-bottom: 10px; color: var(--fg); font-size: 14px;">
+                                <h4 class="mb-2.5 text-admin-fg text-sm">
                                     <i class="fa-solid fa-weight-scale"></i> Feature Weights
                                 </h4>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                                <div class="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-[15px]">
                                     <div>
                                         <label class="form-label">Volume Weight</label>
                                         <input type="range" id="ml-volume-weight" min="0" max="100" value="40"
-                                               style="width: 100%;" oninput="document.getElementById('volume-weight-val').textContent = this.value + '%'">
-                                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--muted);">
+                                               class="w-full" oninput="document.getElementById('volume-weight-val').textContent = this.value + '%'">
+                                        <div class="flex justify-between text-[11px] text-gray-500">
                                             <span>0%</span>
                                             <span id="volume-weight-val">40%</span>
                                             <span>100%</span>
@@ -941,8 +941,8 @@
                                     <div>
                                         <label class="form-label">Momentum Weight</label>
                                         <input type="range" id="ml-momentum-weight" min="0" max="100" value="30"
-                                               style="width: 100%;" oninput="document.getElementById('momentum-weight-val').textContent = this.value + '%'">
-                                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--muted);">
+                                               class="w-full" oninput="document.getElementById('momentum-weight-val').textContent = this.value + '%'">
+                                        <div class="flex justify-between text-[11px] text-gray-500">
                                             <span>0%</span>
                                             <span id="momentum-weight-val">30%</span>
                                             <span>100%</span>
@@ -951,8 +951,8 @@
                                     <div>
                                         <label class="form-label">Sentiment Weight</label>
                                         <input type="range" id="ml-sentiment-weight" min="0" max="100" value="20"
-                                               style="width: 100%;" oninput="document.getElementById('sentiment-weight-val').textContent = this.value + '%'">
-                                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--muted);">
+                                               class="w-full" oninput="document.getElementById('sentiment-weight-val').textContent = this.value + '%'">
+                                        <div class="flex justify-between text-[11px] text-gray-500">
                                             <span>0%</span>
                                             <span id="sentiment-weight-val">20%</span>
                                             <span>100%</span>
@@ -961,8 +961,8 @@
                                     <div>
                                         <label class="form-label">Time Decay Weight</label>
                                         <input type="range" id="ml-time-weight" min="0" max="100" value="10"
-                                               style="width: 100%;" oninput="document.getElementById('time-weight-val').textContent = this.value + '%'">
-                                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--muted);">
+                                               class="w-full" oninput="document.getElementById('time-weight-val').textContent = this.value + '%'">
+                                        <div class="flex justify-between text-[11px] text-gray-500">
                                             <span>0%</span>
                                             <span id="time-weight-val">10%</span>
                                             <span>100%</span>
@@ -972,7 +972,7 @@
                             </div>
 
                             <!-- Model Actions -->
-                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <div class="flex gap-2.5 flex-wrap">
                                 <button class="btn primary" id="save-ml-config">
                                     <i class="fa-solid fa-save"></i> Save Configuration
                                 </button>
@@ -982,7 +982,7 @@
                                 <button class="btn secondary" id="test-ml-model">
                                     <i class="fa-solid fa-flask"></i> Test Model
                                 </button>
-                                <button class="btn" id="export-ml-config" style="background: #607d8b; color: white;">
+                                <button class="btn" id="export-ml-config" class="bg-[#607d8b] text-white">
                                     <i class="fa-solid fa-download"></i> Export Config
                                 </button>
                             </div>
@@ -990,34 +990,34 @@
                     </div>
 
                     <!-- Market Analytics -->
-                    <div class="card" style="margin-bottom: 20px;">
-                        <h3 style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                            <i class="fa-solid fa-chart-line" style="color: #2196f3;"></i>
+                    <div class="card" class="mb-5">
+                        <h3 class="flex items-center gap-2.5 mb-[15px]">
+                            <i class="fa-solid fa-chart-line" class="text-[#2196f3]"></i>
                             Market Analytics & Insights
                         </h3>
 
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px;">
-                            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <div class="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2.5 mb-5">
+                            <div class="stat-card" class="bg-gradient-to-br from-[#667eea] to-[#764ba2]">
                                 <div class="stat-value" id="total-markets-stat">--</div>
                                 <div class="stat-label">Total Markets</div>
                             </div>
-                            <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            <div class="stat-card" class="bg-gradient-to-br from-[#f093fb] to-[#f5576c]">
                                 <div class="stat-value" id="active-markets-stat">--</div>
                                 <div class="stat-label">Active Markets</div>
                             </div>
-                            <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                            <div class="stat-card" class="bg-gradient-to-br from-[#4facfe] to-[#00f2fe]">
                                 <div class="stat-value" id="total-volume-stat">--</div>
                                 <div class="stat-label">Total Volume (24h)</div>
                             </div>
-                            <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                            <div class="stat-card" class="bg-gradient-to-br from-[#43e97b] to-[#38f9d7]">
                                 <div class="stat-value" id="total-bets-stat">--</div>
                                 <div class="stat-label">Total Bets (24h)</div>
                             </div>
-                            <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                            <div class="stat-card" class="bg-gradient-to-br from-[#fa709a] to-[#fee140]">
                                 <div class="stat-value" id="avg-odds-stat">--</div>
                                 <div class="stat-label">Avg Odds</div>
                             </div>
-                            <div class="stat-card" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);">
+                            <div class="stat-card" class="bg-gradient-to-br from-[#30cfd0] to-[#330867]">
                                 <div class="stat-value" id="liquidity-stat">--</div>
                                 <div class="stat-label">Total Liquidity</div>
                             </div>
@@ -1025,24 +1025,24 @@
 
                         <!-- Top Markets Table -->
                         <div>
-                            <h4 style="margin-bottom: 10px; color: var(--fg); font-size: 14px;">
+                            <h4 class="mb-2.5 text-admin-fg text-sm">
                                 <i class="fa-solid fa-fire"></i> Top Performing Markets
                             </h4>
-                            <div style="overflow-x: auto;">
-                                <table style="width: 100%; border-collapse: collapse;">
+                            <div class="overflow-x-auto">
+                                <table class="w-full border-collapse">
                                     <thead>
-                                        <tr style="border-bottom: 2px solid var(--border);">
-                                            <th style="padding: 10px; text-align: left; font-size: 12px; color: var(--muted);">Market</th>
-                                            <th style="padding: 10px; text-align: left; font-size: 12px; color: var(--muted);">Volume</th>
-                                            <th style="padding: 10px; text-align: left; font-size: 12px; color: var(--muted);">Bets</th>
-                                            <th style="padding: 10px; text-align: left; font-size: 12px; color: var(--muted);">YES Price</th>
-                                            <th style="padding: 10px; text-align: left; font-size: 12px; color: var(--muted);">Liquidity</th>
-                                            <th style="padding: 10px; text-align: left; font-size: 12px; color: var(--muted);">Actions</th>
+                                        <tr class="border-b-2 border-admin-border">
+                                            <th class="p-2.5 text-left text-xs text-gray-500">Market</th>
+                                            <th class="p-2.5 text-left text-xs text-gray-500">Volume</th>
+                                            <th class="p-2.5 text-left text-xs text-gray-500">Bets</th>
+                                            <th class="p-2.5 text-left text-xs text-gray-500">YES Price</th>
+                                            <th class="p-2.5 text-left text-xs text-gray-500">Liquidity</th>
+                                            <th class="p-2.5 text-left text-xs text-gray-500">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody id="top-markets-table">
                                         <tr>
-                                            <td colspan="6" style="padding: 20px; text-align: center; color: var(--muted);">
+                                            <td colspan="6" class="p-5 text-center text-gray-500">
                                                 <i class="fa-solid fa-spinner fa-spin"></i> Loading market data...
                                             </td>
                                         </tr>
@@ -1051,11 +1051,11 @@
                             </div>
                         </div>
 
-                        <div style="margin-top: 15px;">
+                        <div class="mt-[15px]">
                             <button class="btn secondary" id="refresh-market-analytics">
                                 <i class="fa-solid fa-rotate"></i> Refresh Analytics
                             </button>
-                            <button class="btn secondary" id="export-market-data" style="margin-left: 10px;">
+                            <button class="btn secondary" id="export-market-data" class="ml-2.5">
                                 <i class="fa-solid fa-file-export"></i> Export Data
                             </button>
                         </div>
@@ -1063,14 +1063,14 @@
 
                     <!-- Telemetry & Logs -->
                     <div class="card">
-                        <h3 style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                            <i class="fa-solid fa-terminal" style="color: #ff9800;"></i>
+                        <h3 class="flex items-center gap-2.5 mb-[15px]">
+                            <i class="fa-solid fa-terminal" class="text-[#ff9800]"></i>
                             API Telemetry & Logs
                         </h3>
                         <div id="telemetry-logs" style="background: #000; color: #0f0; padding: 15px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 12px; max-height: 300px; overflow-y: auto;">
-                            <div style="color: #888;">Waiting for telemetry data...</div>
+                            <div class="text-[#888]">Waiting for telemetry data...</div>
                         </div>
-                        <div style="margin-top: 10px; display: flex; gap: 10px;">
+                        <div class="mt-2.5 flex gap-2.5">
                             <button class="btn secondary" id="clear-logs">
                                 <i class="fa-solid fa-trash"></i> Clear Logs
                             </button>
@@ -1087,7 +1087,7 @@
     <!-- Status Bar -->
     <div class="statusbar">
         <div>
-            <i class="fa-solid fa-circle" style="color: var(--success); font-size: 8px;"></i>
+            <i class="fa-solid fa-circle" class="text-green-400 text-[8px]"></i>
             <span>GoatMouth Admin Panel</span>
         </div>
         <div id="status-info">Ready</div>
@@ -1345,8 +1345,125 @@
         document.addEventListener('DOMContentLoaded', function() {
             initDashboardCharts();
             initBannerEditor();
+            initEventListeners();
             // Activity feed is now loaded by admin.js renderDashboard()
         });
+
+        // Initialize Event Listeners
+        function initEventListeners() {
+            // Navigation and stat cards - event delegation for switchView
+            document.addEventListener('click', (e) => {
+                const viewBtn = e.target.closest('[data-view]');
+                if (viewBtn) {
+                    switchView(viewBtn.dataset.view);
+                }
+            });
+
+            // Market tab switching
+            document.addEventListener('click', (e) => {
+                const tabBtn = e.target.closest('[data-tab]');
+                if (tabBtn && tabBtn.classList.contains('market-tab')) {
+                    switchMarketTab(tabBtn.dataset.tab);
+                }
+            });
+
+            // Banner position buttons
+            document.addEventListener('click', (e) => {
+                const posBtn = e.target.closest('[data-position]');
+                if (posBtn && posBtn.classList.contains('banner-quick-btn')) {
+                    setBannerPosition(posBtn.dataset.position);
+                }
+            });
+
+            // Banner adjust position buttons
+            document.addEventListener('click', (e) => {
+                const dirBtn = e.target.closest('[data-direction]');
+                if (dirBtn && dirBtn.classList.contains('banner-quick-btn')) {
+                    adjustBannerPosition(dirBtn.dataset.direction);
+                }
+            });
+
+            // Load banner list buttons
+            document.addEventListener('click', (e) => {
+                const loadBtn = e.target.closest('[data-action="load-banner-list"]');
+                if (loadBtn) {
+                    loadBannerList();
+                }
+            });
+
+            // Remove market option buttons (event delegation for dynamic elements)
+            document.addEventListener('click', (e) => {
+                const removeBtn = e.target.closest('[data-action="remove-option"]');
+                if (removeBtn) {
+                    removeMarketOption(removeBtn);
+                }
+            });
+
+            // Banner list item selection (event delegation)
+            document.addEventListener('click', (e) => {
+                const bannerItem = e.target.closest('.banner-list-item');
+                if (bannerItem && !e.target.closest('.delete-banner-btn')) {
+                    selectBanner(
+                        bannerItem.dataset.bannerId,
+                        bannerItem.dataset.bannerUrl,
+                        parseFloat(bannerItem.dataset.posX),
+                        parseFloat(bannerItem.dataset.posY),
+                        bannerItem.dataset.fit,
+                        parseFloat(bannerItem.dataset.scale),
+                        parseFloat(bannerItem.dataset.posXMobile),
+                        parseFloat(bannerItem.dataset.posYMobile)
+                    );
+                }
+            });
+
+            // Delete banner buttons (event delegation with stopPropagation)
+            document.addEventListener('click', (e) => {
+                const deleteBtn = e.target.closest('.delete-banner-btn');
+                if (deleteBtn) {
+                    e.stopPropagation();
+                    deleteBannerById(deleteBtn.dataset.bannerId);
+                }
+            });
+
+            // Individual button event listeners
+            const adminProfileBtn = document.getElementById('adminProfileBtn');
+            const backToAppBtn = document.getElementById('backToAppBtn');
+            const addMarketOptionBtn = document.getElementById('addMarketOptionBtn');
+            const resetMarketBtn = document.getElementById('resetMarketBtn');
+            const bannerUploadBtn = document.getElementById('bannerUploadBtn');
+            const saveBannerBtn = document.getElementById('saveBannerBtn');
+            const clearBannerBtn = document.getElementById('clearBannerBtn');
+            const checkSystemStatusBtn = document.getElementById('checkSystemStatusBtn');
+            const testDirectDbBtn = document.getElementById('testDirectDbBtn');
+            const votingHeroUploadBtn = document.getElementById('votingHeroUploadBtn');
+            const saveVotingHeroBtn = document.getElementById('saveVotingHeroBtn');
+            const removeVotingHeroBtn = document.getElementById('removeVotingHeroBtn');
+            const desktopModeBtn = document.getElementById('desktopModeBtn');
+            const mobileModeBtn = document.getElementById('mobileModeBtn');
+            const fitCover = document.getElementById('fit-cover');
+            const fitContain = document.getElementById('fit-contain');
+            const fitFill = document.getElementById('fit-fill');
+            const fitNone = document.getElementById('fit-none');
+
+            if (adminProfileBtn) adminProfileBtn.addEventListener('click', () => adminPanel.showAdminProfileModal());
+            if (backToAppBtn) backToAppBtn.addEventListener('click', () => window.location.href = 'index.html');
+            if (addMarketOptionBtn) addMarketOptionBtn.addEventListener('click', addMarketOption);
+            if (resetMarketBtn) resetMarketBtn.addEventListener('click', resetMarketForm);
+            if (bannerUploadBtn) bannerUploadBtn.addEventListener('click', () => document.getElementById('bannerUploadInput').click());
+            if (saveBannerBtn) saveBannerBtn.addEventListener('click', saveBanner);
+            if (clearBannerBtn) clearBannerBtn.addEventListener('click', clearBanner);
+            if (checkSystemStatusBtn) checkSystemStatusBtn.addEventListener('click', checkSystemStatus);
+            if (testDirectDbBtn) testDirectDbBtn.addEventListener('click', testDirectDatabaseCall);
+            if (votingHeroUploadBtn) votingHeroUploadBtn.addEventListener('click', () => document.getElementById('votingHeroUpload').click());
+            if (saveVotingHeroBtn) saveVotingHeroBtn.addEventListener('click', saveVotingHeroImage);
+            if (removeVotingHeroBtn) removeVotingHeroBtn.addEventListener('click', removeVotingHeroImage);
+            if (desktopModeBtn) desktopModeBtn.addEventListener('click', () => switchPreviewMode('desktop'));
+            if (mobileModeBtn) mobileModeBtn.addEventListener('click', () => switchPreviewMode('mobile'));
+            if (fitCover) fitCover.addEventListener('click', () => setImageFit('cover'));
+            if (fitContain) fitContain.addEventListener('click', () => setImageFit('contain'));
+            if (fitFill) fitFill.addEventListener('click', () => setImageFit('fill'));
+            if (fitNone) fitNone.addEventListener('click', () => setImageFit('none'));
+        }
 
         // Banner Editor State
         let bannerState = {
@@ -1806,10 +1923,10 @@
 
             const preview = document.getElementById('bannerLivePreview');
             preview.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--muted); text-align: center;">
+                <div class="flex items-center justify-center h-full text-gray-500 text-center">
                     <div>
-                        <i class="fa-solid fa-image" style="font-size: 32px; margin-bottom: 8px; opacity: 0.3;"></i>
-                        <p style="font-size: 13px;">Select or upload a banner to preview</p>
+                        <i class="fa-solid fa-image" class="text-3xl mb-2 opacity-30"></i>
+                        <p class="text-[13px]">Select or upload a banner to preview</p>
                     </div>
                 </div>
             `;
@@ -1827,8 +1944,8 @@
             if (!container) return;
 
             container.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: var(--muted);">
-                    <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 32px; margin-bottom: 16px;"></i>
+                <div class="text-center p-10 text-gray-500">
+                    <i class="fa-solid fa-circle-notch fa-spin" class="text-3xl mb-4"></i>
                     <p>Loading banners...</p>
                 </div>
             `;
@@ -1867,8 +1984,8 @@
 
                 if (banners.length === 0) {
                     container.innerHTML = `
-                        <div style="text-align: center; padding: 40px; color: var(--muted);">
-                            <i class="fa-solid fa-image" style="font-size: 48px; opacity: 0.3; margin-bottom: 16px;"></i>
+                        <div class="text-center p-10 text-gray-500">
+                            <i class="fa-solid fa-image" class="text-5xl opacity-30 mb-4"></i>
                             <p>No banners yet. Upload your first banner above!</p>
                         </div>
                     `;
@@ -1876,9 +1993,9 @@
                 }
 
                 container.innerHTML = banners.map(banner => `
-                    <div class="banner-list-item" onclick="selectBanner('${banner.id}', '${banner.image_url}', ${banner.custom_position_x || 50}, ${banner.custom_position_y || 50}, '${banner.image_fit || 'cover'}', ${banner.image_scale || 100}, ${banner.custom_position_x_mobile || 50}, ${banner.custom_position_y_mobile || 50})">
+                    <div class="banner-list-item" data-banner-id="${banner.id}" data-banner-url="${banner.image_url}" data-pos-x="${banner.custom_position_x || 50}" data-pos-y="${banner.custom_position_y || 50}" data-fit="${banner.image_fit || 'cover'}" data-scale="${banner.image_scale || 100}" data-pos-x-mobile="${banner.custom_position_x_mobile || 50}" data-pos-y-mobile="${banner.custom_position_y_mobile || 50}">
                         <div class="banner-list-thumb">
-                            <img src="${banner.image_url}" alt="${banner.title || 'Banner'}" style="object-fit: cover;">
+                            <img src="${banner.image_url}" alt="${banner.title || 'Banner'}" class="object-cover">
                         </div>
                         <div class="banner-list-info">
                             <div class="banner-list-title">${banner.title || 'Untitled Banner'}</div>
@@ -1887,7 +2004,7 @@
                                 ${banner.custom_position_x ? ` • ${Math.round(banner.custom_position_x)}%×${Math.round(banner.custom_position_y)}%` : ''}
                             </div>
                         </div>
-                        <button class="btn secondary btn-sm" onclick="event.stopPropagation(); deleteBannerById('${banner.id}')">
+                        <button class="btn secondary btn-sm delete-banner-btn" data-banner-id="${banner.id}">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </div>
@@ -1897,11 +2014,11 @@
             } catch (error) {
                 console.error('Error loading banners:', error);
                 container.innerHTML = `
-                    <div style="text-align: center; padding: 40px; color: var(--error);">
-                        <i class="fa-solid fa-exclamation-triangle" style="font-size: 32px; margin-bottom: 16px;"></i>
+                    <div class="text-center p-10 text-red-500">
+                        <i class="fa-solid fa-exclamation-triangle" class="text-3xl mb-4"></i>
                         <p>Failed to load banners</p>
                         <p style="font-size: 12px; margin-top: 8px; opacity: 0.8;">${error.message}</p>
-                        <button class="btn secondary" style="margin-top: 12px;" onclick="loadBannerList()">
+                        <button class="btn secondary" class="mt-3" data-action="load-banner-list">
                             <i class="fa-solid fa-rotate"></i> Retry
                         </button>
                     </div>
@@ -2044,7 +2161,7 @@
             for (const [key, value] of Object.entries(status)) {
                 const color = value === true || (typeof value === 'number' && value > 0) ? 'var(--success)' : 'var(--error)';
                 html += `
-                    <div style="color: var(--muted);">${key}:</div>
+                    <div class="text-gray-500">${key}:</div>
                     <div style="color: ${color}; font-weight: 600;">${value}</div>
                 `;
             }
@@ -2052,7 +2169,7 @@
 
             // Add try direct database call button
             html += `
-                <button class="btn secondary" style="width: 100%; margin-top: 12px; font-size: 12px;" onclick="testDirectDatabaseCall()">
+                <button class="btn secondary" class="w-full mt-3 text-xs" id="testDirectDbBtn">
                     <i class="fa-solid fa-database"></i> Test Direct DB Call
                 </button>
             `;
@@ -2068,7 +2185,7 @@
         // Test direct database call
         async function testDirectDatabaseCall() {
             const statusEl = document.getElementById('systemStatus');
-            statusEl.innerHTML = '<div style="color: var(--warning);">Testing database connection...</div>';
+            statusEl.innerHTML = '<div class="text-yellow-500">Testing database connection...</div>';
 
             try {
                 const api = window.adminPanel?.api || window.adminBanners?.api || window.api;
@@ -2095,11 +2212,11 @@
                     <div style="color: var(--success); margin-bottom: 8px;">
                         ✓ Database connection successful!
                     </div>
-                    <div style="color: var(--muted);">
+                    <div class="text-gray-500">
                         Found ${data.length} banner(s)
                     </div>
-                    <pre style="margin-top: 12px; padding: 12px; background: var(--bg); border-radius: 6px; overflow-x: auto; font-size: 10px;">${JSON.stringify(data, null, 2)}</pre>
-                    <button class="btn" style="width: 100%; margin-top: 12px; font-size: 12px;" onclick="loadBannerList()">
+                    <pre class="mt-3 p-3 bg-admin-bg rounded-md overflow-x-auto text-[10px]">${JSON.stringify(data, null, 2)}</pre>
+                    <button class="btn" class="w-full mt-3 text-xs" data-action="load-banner-list">
                         <i class="fa-solid fa-rotate"></i> Load These Banners
                     </button>
                 `;
@@ -2110,10 +2227,10 @@
                     <div style="color: var(--error); margin-bottom: 8px;">
                         ✗ Database test failed
                     </div>
-                    <div style="color: var(--muted); font-size: 11px;">
+                    <div class="text-gray-500 text-[11px]">
                         ${error.message}
                     </div>
-                    <pre style="margin-top: 12px; padding: 12px; background: var(--bg); border-radius: 6px; overflow-x: auto; font-size: 10px; color: var(--error);">${error.stack || error.toString()}</pre>
+                    <pre class="mt-3 p-3 bg-admin-bg rounded-md overflow-x-auto text-[10px] text-red-500">${error.stack || error.toString()}</pre>
                 `;
                 console.error('Database test error:', error);
             }
@@ -2138,7 +2255,7 @@
                             preview.innerHTML = '';
 
                             const status = document.getElementById('votingHeroStatus');
-                            status.innerHTML = `<div style="color: var(--info);">✓ Image selected: ${file.name}</div>`;
+                            status.innerHTML = `<div class="text-blue-400">✓ Image selected: ${file.name}</div>`;
                         };
                         reader.readAsDataURL(file);
                     }
@@ -2153,12 +2270,12 @@
             const status = document.getElementById('votingHeroStatus');
 
             if (!votingHeroImageFile) {
-                status.innerHTML = `<div style="color: var(--warning);">⚠ Please select an image first</div>`;
+                status.innerHTML = `<div class="text-yellow-500">⚠ Please select an image first</div>`;
                 return;
             }
 
             try {
-                status.innerHTML = `<div style="color: var(--info);">Uploading...</div>`;
+                status.innerHTML = `<div class="text-blue-400">Uploading...</div>`;
 
                 // Upload to Supabase storage
                 const fileName = `voting-hero-${Date.now()}.${votingHeroImageFile.name.split('.').pop()}`;
@@ -2179,7 +2296,7 @@
                 // Save URL to localStorage
                 localStorage.setItem('votingHeroBackgroundUrl', publicUrl);
 
-                status.innerHTML = `<div style="color: var(--success);">✓ Image uploaded successfully!</div>`;
+                status.innerHTML = `<div class="text-green-400">✓ Image uploaded successfully!</div>`;
                 votingHeroImageFile = null;
 
             } catch (error) {
@@ -2205,14 +2322,14 @@
             if (preview) {
                 preview.style.backgroundImage = '';
                 preview.innerHTML = `
-                    <div style="text-align: center;">
-                        <i class="fa-solid fa-image" style="font-size: 48px; opacity: 0.3; margin-bottom: 12px;"></i>
+                    <div class="text-center">
+                        <i class="fa-solid fa-image" class="text-5xl opacity-30 mb-3"></i>
                         <p>No background image set</p>
                     </div>
                 `;
             }
             const status = document.getElementById('votingHeroStatus');
-            status.innerHTML = `<div style="color: var(--success);">✓ Background image removed</div>`;
+            status.innerHTML = `<div class="text-green-400">✓ Background image removed</div>`;
         }
 
         // Market Creation Functions
@@ -2330,7 +2447,7 @@
                 <button
                     type="button"
                     class="market-option-remove"
-                    onclick="removeMarketOption(this)"
+                    data-action="remove-option"
                 >
                     <i class="fa-solid fa-trash"></i>
                 </button>

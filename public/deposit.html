@@ -562,10 +562,10 @@
                     </div>
 
                     <div class="action-buttons">
-                        <button class="action-btn primary" onclick="showDepositModal()">
+                        <button class="action-btn primary" id="depositBtn">
                             <i class="ri-arrow-down-line"></i> Deposit
                         </button>
-                        <button class="action-btn secondary" onclick="showWithdrawModal()">
+                        <button class="action-btn secondary" id="withdrawBtn">
                             <i class="ri-arrow-up-line"></i> Withdraw
                         </button>
                     </div>
@@ -687,7 +687,7 @@
         <div class="bg-gray-800 border border-gray-700 rounded-xl p-8 max-w-[500px] w-[90%]">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-bold">Deposit Funds</h2>
-                <button onclick="closeDepositModal()" class="bg-transparent border-none text-gray-400 text-2xl cursor-pointer hover:text-white">×</button>
+                <button id="closeDepositBtn" class="bg-transparent border-none text-gray-400 text-2xl cursor-pointer hover:text-white">×</button>
             </div>
 
             <div class="quick-deposit-grid">
@@ -701,7 +701,7 @@
 
             <input type="number" id="customAmount" placeholder="Or enter custom amount" class="w-full mb-4 px-4 py-2.5 bg-black/30 border border-gray-700 rounded-md text-white text-sm" />
 
-            <button class="action-btn primary w-full" onclick="processDeposit()">
+            <button class="action-btn primary w-full" id="processDepositBtn">
                 <i class="ri-secure-payment-line"></i> Proceed to Payment
             </button>
         </div>
@@ -958,7 +958,20 @@
         }
 
         // Initialize chart on page load
-        document.addEventListener('DOMContentLoaded', initActivityChart);
+        document.addEventListener('DOMContentLoaded', () => {
+            initActivityChart();
+
+            // Modal button event listeners
+            const depositBtn = document.getElementById('depositBtn');
+            const withdrawBtn = document.getElementById('withdrawBtn');
+            const closeDepositBtn = document.getElementById('closeDepositBtn');
+            const processDepositBtn = document.getElementById('processDepositBtn');
+
+            if (depositBtn) depositBtn.addEventListener('click', showDepositModal);
+            if (withdrawBtn) withdrawBtn.addEventListener('click', showWithdrawModal);
+            if (closeDepositBtn) closeDepositBtn.addEventListener('click', closeDepositModal);
+            if (processDepositBtn) processDepositBtn.addEventListener('click', processDeposit);
+        });
     </script>
 </body>
 </html>
