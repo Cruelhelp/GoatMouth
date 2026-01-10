@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GoatMouth Live X Feed</title>
+
+<style>
+  body {
+    background:#0b0f14;
+    font-family:system-ui, sans-serif;
+    display:flex;
+    justify-content:center;
+    padding:40px;
+    color:#fff;
+  }
+
+  .x-feed-widget {
+    width:380px;
+    background:#0f1419;
+    border-radius:14px;
+    overflow:hidden;
+    box-shadow:0 15px 40px rgba(0,0,0,.45);
+  }
+
+  .x-profile-header {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:16px;
+    background:#0b1220;
+    border-bottom:1px solid rgba(255,255,255,.08);
+  }
+
+  .x-profile-header img {
+    width:56px;
+    height:56px;
+    border-radius:50%;
+    border:2px solid #1da1f2;
+  }
+
+  .x-profile-name {
+    font-weight:600;
+    font-size:16px;
+  }
+
+  .x-profile-handle {
+    font-size:13px;
+    color:#9aa0a6;
+  }
+
+  .x-feed-body {
+    min-height:500px;
+  }
+</style>
+</head>
+
+<body>
+
+<div class="x-feed-widget">
+  <div class="x-profile-header">
+    <img src="https://unavatar.io/twitter/GoatMouth92268" alt="">
+    <div>
+      <div class="x-profile-name">GoatMouth</div>
+      <div class="x-profile-handle">@GoatMouth92268</div>
+    </div>
+  </div>
+
+  <div class="x-feed-body">
+    <a class="twitter-timeline"
+       href="https://twitter.com/GoatMouth92268"
+       data-theme="dark"
+       data-height="520"
+       data-chrome="noheader nofooter noborders transparent">
+    </a>
+  </div>
+</div>
+
+<script>
+  // Dynamically load widget script
+  const script = document.createElement("script");
+  script.src = "https://platform.twitter.com/widgets.js";
+  script.async = true;
+  script.onload = () => {
+    if (window.twttr && twttr.widgets) {
+      twttr.widgets.load();
+    }
+  };
+  document.body.appendChild(script);
+</script>
+
+</body>
+</html>
