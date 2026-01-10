@@ -246,7 +246,7 @@
         .app-container {
             position: absolute;
             top: 108px;
-            bottom: 24px;
+            bottom: 0;
             left: 0;
             right: 0;
             display: flex;
@@ -267,7 +267,7 @@
             overflow-y: auto;
             overflow-x: hidden;
             display: none;
-            padding: 24px;
+            padding: 16px;
             -webkit-overflow-scrolling: touch;
         }
 
@@ -1193,12 +1193,22 @@
                 min-height: 36px;
             }
 
+            .user-info .btn i {
+                display: inline-block;
+                font-size: 16px;
+                color: var(--fg);
+            }
+
             .user-info .btn .btn-text {
                 display: none;
             }
 
             .hamburger {
                 display: flex;
+            }
+
+            .hamburger span {
+                background: var(--fg);
             }
 
             .menubar {
@@ -1241,10 +1251,11 @@
 
             .app-container {
                 top: 56px;
+                bottom: 0;
             }
 
             .tabpanel {
-                padding: 16px;
+                padding: 12px;
             }
 
             .stats-grid {
@@ -6298,8 +6309,7 @@
                             no_price: 0.5,
                             total_volume: 0,
                             bettor_count: 0,
-                            status: 'active',
-                            created_at: new Date().toISOString()
+                            status: 'active'
                         };
 
                         if (window.adminPanel) {
