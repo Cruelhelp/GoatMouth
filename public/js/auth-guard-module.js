@@ -11,7 +11,7 @@ import {
     redirectToApp,
     redirectToAdmin,
     redirectByRole
-} from '../../src/utils/auth.js';
+} from '../utils/auth.js';
 
 // Re-export as AuthGuard class for backward compatibility
 class AuthGuard {

@@ -1,9 +1,9 @@
 // Main Application Controller - ES Module Version
 // Imports utility functions to eliminate code duplication
 
-import { getTimeAgo, formatDate, getTimeLeft } from '../../src/utils/time.js';
-import { formatDecimalOdds, calculateProfit, calculatePayout, formatCurrency } from '../../src/utils/odds.js';
-import { getLocal, setLocal, removeLocal } from '../../src/utils/storage.js';
+import { getTimeAgo, formatDate, getTimeLeft } from '../utils/time.js';
+import { formatDecimalOdds, calculateProfit, calculatePayout, formatCurrency } from '../utils/odds.js';
+import { getLocal, setLocal, removeLocal } from '../utils/storage.js';
 
 // Main Application Controller
 class GoatMouth {
