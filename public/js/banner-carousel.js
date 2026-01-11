@@ -37,7 +37,7 @@ class BannerCarousel {
         container.innerHTML = `
             <div class="banner-carousel mb-8 relative overflow-hidden rounded-2xl" style="background: linear-gradient(135deg, #1f2937 0%, #111827 100%);">
                 <!-- Close Button -->
-                <button class="banner-close-btn" onclick="closeBanner()" title="Close banner">
+                <button class="banner-close-btn" title="Close banner">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
 
@@ -53,12 +53,12 @@ class BannerCarousel {
 
                 <!-- Navigation Arrows (Desktop Only) -->
                 ${this.banners.length > 1 && !isMobile ? `
-                    <button class="banner-nav banner-prev absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-3 rounded-full transition" onclick="bannerCarousel.prevSlide()">
+                    <button class="banner-nav banner-prev absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-3 rounded-full transition">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                         </svg>
                     </button>
-                    <button class="banner-nav banner-next absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-3 rounded-full transition" onclick="bannerCarousel.nextSlide()">
+                    <button class="banner-nav banner-next absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-3 rounded-full transition">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                         </svg>
@@ -69,7 +69,7 @@ class BannerCarousel {
                 ${this.banners.length > 1 ? `
                     <div class="banner-dots absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
                         ${this.banners.map((_, index) => `
-                            <button class="banner-dot w-2 h-2 rounded-full transition ${index === 0 ? 'bg-white' : 'bg-white bg-opacity-40'}" onclick="bannerCarousel.goToSlide(${index})"></button>
+                            <button class="banner-dot w-2 h-2 rounded-full transition ${index === 0 ? 'bg-white' : 'bg-white bg-opacity-40'}" data-slide-index="${index}"></button>
                         `).join('')}
                     </div>
                 ` : ''}
@@ -78,6 +78,9 @@ class BannerCarousel {
 
         // Check if banner was previously closed
         this.checkBannerState();
+
+        // Attach event listeners
+        this.attachEventListeners(container);
 
         this.startAutoplay();
     }
@@ -154,18 +157,62 @@ class BannerCarousel {
     renderBannerAction(banner, isMobile) {
         if (banner.link_type === 'market' && banner.link_id) {
             return `
-                <button class="px-6 py-3 rounded-lg font-bold transition ${isMobile ? 'text-sm' : 'text-base'}" style="background-color: #00CB97; color: white;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'" onclick="app.showMarketDetail('${banner.link_id}')">
+                <button class="banner-action-btn px-6 py-3 rounded-lg font-bold transition ${isMobile ? 'text-sm' : 'text-base'} bg-[#00CB97] hover:bg-[#00e5af] text-white" data-market-id="${banner.link_id}">
                     View Market →
                 </button>
             `;
         } else if (banner.link_type === 'external' && banner.link_url) {
             return `
-                <a href="${this.escapeHtml(banner.link_url)}" target="_blank" rel="noopener noreferrer" class="inline-block px-6 py-3 rounded-lg font-bold transition ${isMobile ? 'text-sm' : 'text-base'}" style="background-color: #00CB97; color: white;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'">
+                <a href="${this.escapeHtml(banner.link_url)}" target="_blank" rel="noopener noreferrer" class="inline-block px-6 py-3 rounded-lg font-bold transition ${isMobile ? 'text-sm' : 'text-base'} bg-[#00CB97] hover:bg-[#00e5af] text-white">
                     Learn More →
                 </a>
             `;
         }
         return '';
+    }
+
+    attachEventListeners(container) {
+        // Close button
+        const closeBtn = container.querySelector('.banner-close-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                if (typeof closeBanner === 'function') {
+                    closeBanner();
+                }
+            });
+        }
+
+        // Previous button
+        const prevBtn = container.querySelector('.banner-prev');
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => this.prevSlide());
+        }
+
+        // Next button
+        const nextBtn = container.querySelector('.banner-next');
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => this.nextSlide());
+        }
+
+        // Dot indicators
+        const dots = container.querySelectorAll('.banner-dot');
+        dots.forEach(dot => {
+            dot.addEventListener('click', () => {
+                const index = parseInt(dot.dataset.slideIndex);
+                this.goToSlide(index);
+            });
+        });
+
+        // Market action buttons
+        const actionBtns = container.querySelectorAll('.banner-action-btn');
+        actionBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const marketId = btn.dataset.marketId;
+                if (window.app && window.app.showMarketDetail) {
+                    window.app.showMarketDetail(marketId);
+                }
+            });
+        });
     }
 
     nextSlide() {
