@@ -93,7 +93,8 @@ class BannerCarousel {
     }
 
     checkBannerState() {
-        const bannerClosed = localStorage.getItem('bannerClosed') === 'true';
+        // Use shared isBannerClosed function if available, otherwise check manually
+        const bannerClosed = typeof isBannerClosed === 'function' ? isBannerClosed() : (localStorage.getItem('bannerClosed') === 'true');
         if (bannerClosed) {
             const bannerContainer = document.getElementById('banner-container');
             const reopenContainer = document.getElementById('banner-reopen-container');

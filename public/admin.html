@@ -1222,7 +1222,7 @@
                             console.log('Auto-loading last selected banner:', lastBannerId);
                             const bannerItems = document.querySelectorAll('.banner-list-item');
                             bannerItems.forEach(item => {
-                                if (item.onclick.toString().includes(lastBannerId)) {
+                                if (item.dataset.bannerId === lastBannerId) {
                                     item.click();
                                 }
                             });
@@ -1993,9 +1993,9 @@
                 }
 
                 container.innerHTML = banners.map(banner => `
-                    <div class="banner-list-item" data-banner-id="${banner.id}" data-banner-url="${banner.image_url}" data-pos-x="${banner.custom_position_x || 50}" data-pos-y="${banner.custom_position_y || 50}" data-fit="${banner.image_fit || 'cover'}" data-scale="${banner.image_scale || 100}" data-pos-x-mobile="${banner.custom_position_x_mobile || 50}" data-pos-y-mobile="${banner.custom_position_y_mobile || 50}">
+                    <div class="banner-list-item" data-banner-id="${banner.id}" data-banner-url="${banner.image_url || ''}" data-pos-x="${banner.custom_position_x || 50}" data-pos-y="${banner.custom_position_y || 50}" data-fit="${banner.image_fit || 'cover'}" data-scale="${banner.image_scale || 100}" data-pos-x-mobile="${banner.custom_position_x_mobile || 50}" data-pos-y-mobile="${banner.custom_position_y_mobile || 50}">
                         <div class="banner-list-thumb">
-                            <img src="${banner.image_url}" alt="${banner.title || 'Banner'}" class="object-cover">
+                            ${banner.image_url ? `<img src="${banner.image_url}" alt="${banner.title || 'Banner'}" class="object-cover">` : '<div class="bg-gray-700 w-full h-full flex items-center justify-center text-gray-500"><i class="fa-solid fa-image"></i></div>'}
                         </div>
                         <div class="banner-list-info">
                             <div class="banner-list-title">${banner.title || 'Untitled Banner'}</div>
@@ -2058,10 +2058,10 @@
             // Highlight selected
             document.querySelectorAll('.banner-list-item').forEach(item => {
                 item.classList.remove('selected');
+                if (item.dataset.bannerId === id) {
+                    item.classList.add('selected');
+                }
             });
-            if (event && event.currentTarget) {
-                event.currentTarget.classList.add('selected');
-            }
         }
 
         // Upload Banner Image

@@ -451,7 +451,19 @@ function closeBanner() {
     if (bannerContainer && reopenContainer) {
         bannerContainer.classList.add('hidden');
         reopenContainer.classList.remove('hidden');
-        localStorage.setItem('bannerClosed', 'true');
+
+        // Store with 7-day expiry timestamp
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + 7);
+        const bannerState = {
+            closed: true,
+            closedAt: Date.now(),
+            expiresAt: expiryDate.getTime()
+        };
+        localStorage.setItem('bannerState', JSON.stringify(bannerState));
+
+        // Remove old key for backwards compatibility
+        localStorage.removeItem('bannerClosed');
     }
 }
 
@@ -461,7 +473,40 @@ function reopenBanner() {
     if (bannerContainer && reopenContainer) {
         bannerContainer.classList.remove('hidden');
         reopenContainer.classList.add('hidden');
-        localStorage.removeItem('bannerClosed');
+        localStorage.removeItem('bannerState');
+        localStorage.removeItem('bannerClosed'); // Remove old key
+    }
+}
+
+function isBannerClosed() {
+    // Check old format for backwards compatibility
+    const oldFormat = localStorage.getItem('bannerClosed') === 'true';
+    if (oldFormat) {
+        // Migrate to new format with expiry
+        closeBanner();
+        return true;
+    }
+
+    // Check new format with expiry
+    const bannerStateStr = localStorage.getItem('bannerState');
+    if (!bannerStateStr) return false;
+
+    try {
+        const bannerState = JSON.parse(bannerStateStr);
+        const now = Date.now();
+
+        // Check if expired (after 7 days)
+        if (now > bannerState.expiresAt) {
+            console.log('✓ Banner auto-reopened after 7 days');
+            localStorage.removeItem('bannerState');
+            return false;
+        }
+
+        return bannerState.closed === true;
+    } catch (e) {
+        console.error('Error parsing banner state:', e);
+        localStorage.removeItem('bannerState');
+        return false;
     }
 }
 
@@ -469,9 +514,8 @@ function reopenBanner() {
 async function initSharedBanner() {
     console.log('🎨 Initializing shared banner...');
 
-    // Check banner state from localStorage
-    const bannerClosed = localStorage.getItem('bannerClosed') === 'true';
-    if (bannerClosed) {
+    // Check banner state with expiry logic
+    if (isBannerClosed()) {
         const bannerContainer = document.getElementById('banner-container');
         const reopenContainer = document.getElementById('banner-reopen-container');
         if (bannerContainer && reopenContainer) {
