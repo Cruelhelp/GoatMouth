@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banner Diagnostic Tool</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #111;
+            color: #0f0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .section {
+            background: #1a1a1a;
+            border: 2px solid #00CB97;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .pass { color: #00ff00; font-weight: bold; }
+        .fail { color: #ff0000; font-weight: bold; }
+        .warning { color: #ffaa00; font-weight: bold; }
+        .info { color: #00aaff; }
+        button {
+            background: #00CB97;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 4px;
+        }
+        button:hover { background: #00e5af; }
+        pre {
+            background: #000;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            color: #0f0;
+        }
+        .test-banner {
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            height: 120px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 GoatMouth Banner Diagnostic Tool</h1>
+
+    <div class="section">
+        <h2>Quick Actions</h2>
+        <button onclick="runFullDiagnostic()">Run Full Diagnostic</button>
+        <button onclick="testBannerRender()">Test Banner Render</button>
+        <button onclick="clearBannerCache()">Clear Banner Cache</button>
+        <button onclick="location.reload()">Reload Page</button>
+    </div>
+
+    <div class="section" id="results">
+        <h2>Diagnostic Results</h2>
+        <p class="info">Click "Run Full Diagnostic" to start...</p>
+    </div>
+
+    <div class="section" id="testArea">
+        <h2>Test Banner Render Area</h2>
+        <div id="testBannerContainer"></div>
+    </div>
+
+    <!-- Load required scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/banner-carousel.js"></script>
+
+    <script>
+        let diagnosticResults = [];
+
+        function log(message, type = 'info') {
+            const colors = {
+                pass: '#00ff00',
+                fail: '#ff0000',
+                warning: '#ffaa00',
+                info: '#00aaff'
+            };
+            diagnosticResults.push({ message, type });
+            console.log(`%c${message}`, `color: ${colors[type]}`);
+        }
+
+        function displayResults() {
+            const resultsDiv = document.getElementById('results');
+            let html = '<h2>Diagnostic Results</h2>';
+
+            diagnosticResults.forEach(result => {
+                html += `<p class="${result.type}">• ${result.message}</p>`;
+            });
+
+            resultsDiv.innerHTML = html;
+        }
+
+        async function runFullDiagnostic() {
+            diagnosticResults = [];
+            log('=== Starting Banner Diagnostic ===', 'info');
+
+            // Test 1: Check if banner container exists
+            const bannerContainer = document.getElementById('banner-container');
+            if (!bannerContainer) {
+                log('✗ FAIL: banner-container element not found in DOM', 'fail');
+                log('  This page might not have a banner container', 'warning');
+            } else {
+                log('✓ PASS: banner-container exists', 'pass');
+                log(`  Classes: ${bannerContainer.className}`, 'info');
+                log(`  Hidden: ${bannerContainer.classList.contains('hidden')}`, 'info');
+            }
+
+            // Test 2: Check if BannerCarousel class loaded
+            if (typeof BannerCarousel === 'undefined') {
+                log('✗ FAIL: BannerCarousel class not loaded', 'fail');
+                log('  Check if banner-carousel.js loaded correctly', 'warning');
+            } else {
+                log('✓ PASS: BannerCarousel class loaded', 'pass');
+            }
+
+            // Test 3: Check if Supabase initialized
+            if (!window.supabaseClient) {
+                log('✗ FAIL: Supabase client not initialized', 'fail');
+                log('  Banner needs Supabase to load from database', 'warning');
+            } else {
+                log('✓ PASS: Supabase client initialized', 'pass');
+            }
+
+            // Test 4: Check if app instance exists
+            if (!window.app) {
+                log('⚠ WARNING: window.app not found', 'warning');
+                log('  This is expected on diagnostic page', 'info');
+            } else {
+                log('✓ PASS: window.app exists', 'pass');
+
+                // Test 4a: Check if banner carousel instance exists
+                if (!window.app.bannerCarousel) {
+                    log('⚠ WARNING: app.bannerCarousel not initialized', 'warning');
+                } else {
+                    log('✓ PASS: app.bannerCarousel initialized', 'pass');
+
+                    // Test 4b: Check banners loaded
+                    if (window.app.bannerCarousel.banners) {
+                        const count = window.app.bannerCarousel.banners.length;
+                        if (count === 0) {
+                            log(`⚠ WARNING: No banners in database (${count} banners)`, 'warning');
+                            log('  Go to admin.html to create a banner', 'info');
+                        } else {
+                            log(`✓ PASS: ${count} banner(s) loaded from database`, 'pass');
+                        }
+                    }
+                }
+            }
+
+            // Test 5: Try to load banners directly
+            if (window.supabaseClient) {
+                log('--- Attempting direct database query ---', 'info');
+                try {
+                    const api = new GoatMouthAPI(window.supabaseClient);
+                    const { data, error } = await api.db
+                        .from('banners')
+                        .select('*')
+                        .eq('active', true)
+                        .order('created_at', { ascending: false });
+
+                    if (error) {
+                        log(`✗ FAIL: Database query error: ${error.message}`, 'fail');
+                    } else {
+                        log(`✓ PASS: Database query successful`, 'pass');
+                        log(`  Found ${data.length} active banner(s)`, 'info');
+
+                        if (data.length > 0) {
+                            log(`  Banner IDs: ${data.map(b => b.id).join(', ')}`, 'info');
+                            data.forEach((banner, i) => {
+                                log(`  Banner ${i + 1}: "${banner.title || 'Untitled'}"`, 'info');
+                                log(`    Image: ${banner.image_url}`, 'info');
+                                log(`    Active: ${banner.active}`, 'info');
+                            });
+                        } else {
+                            log('⚠ No active banners found in database', 'warning');
+                            log('  Create a banner in admin panel:', 'info');
+                            log('  1. Go to admin.html', 'info');
+                            log('  2. Click "Banners" tab', 'info');
+                            log('  3. Upload image and set details', 'info');
+                            log('  4. Mark as "Active"', 'info');
+                            log('  5. Click "Save Banner"', 'info');
+                        }
+                    }
+                } catch (err) {
+                    log(`✗ FAIL: Exception during database query: ${err.message}`, 'fail');
+                }
+            }
+
+            // Test 6: Check localStorage
+            const bannerClosed = localStorage.getItem('bannerClosed');
+            if (bannerClosed === 'true') {
+                log('⚠ WARNING: Banner previously closed by user', 'warning');
+                log('  localStorage.bannerClosed = true', 'info');
+            } else {
+                log('✓ PASS: Banner not closed in localStorage', 'pass');
+            }
+
+            // Test 7: Check CSS
+            if (bannerContainer) {
+                const styles = window.getComputedStyle(bannerContainer);
+                log('--- Banner Container CSS ---', 'info');
+                log(`  display: ${styles.display}`, 'info');
+                log(`  position: ${styles.position}`, 'info');
+                log(`  z-index: ${styles.zIndex}`, 'info');
+                log(`  margin-top: ${styles.marginTop}`, 'info');
+                log(`  visibility: ${styles.visibility}`, 'info');
+                log(`  height: ${styles.height}`, 'info');
+            }
+
+            displayResults();
+        }
+
+        async function testBannerRender() {
+            log('=== Testing Banner Render ===', 'info');
+
+            const testContainer = document.getElementById('testBannerContainer');
+
+            if (!window.supabaseClient) {
+                testContainer.innerHTML = '<p class="fail">Cannot test: Supabase not initialized</p>';
+                return;
+            }
+
+            // Create test banner
+            const testBanner = {
+                id: 'test-' + Date.now(),
+                title: 'Test Banner',
+                description: 'This is a test banner to verify rendering works',
+                image_url: 'https://via.placeholder.com/1920x120/1f2937/00CB97?text=TEST+BANNER',
+                active: true,
+                custom_position_x: 50,
+                custom_position_y: 50,
+                image_fit: 'cover'
+            };
+
+            try {
+                // Create mock app object if it doesn't exist
+                const mockApp = window.app || {
+                    api: new GoatMouthAPI(window.supabaseClient)
+                };
+
+                const carousel = new BannerCarousel(mockApp);
+                carousel.banners = [testBanner];
+
+                // Create container structure
+                testContainer.innerHTML = `
+                    <div id="test-banner-container" class="banner-placeholder">
+                        <button class="banner-close-btn hidden">×</button>
+                        <div class="banner-content"></div>
+                    </div>
+                `;
+
+                const container = document.getElementById('test-banner-container');
+                carousel.render(container);
+
+                log('✓ Test banner rendered successfully!', 'pass');
+                log('  If you see a banner above, rendering works', 'info');
+                log('  Issue is likely: no banners in database', 'warning');
+            } catch (err) {
+                log(`✗ FAIL: Error rendering test banner: ${err.message}`, 'fail');
+                testContainer.innerHTML = `<p class="fail">Error: ${err.message}</p>`;
+            }
+
+            displayResults();
+        }
+
+        function clearBannerCache() {
+            localStorage.removeItem('bannerClosed');
+            log('✓ Cleared localStorage.bannerClosed', 'pass');
+            log('  Reload page to see banner if it was closed', 'info');
+            displayResults();
+        }
+
+        // Auto-run diagnostic on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(runFullDiagnostic, 1000);
+        });
+    </script>
+</body>
+</html>

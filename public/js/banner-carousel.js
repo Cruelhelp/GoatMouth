@@ -28,24 +28,22 @@ class BannerCarousel {
 
     render(container) {
         if (!this.banners || this.banners.length === 0) {
-            container.innerHTML = '';
+            // Hide banner container if no banners
+            const bannerContent = container.querySelector('.banner-content');
+            if (bannerContent) {
+                bannerContent.innerHTML = '';
+            }
+            container.classList.add('hidden');
             return;
         }
 
         const isMobile = window.innerWidth <= 768;
 
-        container.innerHTML = `
+        // Find the banner-content div or use container directly
+        const targetDiv = container.querySelector('.banner-content') || container;
+
+        targetDiv.innerHTML = `
             <div class="banner-carousel mb-8 relative overflow-hidden rounded-2xl" style="background: linear-gradient(135deg, #1f2937 0%, #111827 100%);">
-                <!-- Close Button -->
-                <button class="banner-close-btn" title="Close banner">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-
-                <!-- Loading Spinner -->
-                <div class="banner-loading hidden absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 z-20">
-                    <div class="spinner-glow"></div>
-                </div>
-
                 <!-- Banner Container -->
                 <div class="banner-slides relative" style="height: ${isMobile ? '100px' : '120px'};">
                     ${this.banners.map((banner, index) => this.renderBannerSlide(banner, index)).join('')}
@@ -75,6 +73,15 @@ class BannerCarousel {
                 ` : ''}
             </div>
         `;
+
+        // Make sure container is visible
+        container.classList.remove('hidden');
+
+        // Show close button
+        const closeBtn = container.querySelector('.banner-close-btn');
+        if (closeBtn) {
+            closeBtn.classList.remove('hidden');
+        }
 
         // Check if banner was previously closed
         this.checkBannerState();

@@ -184,7 +184,7 @@
 
 
     <!-- Main Content -->
-    <main class="w-full max-w-[1920px] mx-auto px-2 pb-20 pt-[120px]">
+    <main class="w-full max-w-[1920px] mx-auto px-2 pb-20 main-content-padding">
         <div class="content-wrapper">
             <!-- Left Column: Banner and Content -->
             <div class="main-column">
@@ -267,6 +267,20 @@
             } catch (error) {
                 console.error('Auth check error:', error);
                 updateHeaderUI(null, null);
+            }
+
+            // Initialize banner carousel
+            if (window.BannerCarousel) {
+                const bannerContainer = document.getElementById('banner-container');
+                if (bannerContainer) {
+                    const mockApp = { api: api };
+                    const bannerCarousel = new BannerCarousel(mockApp);
+                    await bannerCarousel.loadBanners();
+
+                    if (bannerCarousel.banners && bannerCarousel.banners.length > 0) {
+                        bannerCarousel.render(bannerContainer);
+                    }
+                }
             }
 
             // Banner button event listeners

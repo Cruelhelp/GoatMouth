@@ -529,7 +529,7 @@
     </div>
 
     <!-- Main Content -->
-    <main class="w-full max-w-[1920px] mx-auto px-2 pb-20 pt-[120px]">
+    <main class="w-full max-w-[1920px] mx-auto px-2 pb-20 main-content-padding">
         <div class="market-container">
 
             <!-- Breadcrumb Navigation -->
@@ -957,7 +957,22 @@
 
     <!-- Copy to Clipboard Functionality -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Initialize banner carousel
+            if (window.supabaseClient && window.GoatMouthAPI && window.BannerCarousel) {
+                const bannerContainer = document.getElementById('banner-container');
+                if (bannerContainer) {
+                    const api = new GoatMouthAPI(window.supabaseClient);
+                    const mockApp = { api: api };
+                    const bannerCarousel = new BannerCarousel(mockApp);
+                    await bannerCarousel.loadBanners();
+
+                    if (bannerCarousel.banners && bannerCarousel.banners.length > 0) {
+                        bannerCarousel.render(bannerContainer);
+                    }
+                }
+            }
+
             const copyBtn = document.getElementById('copy-market-id');
 
             if (copyBtn) {

@@ -892,7 +892,7 @@
     <div id="header-container" data-page="voting"></div>
 
     <!-- Main Content -->
-    <main class="w-full max-w-[1920px] mx-auto px-2 pb-20 pt-[120px]">
+    <main class="w-full max-w-[1920px] mx-auto px-2 pb-20 main-content-padding">
         <div class="content-wrapper">
             <!-- Left Column: Main Content -->
             <div class="main-column">
@@ -1059,7 +1059,22 @@
             }
 
             // Wait for full page load before initializing
-            function initVotingSystem() {
+            async function initVotingSystem() {
+                // Initialize banner carousel
+                if (window.supabaseClient && window.GoatMouthAPI && window.BannerCarousel) {
+                    const bannerContainer = document.getElementById('banner-container');
+                    if (bannerContainer) {
+                        const api = new GoatMouthAPI(window.supabaseClient);
+                        const mockApp = { api: api };
+                        const bannerCarousel = new BannerCarousel(mockApp);
+                        await bannerCarousel.loadBanners();
+
+                        if (bannerCarousel.banners && bannerCarousel.banners.length > 0) {
+                            bannerCarousel.render(bannerContainer);
+                        }
+                    }
+                }
+
                 // Check if proposals-container exists before initializing
                 const checkContainer = setInterval(() => {
                     const container = document.getElementById('proposals-container');
