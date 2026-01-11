@@ -119,6 +119,25 @@
             text-transform: uppercase;
         }
 
+        /* User info buttons - Desktop */
+        .user-info .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .user-info .btn i {
+            display: inline-block;
+            font-size: 14px;
+            color: var(--fg);
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .user-info .btn .btn-text {
+            display: inline-block;
+        }
+
         /* Menu bar - Single unified navigation */
         .menubar {
             height: 48px;
