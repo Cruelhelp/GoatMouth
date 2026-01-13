@@ -13,6 +13,8 @@ class MarketDetailModal {
     }
 
     async show() {
+        this.render({ isLoading: true });
+
         try {
             const [market, odds] = await Promise.all([
                 this.app.api.getMarket(this.marketId),
@@ -22,11 +24,12 @@ class MarketDetailModal {
             this.marketOdds = odds ? odds.data : null;
             this.render();
         } catch (error) {
-            alert('Error loading market: ' + error.message);
+            this.render({ errorMessage: 'Error loading market details. Please try again.' });
         }
     }
 
-    render() {
+    render(options = {}) {
+        const { isLoading = false, errorMessage = '' } = options;
         const existingModal = document.querySelector('.modal-backdrop');
         if (existingModal) {
             existingModal.remove();
@@ -45,7 +48,13 @@ class MarketDetailModal {
         modal.style.overflowY = 'auto';
         modal.style.overflowX = 'hidden';
 
-        modal.innerHTML = this.getHTML();
+        if (isLoading) {
+            modal.innerHTML = this.getLoadingHTML();
+        } else if (errorMessage) {
+            modal.innerHTML = this.getErrorHTML(errorMessage);
+        } else {
+            modal.innerHTML = this.getHTML();
+        }
 
         document.body.appendChild(modal);
 
@@ -59,11 +68,15 @@ class MarketDetailModal {
             }
         });
 
-        // Attach event listeners
-        this.attachListeners(modal);
+        this.attachCloseListener(modal);
 
-        // Load comments
-        this.loadComments(modal);
+        if (!isLoading && !errorMessage) {
+            // Attach event listeners
+            this.attachListeners(modal);
+
+            // Load comments
+            this.loadComments(modal);
+        }
     }
 
     closeModal(modal) {
@@ -71,6 +84,13 @@ class MarketDetailModal {
             modal.remove();
         }
         document.body.style.overflow = '';
+    }
+
+    attachCloseListener(modal) {
+        const closeBtn = modal.querySelector('[data-action="close-modal"]');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.closeModal(modal));
+        }
     }
 
     formatDecimalOdds(odds) {
@@ -448,11 +468,56 @@ class MarketDetailModal {
         `;
     }
 
+    getLoadingHTML() {
+        return `
+            <div class="bg-gray-800 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto mobile-market-modal" style="margin: 1rem; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); position: relative; scrollbar-width: none; -ms-overflow-style: none;">
+                <style>
+                    .mobile-market-modal::-webkit-scrollbar {
+                        display: none;
+                    }
+                </style>
+                <button data-action="close-modal"
+                        class="absolute z-50 text-white font-bold transition touch-target"
+                        style="top: 12px; right: 12px; width: 40px; height: 40px; background: rgba(239, 68, 68, 0.9); border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.2); display: flex; align-items: center; justify-content: center; font-size: 24px; line-height: 1; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+                    &times;
+                </button>
+                <div class="p-6">
+                    <div class="text-center py-16">
+                        <div class="inline-block animate-spin mb-4">
+                            <i class="fa-solid fa-spinner text-3xl" style="color: #00CB97;"></i>
+                        </div>
+                        <p class="text-sm" style="color: rgb(156, 163, 175);">Loading market details...</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    getErrorHTML(message) {
+        return `
+            <div class="bg-gray-800 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto mobile-market-modal" style="margin: 1rem; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); position: relative; scrollbar-width: none; -ms-overflow-style: none;">
+                <style>
+                    .mobile-market-modal::-webkit-scrollbar {
+                        display: none;
+                    }
+                </style>
+                <button data-action="close-modal"
+                        class="absolute z-50 text-white font-bold transition touch-target"
+                        style="top: 12px; right: 12px; width: 40px; height: 40px; background: rgba(239, 68, 68, 0.9); border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.2); display: flex; align-items: center; justify-content: center; font-size: 24px; line-height: 1; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+                    &times;
+                </button>
+                <div class="p-6">
+                    <div class="text-center py-12 rounded-lg border" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%); border: 1px solid rgba(239, 68, 68, 0.3);">
+                        <i class="fa-solid fa-exclamation-triangle text-3xl mb-3" style="color: rgb(248, 113, 113);"></i>
+                        <p style="color: rgb(248, 113, 113);">${this.escapeHtml(message)}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     attachListeners(modal) {
-        const closeBtn = modal.querySelector('[data-action="close-modal"]');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => this.closeModal(modal));
-        }
+        this.attachCloseListener(modal);
 
         // Share menu toggle
         const shareMenuBtn = modal.querySelector('#share-menu-btn');

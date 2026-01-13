@@ -90,6 +90,100 @@
             overflow: hidden;
         }
 
+        .market-hero-content {
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0.1) 100%);
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            backdrop-filter: blur(6px);
+        }
+
+        .market-hero-tint {
+            background: linear-gradient(180deg, rgba(0, 140, 70, 0.22) 0%, rgba(0, 90, 50, 0.35) 100%);
+            mix-blend-mode: multiply;
+            pointer-events: none;
+        }
+
+        .chart-price-label {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+
+        #market-description {
+            white-space: pre-wrap;
+            max-height: none;
+            overflow: visible;
+        }
+
+        #market-description-toggle {
+            margin: 0.1rem auto 0.4rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #ffffff;
+            opacity: 0.9;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        #market-description-toggle:hover {
+            opacity: 1;
+        }
+
+        #market-description-toggle .chevron {
+            font-size: 0.9rem;
+            line-height: 1;
+            transform: translateY(1px);
+            transition: transform 0.2s ease;
+        }
+
+        #market-description p:last-child,
+        #about-description p:last-child {
+            margin-bottom: 0;
+        }
+
+        .market-hero-stats {
+            margin-top: 0.5rem;
+        }
+
+        .odds-card {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(180deg, rgba(10, 15, 26, 0.65) 0%, rgba(10, 15, 26, 0.8) 100%);
+            border: 1px solid rgba(148, 163, 184, 0.08);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+        }
+
+        .odds-card-yes {
+            background: linear-gradient(180deg, rgba(2, 122, 64, 0.28) 0%, rgba(2, 122, 64, 0.16) 100%);
+        }
+
+        .odds-card-no {
+            background: linear-gradient(180deg, rgba(127, 29, 29, 0.28) 0%, rgba(127, 29, 29, 0.16) 100%);
+        }
+
+        .odds-card::before {
+            content: '';
+            position: absolute;
+            inset: -40% 0 0 0;
+            opacity: 0.28;
+            pointer-events: none;
+        }
+
+        .odds-card-yes::before {
+            background: radial-gradient(circle at 20% 10%, rgba(16, 185, 129, 0.35) 0%, rgba(16, 185, 129, 0.05) 60%, transparent 70%);
+        }
+
+        .odds-card-no::before {
+            background: radial-gradient(circle at 20% 10%, rgba(239, 68, 68, 0.35) 0%, rgba(239, 68, 68, 0.05) 60%, transparent 70%);
+        }
+
+        .odds-card > * {
+            position: relative;
+            z-index: 1;
+        }
+
         .stat-badge {
             display: inline-flex;
             align-items: center;
@@ -389,11 +483,30 @@
 
             .section-card:last-child, .chart-container:last-child {
                 border-bottom: 1px solid rgba(0, 203, 151, 0.1);
-                border-radius: 0 0 0.75rem 0.75rem;
+                border-radius: 0;
             }
 
             .section-card:first-child, .chart-container:first-child {
-                border-radius: 0.75rem 0.75rem 0 0;
+                border-radius: 0;
+            }
+
+            .current-odds-card {
+                margin-top: 0;
+                border-top: 1px solid rgba(0, 203, 151, 0.1);
+                padding-top: 1rem;
+                z-index: 1;
+                clear: both;
+            }
+
+            .chart-container {
+                z-index: 2;
+                margin-bottom: 0;
+                border-bottom: 1px solid rgba(0, 203, 151, 0.1);
+                border-radius: 0;
+            }
+
+            .current-odds-card {
+                border-radius: 0;
             }
 
             .sidebar-card {
@@ -486,9 +599,9 @@
                 position: relative;
                 width: 100%;
                 max-width: 100%;
-                height: 280px;
-                overflow: visible;
-                padding: 0;
+                height: auto;
+                overflow: hidden;
+                padding: 0 0 1.5rem 0;
             }
 
             .chart-container canvas {
@@ -501,16 +614,29 @@
             #priceChart {
                 max-width: 100% !important;
                 width: 100% !important;
-                height: 100% !important;
+                height: 300px !important;
+                overflow: hidden !important;
             }
 
             /* Ensure chart axes are visible */
             .chart-container > div {
-                overflow: visible !important;
+                overflow: hidden !important;
             }
 
             .chart-container table {
                 width: 100% !important;
+            }
+
+            .chart-container,
+            .chart-container * {
+                overflow: hidden !important;
+                scrollbar-width: none;
+            }
+
+            .chart-container::-webkit-scrollbar,
+            .chart-container *::-webkit-scrollbar {
+                width: 0;
+                height: 0;
             }
         }
     </style>
@@ -567,10 +693,12 @@
                     <div id="hero-bg-image" class="absolute inset-0 z-[1] opacity-0 transition-opacity duration-300"></div>
 
                     <!-- Dark green overlay -->
-                    <div class="absolute inset-0 bg-gradient-to-br from-[rgba(2,122,64,0.3)] to-[rgba(0,0,0,0.4)] z-[2]"></div>
+                    <div class="absolute inset-0 bg-gradient-to-br from-[rgba(0,180,90,0.35)] to-[rgba(0,120,60,0.65)] z-[2]"></div>
+                    <!-- Green tint -->
+                    <div class="absolute inset-0 market-hero-tint z-[2]"></div>
 
                     <!-- Content (relative to appear above background) -->
-                    <div class="relative z-[3]">
+                    <div class="relative z-[3] market-hero-content">
                         <div class="flex items-center gap-2 mb-2">
                             <span id="category-badge" class="text-xs px-2.5 py-1 rounded-md font-semibold bg-[rgba(2,122,64,0.85)] text-white border border-[rgba(0,203,151,0.4)] backdrop-blur-[10px]">
                                 Category
@@ -582,12 +710,16 @@
                         <h1 id="market-title" class="text-2xl md:text-3xl font-extrabold mb-2 leading-tight text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.8),0_0_20px_rgba(0,0,0,0.6)]">
                             Loading...
                         </h1>
-                        <p id="market-description" class="text-sm leading-relaxed mb-3 text-gray-200 [text-shadow:0_1px_8px_rgba(0,0,0,0.8)]">
+                        <div id="market-description" class="text-sm leading-relaxed mb-3 text-gray-200 [text-shadow:0_1px_8px_rgba(0,0,0,0.8)]">
                             Loading description...
-                        </p>
+                        </div>
+                        <button id="market-description-toggle" class="hidden" type="button">
+                            <span class="toggle-text">Show more</span>
+                            <span class="chevron">▾</span>
+                        </button>
 
                         <!-- Market Stats Row -->
-                        <div class="flex flex-wrap gap-2">
+                        <div class="flex flex-wrap gap-2 market-hero-stats">
                             <div class="stat-badge bg-black/75 backdrop-blur-[10px] border border-goat-teal/25">
                                 <i class="ri-line-chart-line text-goat-teal"></i>
                                 <span class="text-gray-300">Volume:</span>
@@ -626,7 +758,7 @@
                             </div>
                             <div class="relative">
                                 <!-- Y-axis label -->
-                                <div class="absolute left-[-30px] top-1/2 -translate-y-1/2 -rotate-90 text-[11px] font-semibold text-gray-400 whitespace-nowrap">
+                                <div class="absolute left-[-30px] top-1/2 -translate-y-1/2 chart-price-label text-[11px] font-semibold text-gray-400 whitespace-nowrap">
                                     PRICE (¢)
                                 </div>
                                 <!-- Chart container -->
@@ -639,17 +771,17 @@
                         </div>
 
                         <!-- Current Odds -->
-                        <div class="section-card mt-4">
+                        <div class="section-card mt-4 current-odds-card">
                             <h3 class="text-xl font-bold mb-4">Current Odds</h3>
                             <div class="grid grid-cols-2 gap-4">
                                 <!-- YES Odds -->
-                                <div class="text-center p-6 rounded-xl bg-gradient-to-br from-goat-teal/10 to-goat-teal/5 border-2 border-goat-teal/30">
+                                <div class="text-center p-6 rounded-xl odds-card odds-card-yes">
                                     <div class="text-sm font-semibold text-green-400 mb-2">YES</div>
-                                    <div class="price-indicator text-goat-teal" id="yes-price">--¢</div>
+                                    <div class="price-indicator text-green-400" id="yes-price">--¢</div>
                                     <div class="text-sm text-gray-400 mt-2" id="yes-profit">--% profit</div>
                                 </div>
                                 <!-- NO Odds -->
-                                <div class="text-center p-6 rounded-xl bg-gradient-to-br from-red-500/10 to-red-500/5 border-2 border-red-500/30">
+                                <div class="text-center p-6 rounded-xl odds-card odds-card-no">
                                     <div class="text-sm font-semibold text-red-400 mb-2">NO</div>
                                     <div class="price-indicator text-red-500" id="no-price">--¢</div>
                                     <div class="text-sm text-gray-400 mt-2" id="no-profit">--% profit</div>
@@ -678,9 +810,9 @@
                             <!-- Market Description -->
                             <div class="mb-5">
                                 <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">Description</h4>
-                                <p class="text-gray-300 leading-relaxed" id="about-description">
+                                <div class="text-gray-300 leading-relaxed" id="about-description">
                                     This market will resolve based on official announcements and verified sources.
-                                </p>
+                                </div>
                             </div>
 
                             <!-- Resolution Criteria -->
@@ -853,18 +985,18 @@
                                     </div>
 
                                     <!-- Bet summary -->
-                                    <div id="bet-summary" class="hidden mb-4 p-3 rounded-lg bet-summary-yes">
-                                        <div class="flex justify-between text-sm mb-2">
-                                            <span class="text-gray-400">Payout</span>
-                                            <span class="font-semibold" id="summary-shares">-</span>
-                                        </div>
-                                        <div class="flex justify-between text-sm mb-2">
-                                            <span class="text-gray-400">Odds</span>
-                                            <span class="font-semibold" id="summary-price">-</span>
-                                        </div>
-                                        <div class="flex justify-between text-sm pt-2 border-t border-green-700">
-                                            <span class="font-semibold">Profit</span>
-                                            <span class="font-bold" id="summary-profit">-</span>
+                                    <div id="bet-summary" class="hidden mb-4 p-4 rounded-lg bet-summary-yes">
+                                        <div class="flex items-start justify-between gap-4">
+                                            <div>
+                                                <div class="text-xs uppercase tracking-wide text-gray-400">Estimated profit</div>
+                                                <div class="text-2xl font-bold leading-tight" id="summary-profit">-</div>
+                                            </div>
+                                            <div class="text-right text-xs text-gray-400">
+                                                <div>Total payout</div>
+                                                <div class="text-sm font-semibold text-gray-200" id="summary-shares">-</div>
+                                                <div class="mt-2">Odds</div>
+                                                <div class="text-sm font-semibold text-gray-200" id="summary-price">-</div>
+                                            </div>
                                         </div>
                                     </div>
 

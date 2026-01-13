@@ -32,8 +32,9 @@
     <link rel="stylesheet" href="css/output.css?v=4.4">
     <link rel="stylesheet" href="css/styles.css?v=4.4">
     <link rel="stylesheet" href="css/mobile.css?v=4.4">
-    <link rel="stylesheet" href="css/admin.css">
-    <link rel="stylesheet" href="css/admin-full.css">
+    <link rel="stylesheet" href="css/admin.css?v=4.4">
+    <link rel="stylesheet" href="css/admin-full.css?v=4.4">
+    <link rel="stylesheet" href="css/admin-overrides.css?v=4.4">
     <script>
         // Reserved for future configuration
     </script>
@@ -49,7 +50,7 @@
     <!-- Logo Header -->
     <div class="logo-header">
         <div class="flex items-center gap-3">
-            <button class="hamburger" id="hamburger">
+            <button class="hamburger" id="hamburger" type="button" aria-label="Toggle menu" aria-expanded="false">
                 <span></span>
                 <span></span>
                 <span></span>
@@ -214,9 +215,9 @@
                     <div id="activity-list">
                         <!-- Loading skeleton -->
                         <div class="skeleton-list">
-                            <div class="skeleton-card"></div>
-                            <div class="skeleton-card"></div>
-                            <div class="skeleton-card"></div>
+                            <div class="skeleton skeleton-card"></div>
+                            <div class="skeleton skeleton-card"></div>
+                            <div class="skeleton skeleton-card"></div>
                         </div>
                     </div>
                 </div>
@@ -236,10 +237,10 @@
 
                 <!-- Market Tabs -->
                 <div class="market-tabs">
-                    <button class="market-tab active" data-tab="create" >
+                    <button class="market-tab active" data-tab="create">
                         <i class="fa-solid fa-plus-circle"></i> Create Market
                     </button>
-                    <button class="market-tab" data-tab="all" >
+                    <button class="market-tab" data-tab="all">
                         <i class="fa-solid fa-list"></i> All Markets
                     </button>
                 </div>
@@ -303,7 +304,7 @@
                                     </h4>
 
                                     <div class="market-form-group">
-                                        <label class="market-form-label required">Market Title</label>
+                                        <label class="market-form-label required" for="marketTitle">Market Title</label>
                                         <input
                                             type="text"
                                             class="market-form-input"
@@ -316,13 +317,13 @@
                                     </div>
 
                                     <div class="market-form-group">
-                                        <label class="market-form-label required">Description</label>
-                                        <div id="marketDescriptionEditor" class="bg-admin-bg border-2 border-admin-border rounded-lg min-h-[150px]"></div>
+                                        <div class="market-form-label required">Description</div>
+                                        <div id="marketDescriptionEditor" class="bg-admin-bg border-2 border-admin-border rounded-lg min-h-[240px]"></div>
                                         <div class="market-form-help">Explain the market conditions clearly - supports rich text formatting</div>
                                     </div>
 
                                     <div class="market-form-group">
-                                        <label class="market-form-label required">Category</label>
+                                        <label class="market-form-label required" for="marketCategory">Category</label>
                                         <select
                                             class="market-form-select"
                                             id="marketCategory"
@@ -330,12 +331,15 @@
                                             onchange="updatePreview()"
                                         >
                                             <option value="">Select category...</option>
-                                            <option value="Sports">Sports</option>
-                                            <option value="Politics">Politics</option>
-                                            <option value="Entertainment">Entertainment</option>
-                                            <option value="Technology">Technology</option>
-                                            <option value="Finance">Finance</option>
-                                            <option value="Other">Other</option>
+                                            <option value="Jamaican Parliament">Jamaican Parliament</option>
+                                            <option value="Dancehall">Dancehall</option>
+                                            <option value="Reggae">Reggae</option>
+                                            <option value="Jamaica Sports">Jamaica Sports</option>
+                                            <option value="Caribbean Cricket">Caribbean Cricket</option>
+                                            <option value="Jamaica Business">Jamaica Business</option>
+                                            <option value="JMD & Crypto">JMD & Crypto</option>
+                                            <option value="Jamaican Culture">Jamaican Culture</option>
+                                            <option value="Caribbean News">Caribbean News</option>
                                         </select>
                                     </div>
                                 </div>
@@ -375,6 +379,7 @@
                                             <input
                                                 type="text"
                                                 class="market-form-input market-option-input"
+                                                name="marketOption1"
                                                 placeholder="Option 1 (e.g., YES)"
                                                 required
                                                 oninput="updatePreview()"
@@ -384,6 +389,7 @@
                                             <input
                                                 type="text"
                                                 class="market-form-input market-option-input"
+                                                name="marketOption2"
                                                 placeholder="Option 2 (e.g., NO)"
                                                 required
                                                 oninput="updatePreview()"
@@ -408,7 +414,7 @@
                                     </h4>
 
                                     <div class="market-form-group">
-                                        <label class="market-form-label required">Resolution Date</label>
+                                        <label class="market-form-label required" for="marketResolutionDate">Resolution Date</label>
                                         <input
                                             type="datetime-local"
                                             class="market-form-input"
@@ -419,7 +425,7 @@
                                     </div>
 
                                     <div class="market-form-group">
-                                        <label class="market-form-label">Initial Liquidity (Optional)</label>
+                                        <label class="market-form-label" for="marketLiquidity">Initial Liquidity (Optional)</label>
                                         <input
                                             type="number"
                                             class="market-form-input"
@@ -432,7 +438,7 @@
                                     </div>
 
                                     <div class="market-form-group">
-                                        <label class="market-form-label">Market Fee (%)</label>
+                                        <label class="market-form-label" for="marketFee">Market Fee (%)</label>
                                         <input
                                             type="number"
                                             class="market-form-input"
@@ -463,11 +469,16 @@
 
                 <!-- All Markets Tab -->
                 <div id="allMarketsTab" class="market-tab-content">
+                    <div class="flex justify-end mb-4">
+                        <button type="button" class="btn secondary" id="cleanMarketDescriptionsBtn">
+                            <i class="fa-solid fa-broom"></i> Clean Descriptions
+                        </button>
+                    </div>
                     <div id="admin-content-markets">
                         <div class="skeleton-list">
-                            <div class="skeleton-card"></div>
-                            <div class="skeleton-card"></div>
-                            <div class="skeleton-card"></div>
+                            <div class="skeleton skeleton-card"></div>
+                            <div class="skeleton skeleton-card"></div>
+                            <div class="skeleton skeleton-card"></div>
                         </div>
                     </div>
                 </div>
@@ -495,10 +506,10 @@
                             </h3>
                             <!-- Preview Mode Toggle -->
                             <div class="flex gap-2 bg-admin-bg2 rounded-lg p-1">
-                                <button id="desktopModeBtn" class="banner-quick-btn active" class="px-4 py-2">
+                                <button id="desktopModeBtn" class="banner-quick-btn active px-4 py-2">
                                     <i class="fa-solid fa-desktop"></i> Desktop
                                 </button>
-                                <button id="mobileModeBtn" class="banner-quick-btn" class="px-4 py-2">
+                                <button id="mobileModeBtn" class="banner-quick-btn px-4 py-2">
                                     <i class="fa-solid fa-mobile-screen-button"></i> Mobile
                                 </button>
                             </div>
@@ -521,7 +532,7 @@
                             <div id="bannerLivePreview" class="banner-live-container">
                                 <div class="flex items-center justify-center h-full text-gray-500 text-center">
                                     <div>
-                                        <i class="fa-solid fa-image" class="text-3xl mb-2 opacity-30"></i>
+                                        <i class="fa-solid fa-image text-3xl mb-2 opacity-30"></i>
                                         <p class="text-[13px]">Select or upload a banner to preview</p>
                                     </div>
                                 </div>
@@ -560,19 +571,19 @@
 
                         <!-- Upload Section -->
                         <div class="banner-control-section">
-                            <label class="banner-control-label">Upload Banner</label>
+                            <label class="banner-control-label" for="bannerUploadInput">Upload Banner</label>
                             <input type="file" id="bannerUploadInput" accept="image/*" class="hidden">
-                            <button class="btn" class="w-full justify-center" id="bannerUploadBtn">
+                            <button class="btn w-full justify-center" id="bannerUploadBtn">
                                 <i class="fa-solid fa-cloud-arrow-up"></i> Choose Image
                             </button>
                             <div id="uploadInfo" class="mt-2 text-[11px] text-gray-500 text-center">
-                                Recommended: 1920×100px
+                                Recommended: 1920??100px
                             </div>
                         </div>
 
                         <!-- Position Presets -->
                         <div class="banner-control-section">
-                            <label class="banner-control-label">Position Presets</label>
+                            <div class="banner-control-label">Position Presets</div>
                             <div class="banner-quick-actions">
                                 <button class="banner-quick-btn" data-position="top">
                                     <i class="fa-solid fa-arrow-up"></i> Top
@@ -588,9 +599,9 @@
 
                         <!-- Fine Tune -->
                         <div class="banner-control-section">
-                            <label class="banner-control-label">Fine Tune</label>
+                            <div class="banner-control-label">Fine Tune</div>
                             <div class="grid grid-cols-3 gap-2">
-                                <button class="banner-quick-btn" class="col-start-2" data-direction="up">
+                                <button class="banner-quick-btn col-start-2" data-direction="up">
                                     <i class="fa-solid fa-chevron-up"></i>
                                 </button>
                                 <button class="banner-quick-btn" data-direction="left">
@@ -602,7 +613,7 @@
                                 <button class="banner-quick-btn" data-direction="right">
                                     <i class="fa-solid fa-chevron-right"></i>
                                 </button>
-                                <button class="banner-quick-btn" class="col-start-2" data-direction="down">
+                                <button class="banner-quick-btn col-start-2" data-direction="down">
                                     <i class="fa-solid fa-chevron-down"></i>
                                 </button>
                             </div>
@@ -610,21 +621,21 @@
 
                         <!-- Image Fit -->
                         <div class="banner-control-section">
-                            <label class="banner-control-label">How Image Fills Container</label>
+                            <div class="banner-control-label">How Image Fills Container</div>
                             <div class="grid gap-2">
-                                <button class="banner-quick-btn active" id="fit-cover" class="text-left p-3">
+                                <button class="banner-quick-btn active text-left p-3" id="fit-cover">
                                     <div class="font-bold mb-0.5">Cover (Recommended)</div>
                                     <div class="text-[10px] opacity-70">Fills container, crops if needed</div>
                                 </button>
-                                <button class="banner-quick-btn" id="fit-contain" class="text-left p-3">
+                                <button class="banner-quick-btn text-left p-3" id="fit-contain">
                                     <div class="font-bold mb-0.5">Contain</div>
                                     <div class="text-[10px] opacity-70">Shows full image, may have empty space</div>
                                 </button>
-                                <button class="banner-quick-btn" id="fit-fill" class="text-left p-3">
+                                <button class="banner-quick-btn text-left p-3" id="fit-fill">
                                     <div class="font-bold mb-0.5">Stretch to Fill</div>
                                     <div class="text-[10px] opacity-70">Stretches to fit exactly</div>
                                 </button>
-                                <button class="banner-quick-btn" id="fit-none" class="text-left p-3">
+                                <button class="banner-quick-btn text-left p-3" id="fit-none">
                                     <div class="font-bold mb-0.5">Original Size</div>
                                     <div class="text-[10px] opacity-70">No scaling, use position controls</div>
                                 </button>
@@ -632,8 +643,8 @@
                         </div>
 
                         <!-- Image Scale (for 'none' fit type) -->
-                        <div class="banner-control-section" id="scaleControls" class="hidden">
-                            <label class="banner-control-label">Image Scale</label>
+                        <div class="banner-control-section hidden" id="scaleControls">
+                            <label class="banner-control-label" for="imageScale">Image Scale</label>
                             <input type="range" id="imageScale" min="50" max="200" value="100" step="10"
                                    class="w-full mb-2"
                                    oninput="updateImageScale(this.value)">
@@ -644,10 +655,10 @@
 
                         <!-- Save Actions -->
                         <div class="banner-control-section">
-                            <button class="btn" class="w-full justify-center bg-green-400" id="saveBannerBtn">
+                            <button class="btn w-full justify-center bg-green-400" id="saveBannerBtn">
                                 <i class="fa-solid fa-floppy-disk"></i> Save Banner
                             </button>
-                            <button class="btn secondary" class="w-full justify-center mt-2" id="clearBannerBtn">
+                            <button class="btn secondary w-full justify-center mt-2" id="clearBannerBtn">
                                 <i class="fa-solid fa-trash"></i> Clear
                             </button>
                         </div>
@@ -675,14 +686,19 @@
                         <h3 class="text-base font-semibold text-white">
                             <i class="fa-solid fa-list"></i> Your Banners
                         </h3>
-                        <button class="btn secondary" data-action="load-banner-list">
-                            <i class="fa-solid fa-rotate"></i> Refresh
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button class="btn secondary btn-sm" id="cleanInvalidBannerUrlsBtn">
+                                <i class="fa-solid fa-broom"></i> Clean Invalid URLs
+                            </button>
+                            <button class="btn secondary" data-action="load-banner-list">
+                                <i class="fa-solid fa-rotate"></i> Refresh
+                            </button>
+                        </div>
                     </div>
                     <div id="bannerListContainer">
                         <div class="skeleton-list">
-                            <div class="skeleton-card"></div>
-                            <div class="skeleton-card"></div>
+                            <div class="skeleton skeleton-card"></div>
+                            <div class="skeleton skeleton-card"></div>
                         </div>
                     </div>
                 </div>
@@ -708,7 +724,7 @@
                         </h3>
                         <div id="votingHeroPreview" class="w-full h-[200px] bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg bg-cover bg-center flex items-center justify-center text-gray-500">
                             <div class="text-center">
-                                <i class="fa-solid fa-image" class="text-5xl opacity-30 mb-3"></i>
+                                <i class="fa-solid fa-image text-5xl opacity-30 mb-3"></i>
                                 <p>No background image set</p>
                             </div>
                         </div>
@@ -720,14 +736,14 @@
                             <i class="fa-solid fa-cloud-arrow-up"></i> Upload New Background
                         </h3>
                         <input type="file" id="votingHeroUpload" accept="image/*" class="hidden">
-                        <button class="btn" class="w-full justify-center mb-4" id="votingHeroUploadBtn">
+                        <button class="btn w-full justify-center mb-4" id="votingHeroUploadBtn">
                             <i class="fa-solid fa-cloud-arrow-up"></i> Choose Image
                         </button>
                         <div class="flex gap-3">
-                            <button class="btn secondary" class="flex-1 justify-center" id="saveVotingHeroBtn">
+                            <button class="btn secondary flex-1 justify-center" id="saveVotingHeroBtn">
                                 <i class="fa-solid fa-save"></i> Save
                             </button>
-                            <button class="btn secondary" class="flex-1 justify-center" id="removeVotingHeroBtn">
+                            <button class="btn secondary flex-1 justify-center" id="removeVotingHeroBtn">
                                 <i class="fa-solid fa-trash"></i> Remove
                             </button>
                         </div>
@@ -749,9 +765,9 @@
                 </div>
                 <div id="admin-content-users">
                     <div class="skeleton-list">
-                        <div class="skeleton-card"></div>
-                        <div class="skeleton-card"></div>
-                        <div class="skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
                     </div>
                 </div>
             </section>
@@ -769,9 +785,9 @@
                 </div>
                 <div id="admin-content-activity">
                     <div class="skeleton-list">
-                        <div class="skeleton-card"></div>
-                        <div class="skeleton-card"></div>
-                        <div class="skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
                     </div>
                 </div>
             </section>
@@ -789,9 +805,9 @@
                 </div>
                 <div id="admin-content-transactions">
                     <div class="skeleton-list">
-                        <div class="skeleton-card"></div>
-                        <div class="skeleton-card"></div>
-                        <div class="skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
                     </div>
                 </div>
             </section>
@@ -809,9 +825,9 @@
                 </div>
                 <div id="admin-content-messages">
                     <div class="skeleton-list">
-                        <div class="skeleton-card"></div>
-                        <div class="skeleton-card"></div>
-                        <div class="skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
                     </div>
                 </div>
             </section>
@@ -829,9 +845,9 @@
                 </div>
                 <div id="admin-content-voting">
                     <div class="skeleton-list">
-                        <div class="skeleton-card"></div>
-                        <div class="skeleton-card"></div>
-                        <div class="skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
                     </div>
                 </div>
             </section>
@@ -850,9 +866,9 @@
 
                 <div id="admin-content-api" class="p-1">
                     <!-- API Health Status -->
-                    <div class="card" class="mb-5">
+                    <div class="card mb-5">
                         <h3 class="flex items-center gap-2.5 mb-[15px]">
-                            <i class="fa-solid fa-heart-pulse" class="text-admin-accent"></i>
+                            <i class="fa-solid fa-heart-pulse text-admin-accent"></i>
                             API Health Status
                         </h3>
                         <div class="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-[15px]">
@@ -886,9 +902,9 @@
                     </div>
 
                     <!-- ML Controls Section -->
-                    <div class="card" class="mb-5">
+                    <div class="card mb-5">
                         <h3 class="flex items-center gap-2.5 mb-[15px]">
-                            <i class="fa-solid fa-brain" class="text-[#9c27b0]"></i>
+                            <i class="fa-solid fa-brain text-[#9c27b0]"></i>
                             Machine Learning Controls
                         </h3>
 
@@ -900,22 +916,22 @@
                                 </h4>
                                 <div class="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-[15px]">
                                     <div>
-                                        <label class="form-label">House Margin (%)</label>
+                                        <label class="form-label" for="ml-house-margin">House Margin (%)</label>
                                         <input type="number" id="ml-house-margin" class="form-input" min="0" max="10" step="0.1" value="2.0">
                                         <small class="text-gray-500 text-[11px]">Platform fee percentage</small>
                                     </div>
                                     <div>
-                                        <label class="form-label">Default Pool Size</label>
+                                        <label class="form-label" for="ml-pool-size">Default Pool Size</label>
                                         <input type="number" id="ml-pool-size" class="form-input" min="100" max="10000" step="100" value="1000">
                                         <small class="text-gray-500 text-[11px]">Liquidity pool initialization</small>
                                     </div>
                                     <div>
-                                        <label class="form-label">Volatility Factor</label>
+                                        <label class="form-label" for="ml-volatility">Volatility Factor</label>
                                         <input type="number" id="ml-volatility" class="form-input" min="0" max="2" step="0.05" value="1.0">
                                         <small class="text-gray-500 text-[11px]">Price sensitivity multiplier</small>
                                     </div>
                                     <div>
-                                        <label class="form-label">Min Liquidity Threshold</label>
+                                        <label class="form-label" for="ml-min-liquidity">Min Liquidity Threshold</label>
                                         <input type="number" id="ml-min-liquidity" class="form-input" min="10" max="500" step="10" value="100">
                                         <small class="text-gray-500 text-[11px]">Minimum pool balance</small>
                                     </div>
@@ -929,7 +945,7 @@
                                 </h4>
                                 <div class="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-[15px]">
                                     <div>
-                                        <label class="form-label">Volume Weight</label>
+                                        <label class="form-label" for="ml-volume-weight">Volume Weight</label>
                                         <input type="range" id="ml-volume-weight" min="0" max="100" value="40"
                                                class="w-full" oninput="document.getElementById('volume-weight-val').textContent = this.value + '%'">
                                         <div class="flex justify-between text-[11px] text-gray-500">
@@ -939,7 +955,7 @@
                                         </div>
                                     </div>
                                     <div>
-                                        <label class="form-label">Momentum Weight</label>
+                                        <label class="form-label" for="ml-momentum-weight">Momentum Weight</label>
                                         <input type="range" id="ml-momentum-weight" min="0" max="100" value="30"
                                                class="w-full" oninput="document.getElementById('momentum-weight-val').textContent = this.value + '%'">
                                         <div class="flex justify-between text-[11px] text-gray-500">
@@ -949,7 +965,7 @@
                                         </div>
                                     </div>
                                     <div>
-                                        <label class="form-label">Sentiment Weight</label>
+                                        <label class="form-label" for="ml-sentiment-weight">Sentiment Weight</label>
                                         <input type="range" id="ml-sentiment-weight" min="0" max="100" value="20"
                                                class="w-full" oninput="document.getElementById('sentiment-weight-val').textContent = this.value + '%'">
                                         <div class="flex justify-between text-[11px] text-gray-500">
@@ -959,7 +975,7 @@
                                         </div>
                                     </div>
                                     <div>
-                                        <label class="form-label">Time Decay Weight</label>
+                                        <label class="form-label" for="ml-time-weight">Time Decay Weight</label>
                                         <input type="range" id="ml-time-weight" min="0" max="100" value="10"
                                                class="w-full" oninput="document.getElementById('time-weight-val').textContent = this.value + '%'">
                                         <div class="flex justify-between text-[11px] text-gray-500">
@@ -982,7 +998,7 @@
                                 <button class="btn secondary" id="test-ml-model">
                                     <i class="fa-solid fa-flask"></i> Test Model
                                 </button>
-                                <button class="btn" id="export-ml-config" class="bg-[#607d8b] text-white">
+                                <button class="btn bg-[#607d8b] text-white" id="export-ml-config">
                                     <i class="fa-solid fa-download"></i> Export Config
                                 </button>
                             </div>
@@ -990,34 +1006,34 @@
                     </div>
 
                     <!-- Market Analytics -->
-                    <div class="card" class="mb-5">
+                    <div class="card mb-5">
                         <h3 class="flex items-center gap-2.5 mb-[15px]">
-                            <i class="fa-solid fa-chart-line" class="text-[#2196f3]"></i>
+                            <i class="fa-solid fa-chart-line text-[#2196f3]"></i>
                             Market Analytics & Insights
                         </h3>
 
                         <div class="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2.5 mb-5">
-                            <div class="stat-card" class="bg-gradient-to-br from-[#667eea] to-[#764ba2]">
+                            <div class="stat-card bg-gradient-to-br from-[#667eea] to-[#764ba2]">
                                 <div class="stat-value" id="total-markets-stat">--</div>
                                 <div class="stat-label">Total Markets</div>
                             </div>
-                            <div class="stat-card" class="bg-gradient-to-br from-[#f093fb] to-[#f5576c]">
+                            <div class="stat-card bg-gradient-to-br from-[#f093fb] to-[#f5576c]">
                                 <div class="stat-value" id="active-markets-stat">--</div>
                                 <div class="stat-label">Active Markets</div>
                             </div>
-                            <div class="stat-card" class="bg-gradient-to-br from-[#4facfe] to-[#00f2fe]">
+                            <div class="stat-card bg-gradient-to-br from-[#4facfe] to-[#00f2fe]">
                                 <div class="stat-value" id="total-volume-stat">--</div>
                                 <div class="stat-label">Total Volume (24h)</div>
                             </div>
-                            <div class="stat-card" class="bg-gradient-to-br from-[#43e97b] to-[#38f9d7]">
+                            <div class="stat-card bg-gradient-to-br from-[#43e97b] to-[#38f9d7]">
                                 <div class="stat-value" id="total-bets-stat">--</div>
                                 <div class="stat-label">Total Bets (24h)</div>
                             </div>
-                            <div class="stat-card" class="bg-gradient-to-br from-[#fa709a] to-[#fee140]">
+                            <div class="stat-card bg-gradient-to-br from-[#fa709a] to-[#fee140]">
                                 <div class="stat-value" id="avg-odds-stat">--</div>
                                 <div class="stat-label">Avg Odds</div>
                             </div>
-                            <div class="stat-card" class="bg-gradient-to-br from-[#30cfd0] to-[#330867]">
+                            <div class="stat-card bg-gradient-to-br from-[#30cfd0] to-[#330867]">
                                 <div class="stat-value" id="liquidity-stat">--</div>
                                 <div class="stat-label">Total Liquidity</div>
                             </div>
@@ -1055,7 +1071,7 @@
                             <button class="btn secondary" id="refresh-market-analytics">
                                 <i class="fa-solid fa-rotate"></i> Refresh Analytics
                             </button>
-                            <button class="btn secondary" id="export-market-data" class="ml-2.5">
+                            <button class="btn secondary ml-2.5" id="export-market-data">
                                 <i class="fa-solid fa-file-export"></i> Export Data
                             </button>
                         </div>
@@ -1064,7 +1080,7 @@
                     <!-- Telemetry & Logs -->
                     <div class="card">
                         <h3 class="flex items-center gap-2.5 mb-[15px]">
-                            <i class="fa-solid fa-terminal" class="text-[#ff9800]"></i>
+                            <i class="fa-solid fa-terminal text-[#ff9800]"></i>
                             API Telemetry & Logs
                         </h3>
                         <div id="telemetry-logs" style="background: #000; color: #0f0; padding: 15px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 12px; max-height: 300px; overflow-y: auto;">
@@ -1087,7 +1103,7 @@
     <!-- Status Bar -->
     <div class="statusbar">
         <div>
-            <i class="fa-solid fa-circle" class="text-green-400 text-[8px]"></i>
+            <i class="fa-solid fa-circle text-green-400 text-[8px]"></i>
             <span>GoatMouth Admin Panel</span>
         </div>
         <div id="status-info">Ready</div>
@@ -1107,6 +1123,7 @@
     <script src="js/api.js"></script>
     <script src="js/shared-components.js"></script>
     <script src="js/auth-guard.js"></script>
+    <script src="js/admin-ui.js"></script>
     <script src="js/admin-banners.js"></script>
     <script src="js/admin.js"></script>
     <script src="js/admin-ml-insights.js"></script>
@@ -1121,13 +1138,24 @@
             if (hamburger) hamburger.classList.toggle('active');
             if (menubar) menubar.classList.toggle('active');
             if (mobileOverlay) mobileOverlay.classList.toggle('active');
+            if (hamburger) {
+                const expanded = hamburger.classList.contains('active');
+                hamburger.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            }
         }
 
         function closeMobileMenu() {
             if (hamburger) hamburger.classList.remove('active');
             if (menubar) menubar.classList.remove('active');
             if (mobileOverlay) mobileOverlay.classList.remove('active');
+            if (hamburger) {
+                hamburger.setAttribute('aria-expanded', 'false');
+            }
         }
+
+        // Ensure inline handlers can access these in all browsers
+        window.toggleMobileMenu = toggleMobileMenu;
+        window.closeMobileMenu = closeMobileMenu;
 
         if (hamburger) hamburger.addEventListener('click', toggleMobileMenu);
         if (mobileOverlay) mobileOverlay.addEventListener('click', closeMobileMenu);
@@ -1154,9 +1182,13 @@
         });
 
         // View switching functionality
-        function switchView(view) {
+        function switchView(view, sourceButton) {
             // Close mobile menu
             closeMobileMenu();
+            window.__pendingAdminView = view;
+            if (view === 'banners') {
+                window.__pendingBannerLoad = true;
+            }
 
             // Remove active class from all buttons
             document.querySelectorAll('.menubar button').forEach(btn => {
@@ -1164,11 +1196,9 @@
             });
 
             // Add active class to clicked button
-            if (event && event.target) {
-                const button = event.target.closest('button');
-                if (button) {
-                    button.classList.add('active');
-                }
+            const activeButton = sourceButton || document.querySelector(`.menubar button[data-view="${view}"]`);
+            if (activeButton) {
+                activeButton.classList.add('active');
             }
 
             // Hide all panels
@@ -1204,6 +1234,10 @@
                 statusInfo.textContent = `Viewing: ${view.charAt(0).toUpperCase() + view.slice(1)}`;
             }
 
+            if (view === 'dashboard' && typeof initDashboardCharts === 'function') {
+                initDashboardCharts();
+            }
+
             // Trigger actual data loading via adminPanel
             if (window.adminPanel) {
                 window.adminPanel.switchView(view);
@@ -1212,6 +1246,9 @@
             // Special handling for banners view
             if (view === 'banners') {
                 console.log('Switching to banners view, will load banners in 500ms...');
+                if (typeof loadBannerList === 'function') {
+                    loadBannerList();
+                }
                 // Wait a bit for the view to render, then load banners
                 setTimeout(() => {
                     console.log('Attempting to load banner list...');
@@ -1232,8 +1269,31 @@
             }
         }
 
+        // Expose for debugging/use elsewhere
+        window.switchView = switchView;
+
+        window.addEventListener('adminPanelReady', () => {
+            const pendingView = window.__pendingAdminView || 'dashboard';
+            switchView(pendingView);
+
+            if (pendingView === 'banners' && typeof loadBannerList === 'function') {
+                loadBannerList();
+            }
+            if (window.__pendingBannerLoad && typeof loadBannerList === 'function') {
+                loadBannerList();
+                window.__pendingBannerLoad = false;
+            }
+            if (pendingView === 'markets' && window.__pendingMarketTab === 'all') {
+                loadAllMarketsFromTab();
+            }
+        });
+
         // Initialize Dashboard Charts
         function initDashboardCharts() {
+            if (typeof Chart === 'undefined') {
+                console.warn('Chart.js not loaded yet; skipping dashboard charts.');
+                return;
+            }
             // Activity Overview Chart (Line Chart)
             const activityCtx = document.getElementById('activityChart');
             if (activityCtx) {
@@ -1343,11 +1403,52 @@
 
         // Initialize charts when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
-            initDashboardCharts();
-            initBannerEditor();
             initEventListeners();
+            try {
+                initDashboardCharts();
+            } catch (error) {
+                console.warn('Dashboard charts failed to initialize:', error);
+            }
+            try {
+                initBannerEditor();
+            } catch (error) {
+                console.warn('Banner editor failed to initialize:', error);
+            }
             // Activity feed is now loaded by admin.js renderDashboard()
         });
+
+        function loadAllMarketsFromTab(retryCount = 0) {
+            const container = document.getElementById('admin-content-markets');
+            if (!container) return;
+
+            if (window.adminPanel && window.adminPanel.api) {
+                window.adminPanel.renderMarkets(container)
+                    .catch(error => console.error('Failed to render markets:', error));
+                return;
+            }
+
+            if (retryCount < 5) {
+                setTimeout(() => loadAllMarketsFromTab(retryCount + 1), 400);
+            }
+        }
+
+        function switchMarketTab(tab) {
+            window.__pendingMarketTab = tab;
+            document.querySelectorAll('.market-tab').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tab);
+            });
+
+            document.querySelectorAll('.market-tab-content').forEach(panel => {
+                panel.classList.toggle('active', panel.id === (tab === 'all' ? 'allMarketsTab' : 'createMarketTab'));
+            });
+
+            if (tab === 'all') {
+                loadAllMarketsFromTab();
+            }
+        }
+
+        window.switchMarketTab = switchMarketTab;
+        window.loadAllMarketsFromTab = loadAllMarketsFromTab;
 
         // Initialize Event Listeners
         function initEventListeners() {
@@ -1371,7 +1472,7 @@
             document.addEventListener('click', (e) => {
                 const posBtn = e.target.closest('[data-position]');
                 if (posBtn && posBtn.classList.contains('banner-quick-btn')) {
-                    setBannerPosition(posBtn.dataset.position);
+                    setBannerPosition(posBtn.dataset.position, posBtn);
                 }
             });
 
@@ -1433,8 +1534,8 @@
             const bannerUploadBtn = document.getElementById('bannerUploadBtn');
             const saveBannerBtn = document.getElementById('saveBannerBtn');
             const clearBannerBtn = document.getElementById('clearBannerBtn');
+            const cleanInvalidBannerUrlsBtn = document.getElementById('cleanInvalidBannerUrlsBtn');
             const checkSystemStatusBtn = document.getElementById('checkSystemStatusBtn');
-            const testDirectDbBtn = document.getElementById('testDirectDbBtn');
             const votingHeroUploadBtn = document.getElementById('votingHeroUploadBtn');
             const saveVotingHeroBtn = document.getElementById('saveVotingHeroBtn');
             const removeVotingHeroBtn = document.getElementById('removeVotingHeroBtn');
@@ -1445,24 +1546,42 @@
             const fitFill = document.getElementById('fit-fill');
             const fitNone = document.getElementById('fit-none');
 
-            if (adminProfileBtn) adminProfileBtn.addEventListener('click', () => adminPanel.showAdminProfileModal());
+            if (adminProfileBtn) {
+                adminProfileBtn.addEventListener('click', () => window.adminPanel?.showAdminProfileModal());
+            }
             if (backToAppBtn) backToAppBtn.addEventListener('click', () => window.location.href = 'index.html');
-            if (addMarketOptionBtn) addMarketOptionBtn.addEventListener('click', addMarketOption);
-            if (resetMarketBtn) resetMarketBtn.addEventListener('click', resetMarketForm);
+            if (addMarketOptionBtn && typeof addMarketOption === 'function') {
+                addMarketOptionBtn.addEventListener('click', addMarketOption);
+            }
+            if (resetMarketBtn && typeof resetMarketForm === 'function') {
+                resetMarketBtn.addEventListener('click', resetMarketForm);
+            }
             if (bannerUploadBtn) bannerUploadBtn.addEventListener('click', () => document.getElementById('bannerUploadInput').click());
-            if (saveBannerBtn) saveBannerBtn.addEventListener('click', saveBanner);
-            if (clearBannerBtn) clearBannerBtn.addEventListener('click', clearBanner);
-            if (checkSystemStatusBtn) checkSystemStatusBtn.addEventListener('click', checkSystemStatus);
-            if (testDirectDbBtn) testDirectDbBtn.addEventListener('click', testDirectDatabaseCall);
+            if (saveBannerBtn && typeof saveBanner === 'function') saveBannerBtn.addEventListener('click', saveBanner);
+            if (clearBannerBtn && typeof clearBanner === 'function') clearBannerBtn.addEventListener('click', clearBanner);
+            if (cleanInvalidBannerUrlsBtn && typeof cleanInvalidBannerUrls === 'function') {
+                cleanInvalidBannerUrlsBtn.addEventListener('click', cleanInvalidBannerUrls);
+            }
+            if (checkSystemStatusBtn && typeof checkSystemStatus === 'function') {
+                checkSystemStatusBtn.addEventListener('click', checkSystemStatus);
+            }
             if (votingHeroUploadBtn) votingHeroUploadBtn.addEventListener('click', () => document.getElementById('votingHeroUpload').click());
-            if (saveVotingHeroBtn) saveVotingHeroBtn.addEventListener('click', saveVotingHeroImage);
-            if (removeVotingHeroBtn) removeVotingHeroBtn.addEventListener('click', removeVotingHeroImage);
-            if (desktopModeBtn) desktopModeBtn.addEventListener('click', () => switchPreviewMode('desktop'));
-            if (mobileModeBtn) mobileModeBtn.addEventListener('click', () => switchPreviewMode('mobile'));
-            if (fitCover) fitCover.addEventListener('click', () => setImageFit('cover'));
-            if (fitContain) fitContain.addEventListener('click', () => setImageFit('contain'));
-            if (fitFill) fitFill.addEventListener('click', () => setImageFit('fill'));
-            if (fitNone) fitNone.addEventListener('click', () => setImageFit('none'));
+            if (saveVotingHeroBtn && typeof saveVotingHeroImage === 'function') {
+                saveVotingHeroBtn.addEventListener('click', saveVotingHeroImage);
+            }
+            if (removeVotingHeroBtn && typeof removeVotingHeroImage === 'function') {
+                removeVotingHeroBtn.addEventListener('click', removeVotingHeroImage);
+            }
+            if (desktopModeBtn && typeof switchPreviewMode === 'function') {
+                desktopModeBtn.addEventListener('click', () => switchPreviewMode('desktop'));
+            }
+            if (mobileModeBtn && typeof switchPreviewMode === 'function') {
+                mobileModeBtn.addEventListener('click', () => switchPreviewMode('mobile'));
+            }
+            if (fitCover && typeof setImageFit === 'function') fitCover.addEventListener('click', () => setImageFit('cover'));
+            if (fitContain && typeof setImageFit === 'function') fitContain.addEventListener('click', () => setImageFit('contain'));
+            if (fitFill && typeof setImageFit === 'function') fitFill.addEventListener('click', () => setImageFit('fill'));
+            if (fitNone && typeof setImageFit === 'function') fitNone.addEventListener('click', () => setImageFit('none'));
         }
 
         // Banner Editor State
@@ -1480,6 +1599,14 @@
             currentBannerId: null,
             previewMode: 'desktop' // 'desktop' or 'mobile'
         };
+
+        function isValidBannerUrl(url) {
+            if (typeof url !== 'string') return false;
+            const trimmed = url.trim();
+            if (!trimmed) return false;
+            if (trimmed.includes('${') || trimmed.includes('%7B') || trimmed.includes('%7D')) return false;
+            return true;
+        }
 
         // Initialize Banner Editor
         function initBannerEditor() {
@@ -1532,7 +1659,7 @@
                 // Get image dimensions
                 const img = new Image();
                 img.onload = function() {
-                    const info = `${this.width}×${this.height}px`;
+                    const info = `${this.width}??${this.height}px`;
                     document.getElementById('uploadInfo').textContent = info;
                 };
                 img.src = e.target.result;
@@ -1565,6 +1692,17 @@
         function updateBannerPreview() {
             const preview = document.getElementById('bannerLivePreview');
             if (!preview || !bannerState.currentImage) return;
+            if (!isValidBannerUrl(bannerState.currentImage)) {
+                preview.innerHTML = `
+                    <div class="flex items-center justify-center h-full text-gray-500 text-center">
+                        <div>
+                            <i class="fa-solid fa-image"></i>
+                            <p class="text-[13px]">Banner image missing or invalid</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
 
             // Get current position based on preview mode
             const currentPosX = bannerState.previewMode === 'mobile' ? bannerState.posX_mobile : bannerState.posX;
@@ -1596,8 +1734,8 @@
                 <img src="${bannerState.currentImage}" style="${imageStyle}">
                 <div class="banner-position-overlay">
                     <div class="banner-position-indicator">
-                        ${Math.round(currentPosX)}% × ${Math.round(currentPosY)}%
-                        ${bannerState.fit === 'none' ? ` • ${bannerState.scale}%` : ''}
+                        ${Math.round(currentPosX)}% ?? ${Math.round(currentPosY)}%
+                        ${bannerState.fit === 'none' ? ` ??? ${bannerState.scale}%` : ''}
                     </div>
                 </div>
             `;
@@ -1675,12 +1813,14 @@
         }
 
         // Set Banner Position (Presets)
-        function setBannerPosition(position) {
+        function setBannerPosition(position, buttonEl) {
             // Update button states
             document.querySelectorAll('.banner-quick-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.closest('button').classList.add('active');
+            if (buttonEl) {
+                buttonEl.classList.add('active');
+            }
 
             let posX = 50, posY = 50;
             switch(position) {
@@ -1925,17 +2065,44 @@
             preview.innerHTML = `
                 <div class="flex items-center justify-center h-full text-gray-500 text-center">
                     <div>
-                        <i class="fa-solid fa-image" class="text-3xl mb-2 opacity-30"></i>
+                        <i class="fa-solid fa-image text-3xl mb-2 opacity-30"></i>
                         <p class="text-[13px]">Select or upload a banner to preview</p>
                     </div>
                 </div>
             `;
 
-            document.getElementById('uploadInfo').textContent = 'Recommended: 1920×100px';
+            document.getElementById('uploadInfo').textContent = 'Recommended: 1920??100px';
             document.getElementById('bannerStatus').textContent = 'Ready';
             document.getElementById('bannerStatus').style.color = 'var(--success)';
 
             updatePositionDisplays();
+        }
+
+        async function cleanInvalidBannerUrls() {
+            if (!confirm('Remove invalid banner image URLs? This will clear placeholders like ${...}.')) {
+                return;
+            }
+
+            const api = window.adminPanel?.api;
+            if (!api || !api.db) {
+                alert('AdminPanel API not available. Please refresh the page.');
+                return;
+            }
+
+            try {
+                const { error } = await api.db
+                    .from('banners')
+                    .update({ image_url: null })
+                    .or('image_url.like.%${%,image_url.ilike.%7B%,image_url.ilike.%7D%');
+
+                if (error) throw error;
+
+                loadBannerList();
+                alert('Invalid banner URLs cleared.');
+            } catch (error) {
+                console.error('Error cleaning invalid banner URLs:', error);
+                alert('Failed to clean invalid banner URLs.');
+            }
         }
 
         // Load Banner List
@@ -1945,7 +2112,7 @@
 
             container.innerHTML = `
                 <div class="text-center p-10 text-gray-500">
-                    <i class="fa-solid fa-circle-notch fa-spin" class="text-3xl mb-4"></i>
+                    <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-4"></i>
                     <p>Loading banners...</p>
                 </div>
             `;
@@ -1985,724 +2152,31 @@
                 if (banners.length === 0) {
                     container.innerHTML = `
                         <div class="text-center p-10 text-gray-500">
-                            <i class="fa-solid fa-image" class="text-5xl opacity-30 mb-4"></i>
+                            <i class="fa-solid fa-image text-5xl opacity-30 mb-4"></i>
                             <p>No banners yet. Upload your first banner above!</p>
                         </div>
                     `;
                     return;
                 }
 
-                container.innerHTML = banners.map(banner => `
-                    <div class="banner-list-item" data-banner-id="${banner.id}" data-banner-url="${banner.image_url || ''}" data-pos-x="${banner.custom_position_x || 50}" data-pos-y="${banner.custom_position_y || 50}" data-fit="${banner.image_fit || 'cover'}" data-scale="${banner.image_scale || 100}" data-pos-x-mobile="${banner.custom_position_x_mobile || 50}" data-pos-y-mobile="${banner.custom_position_y_mobile || 50}">
-                        <div class="banner-list-thumb">
-                            ${banner.image_url ? `<img src="${banner.image_url}" alt="${banner.title || 'Banner'}" class="object-cover">` : '<div class="bg-gray-700 w-full h-full flex items-center justify-center text-gray-500"><i class="fa-solid fa-image"></i></div>'}
-                        </div>
-                        <div class="banner-list-info">
-                            <div class="banner-list-title">${banner.title || 'Untitled Banner'}</div>
-                            <div class="banner-list-meta">
-                                <span style="color: ${banner.active ? 'var(--success)' : 'var(--muted)'}">${banner.active ? '● Active' : '○ Inactive'}</span>
-                                ${banner.custom_position_x ? ` • ${Math.round(banner.custom_position_x)}%×${Math.round(banner.custom_position_y)}%` : ''}
+                container.innerHTML = banners.map(banner => {
+                    const safeImageUrl = isValidBannerUrl(banner.image_url) ? banner.image_url : '';
+                    return `
+                        <div class="banner-list-item" data-banner-id="${banner.id}" data-banner-url="${safeImageUrl}" data-pos-x="${banner.custom_position_x || 50}" data-pos-y="${banner.custom_position_y || 50}" data-fit="${banner.image_fit || 'cover'}" data-scale="${banner.image_scale || 100}" data-pos-x-mobile="${banner.custom_position_x_mobile || 50}" data-pos-y-mobile="${banner.custom_position_y_mobile || 50}">
+                            <div class="banner-list-thumb">
+                                ${safeImageUrl ? `<img src="${safeImageUrl}" alt="${banner.title || 'Banner'}" class="object-cover">` : '<div class="bg-gray-700 w-full h-full flex items-center justify-center text-gray-500"><i class="fa-solid fa-image"></i></div>'}
                             </div>
-                        </div>
-                        <button class="btn secondary btn-sm delete-banner-btn" data-banner-id="${banner.id}">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </div>
-                `).join('');
-
-                console.log('✓ Loaded', banners.length, 'banners');
-            } catch (error) {
-                console.error('Error loading banners:', error);
-                container.innerHTML = `
-                    <div class="text-center p-10 text-red-500">
-                        <i class="fa-solid fa-exclamation-triangle" class="text-3xl mb-4"></i>
-                        <p>Failed to load banners</p>
-                        <p style="font-size: 12px; margin-top: 8px; opacity: 0.8;">${error.message}</p>
-                        <button class="btn secondary" class="mt-3" data-action="load-banner-list">
-                            <i class="fa-solid fa-rotate"></i> Retry
-                        </button>
-                    </div>
-                `;
-            }
-        }
-
-        // Select Banner from List
-        function selectBanner(id, imageUrl, posX = 50, posY = 50, fit = 'cover', scale = 100, posX_mobile = 50, posY_mobile = 50) {
-            bannerState.currentImage = imageUrl;
-            bannerState.currentBannerId = id;
-            bannerState.posX = posX;
-            bannerState.posY = posY;
-            bannerState.posX_mobile = posX_mobile;
-            bannerState.posY_mobile = posY_mobile;
-            bannerState.fit = fit;
-            bannerState.scale = scale;
-
-            // Remember this banner for auto-load
-            localStorage.setItem('lastSelectedBannerId', id);
-
-            // Update fit buttons
-            setImageFit(fit);
-
-            // Update scale slider
-            const scaleInput = document.getElementById('imageScale');
-            if (scaleInput) scaleInput.value = scale;
-            document.getElementById('scaleValue').textContent = scale;
-
-            updateBannerPreview();
-            updatePositionDisplays();
-
-            // Update status
-            document.getElementById('bannerStatus').textContent = 'Loaded';
-            document.getElementById('bannerStatus').style.color = 'var(--info)';
-
-            // Highlight selected
-            document.querySelectorAll('.banner-list-item').forEach(item => {
-                item.classList.remove('selected');
-                if (item.dataset.bannerId === id) {
-                    item.classList.add('selected');
-                }
-            });
-        }
-
-        // Upload Banner Image
-        async function uploadBannerImage(file, api) {
-            try {
-                // Generate unique filename
-                const fileExt = file.name.split('.').pop();
-                const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-                const filePath = `banners/${fileName}`;
-
-                // Upload to Supabase Storage
-                const { data, error } = await api.db.storage
-                    .from('banners')
-                    .upload(filePath, file, {
-                        cacheControl: '3600',
-                        upsert: false
-                    });
-
-                if (error) throw error;
-
-                // Get public URL
-                const { data: urlData } = api.db.storage
-                    .from('banners')
-                    .getPublicUrl(filePath);
-
-                return urlData.publicUrl;
-            } catch (error) {
-                console.error('Error uploading image:', error);
-                throw new Error('Failed to upload image: ' + error.message);
-            }
-        }
-
-        // Delete Banner
-        async function deleteBannerById(id) {
-            if (!confirm('Delete this banner?')) return;
-
-            try {
-                const api = window.adminPanel?.api;
-                if (!api) {
-                    alert('API not available');
-                    return;
-                }
-
-                const { error } = await api.db
-                    .from('banners')
-                    .delete()
-                    .eq('id', id);
-
-                if (error) throw error;
-
-                // Trigger banner reload on main site
-                triggerBannerReloadGlobally();
-
-                loadBannerList();
-
-                // Clear editor if this was the selected banner
-                if (bannerState.currentBannerId === id) {
-                    clearBanner();
-                    localStorage.removeItem('lastSelectedBannerId');
-                }
-            } catch (error) {
-                console.error('Error deleting banner:', error);
-                alert('Failed to delete banner: ' + error.message);
-            }
-        }
-
-        // Trigger banner reload on main site globally
-        function triggerBannerReloadGlobally() {
-            // Use localStorage event to communicate across tabs
-            const timestamp = Date.now();
-            localStorage.setItem('bannerUpdateTrigger', timestamp.toString());
-
-            console.log('Triggered global banner reload at', timestamp);
-
-            // Also dispatch custom event for same-page updates
-            window.dispatchEvent(new CustomEvent('bannersUpdated', {
-                detail: { timestamp }
-            }));
-        }
-
-        // Debug: Check System Status
-        function checkSystemStatus() {
-            const statusEl = document.getElementById('systemStatus');
-
-            const status = {
-                'window.adminPanel': !!window.adminPanel,
-                'window.adminPanel.api': !!(window.adminPanel && window.adminPanel.api),
-                'window.adminPanel.api.db': !!(window.adminPanel && window.adminPanel.api && window.adminPanel.api.db),
-                'window.adminBanners': !!window.adminBanners,
-                'window.adminBanners.api': !!(window.adminBanners && window.adminBanners.api),
-                'window.adminBanners.banners': !!(window.adminBanners && window.adminBanners.banners),
-                'banners count': window.adminBanners?.banners?.length || 0,
-                'window.api': !!window.api,
-            };
-
-            let html = '<div style="display: grid; grid-template-columns: 200px 1fr; gap: 8px;">';
-            for (const [key, value] of Object.entries(status)) {
-                const color = value === true || (typeof value === 'number' && value > 0) ? 'var(--success)' : 'var(--error)';
-                html += `
-                    <div class="text-gray-500">${key}:</div>
-                    <div style="color: ${color}; font-weight: 600;">${value}</div>
-                `;
-            }
-            html += '</div>';
-
-            // Add try direct database call button
-            html += `
-                <button class="btn secondary" class="w-full mt-3 text-xs" id="testDirectDbBtn">
-                    <i class="fa-solid fa-database"></i> Test Direct DB Call
-                </button>
-            `;
-
-            statusEl.innerHTML = html;
-
-            // Also log to console
-            console.log('System Status:', status);
-            console.log('window.adminBanners:', window.adminBanners);
-            console.log('window.api:', window.api);
-        }
-
-        // Test direct database call
-        async function testDirectDatabaseCall() {
-            const statusEl = document.getElementById('systemStatus');
-            statusEl.innerHTML = '<div class="text-yellow-500">Testing database connection...</div>';
-
-            try {
-                const api = window.adminPanel?.api || window.adminBanners?.api || window.api;
-
-                if (!api) {
-                    throw new Error('No API object found');
-                }
-
-                if (!api.db) {
-                    throw new Error('API object has no db property');
-                }
-
-                console.log('Attempting to query banners table...');
-                const { data, error } = await api.db
-                    .from('banners')
-                    .select('*')
-                    .limit(5);
-
-                if (error) {
-                    throw error;
-                }
-
-                statusEl.innerHTML = `
-                    <div style="color: var(--success); margin-bottom: 8px;">
-                        ✓ Database connection successful!
-                    </div>
-                    <div class="text-gray-500">
-                        Found ${data.length} banner(s)
-                    </div>
-                    <pre class="mt-3 p-3 bg-admin-bg rounded-md overflow-x-auto text-[10px]">${JSON.stringify(data, null, 2)}</pre>
-                    <button class="btn" class="w-full mt-3 text-xs" data-action="load-banner-list">
-                        <i class="fa-solid fa-rotate"></i> Load These Banners
-                    </button>
-                `;
-
-                console.log('Database test result:', data);
-            } catch (error) {
-                statusEl.innerHTML = `
-                    <div style="color: var(--error); margin-bottom: 8px;">
-                        ✗ Database test failed
-                    </div>
-                    <div class="text-gray-500 text-[11px]">
-                        ${error.message}
-                    </div>
-                    <pre class="mt-3 p-3 bg-admin-bg rounded-md overflow-x-auto text-[10px] text-red-500">${error.stack || error.toString()}</pre>
-                `;
-                console.error('Database test error:', error);
-            }
-        }
-
-        // Voting Hero Background Functions
-        let votingHeroImageFile = null;
-
-        // Handle file selection
-        document.addEventListener('DOMContentLoaded', () => {
-            const uploadInput = document.getElementById('votingHeroUpload');
-            if (uploadInput) {
-                uploadInput.addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        votingHeroImageFile = file;
-                        // Preview the image
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                            const preview = document.getElementById('votingHeroPreview');
-                            preview.style.backgroundImage = `url('${event.target.result}')`;
-                            preview.innerHTML = '';
-
-                            const status = document.getElementById('votingHeroStatus');
-                            status.innerHTML = `<div class="text-blue-400">✓ Image selected: ${file.name}</div>`;
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                });
-            }
-
-            // Load existing image on panel load
-            loadVotingHeroImage();
-        });
-
-        async function saveVotingHeroImage() {
-            const status = document.getElementById('votingHeroStatus');
-
-            if (!votingHeroImageFile) {
-                status.innerHTML = `<div class="text-yellow-500">⚠ Please select an image first</div>`;
-                return;
-            }
-
-            try {
-                status.innerHTML = `<div class="text-blue-400">Uploading...</div>`;
-
-                // Upload to Supabase storage
-                const fileName = `voting-hero-${Date.now()}.${votingHeroImageFile.name.split('.').pop()}`;
-                const { data, error } = await window.adminPanel.api.db.storage
-                    .from('banners')
-                    .upload(`voting/${fileName}`, votingHeroImageFile, {
-                        cacheControl: '3600',
-                        upsert: false
-                    });
-
-                if (error) throw error;
-
-                // Get public URL
-                const { data: { publicUrl } } = window.adminPanel.api.db.storage
-                    .from('banners')
-                    .getPublicUrl(`voting/${fileName}`);
-
-                // Save URL to localStorage
-                localStorage.setItem('votingHeroBackgroundUrl', publicUrl);
-
-                status.innerHTML = `<div class="text-green-400">✓ Image uploaded successfully!</div>`;
-                votingHeroImageFile = null;
-
-            } catch (error) {
-                console.error('Upload error:', error);
-                status.innerHTML = `<div style="color: var(--error);">✗ Upload failed: ${error.message}</div>`;
-            }
-        }
-
-        function loadVotingHeroImage() {
-            const url = localStorage.getItem('votingHeroBackgroundUrl');
-            if (url) {
-                const preview = document.getElementById('votingHeroPreview');
-                if (preview) {
-                    preview.style.backgroundImage = `url('${url}')`;
-                    preview.innerHTML = '';
-                }
-            }
-        }
-
-        function removeVotingHeroImage() {
-            localStorage.removeItem('votingHeroBackgroundUrl');
-            const preview = document.getElementById('votingHeroPreview');
-            if (preview) {
-                preview.style.backgroundImage = '';
-                preview.innerHTML = `
-                    <div class="text-center">
-                        <i class="fa-solid fa-image" class="text-5xl opacity-30 mb-3"></i>
-                        <p>No background image set</p>
-                    </div>
-                `;
-            }
-            const status = document.getElementById('votingHeroStatus');
-            status.innerHTML = `<div class="text-green-400">✓ Background image removed</div>`;
-        }
-
-        // Market Creation Functions
-        function switchMarketTab(tabOrEvent) {
-            // Determine if called with event or tab string
-            const tab = typeof tabOrEvent === 'string' ? tabOrEvent : tabOrEvent?.target?.dataset?.tab;
-
-            // Update tab buttons
-            document.querySelectorAll('.market-tab').forEach(btn => {
-                btn.classList.remove('active');
-            });
-
-            // Activate the correct tab button
-            const targetBtn = document.querySelector(`.market-tab[data-tab="${tab}"]`);
-            if (targetBtn) {
-                targetBtn.classList.add('active');
-            }
-
-            // Update tab content
-            document.querySelectorAll('.market-tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-
-            if (tab === 'create') {
-                document.getElementById('createMarketTab').classList.add('active');
-            } else if (tab === 'all') {
-                document.getElementById('allMarketsTab').classList.add('active');
-                // Load markets if not already loaded
-                if (window.adminPanel) {
-                    window.adminPanel.switchView('markets');
-                }
-            }
-        }
-
-        function updatePreview() {
-            // Update title
-            const title = document.getElementById('marketTitle').value || 'Market Title';
-            document.getElementById('previewTitle').textContent = title;
-
-            // Update description - get from Quill editor with rich formatting
-            const previewDesc = document.getElementById('previewDescription');
-            if (quillEditor) {
-                const textContent = quillEditor.getText().trim();
-                if (textContent) {
-                    const htmlContent = quillEditor.root.innerHTML;
-                    previewDesc.innerHTML = htmlContent;
-                } else {
-                    previewDesc.textContent = 'Market description will appear here...';
-                }
-            } else {
-                previewDesc.textContent = 'Market description will appear here...';
-            }
-
-            // Update category
-            const category = document.getElementById('marketCategory').value || 'SPORTS';
-            document.getElementById('previewCategory').textContent = category.toUpperCase();
-
-            // Update options
-            const optionInputs = document.querySelectorAll('.market-option-input');
-            const previewOptions = document.getElementById('previewOptions');
-
-            if (optionInputs.length > 0) {
-                const options = Array.from(optionInputs)
-                    .map(input => input.value.trim())
-                    .filter(value => value !== '');
-
-                if (options.length > 0) {
-                    const evenOdds = (100 / options.length).toFixed(0);
-                    previewOptions.innerHTML = options.map(option => `
-                        <div class="preview-option">
-                            <div class="preview-option-label">${option}</div>
-                            <div class="preview-option-odds">${evenOdds}%</div>
-                        </div>
-                    `).join('');
-                } else {
-                    previewOptions.innerHTML = `
-                        <div class="preview-option">
-                            <div class="preview-option-label">YES</div>
-                            <div class="preview-option-odds">50%</div>
-                        </div>
-                        <div class="preview-option">
-                            <div class="preview-option-label">NO</div>
-                            <div class="preview-option-odds">50%</div>
+                            <div class="banner-list-info">
+                                <div class="banner-list-title">${banner.title || 'Untitled Banner'}</div>
+                                <div class="banner-list-meta">
+                                    <span style="color: ${banner.active ? 'var(--success)' : 'var(--muted)'}">${banner.active ? 'Active' : 'Inactive'}</span>
+                                    ${banner.custom_position_x ? ` (${Math.round(banner.custom_position_x)}% x ${Math.round(banner.custom_position_y)}%)` : ''}
+                                </div>
+                            </div>
+                            <button class="btn secondary btn-sm delete-banner-btn" data-banner-id="${banner.id}">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
                         </div>
                     `;
-                }
-            }
-        }
+                }).join('');
 
-        function handleImageUpload(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const previewImage = document.getElementById('previewImage');
-                    previewImage.innerHTML = `<img src="${e.target.result}" alt="Market Image">`;
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function addMarketOption() {
-            const container = document.getElementById('marketOptionsContainer');
-            const optionCount = container.querySelectorAll('.market-option-group').length;
-
-            const optionGroup = document.createElement('div');
-            optionGroup.className = 'market-option-group';
-            optionGroup.innerHTML = `
-                <input
-                    type="text"
-                    class="market-form-input market-option-input"
-                    placeholder="Option ${optionCount + 1}"
-                    oninput="updatePreview()"
-                >
-                <button
-                    type="button"
-                    class="market-option-remove"
-                    data-action="remove-option"
-                >
-                    <i class="fa-solid fa-trash"></i>
-                </button>
-            `;
-
-            container.appendChild(optionGroup);
-            updatePreview();
-        }
-
-        function removeMarketOption(button) {
-            const container = document.getElementById('marketOptionsContainer');
-            const optionGroups = container.querySelectorAll('.market-option-group');
-
-            // Don't allow removing if only 2 options remain
-            if (optionGroups.length <= 2) {
-                alert('Minimum 2 options required');
-                return;
-            }
-
-            button.closest('.market-option-group').remove();
-            updatePreview();
-        }
-
-        function resetMarketForm() {
-            if (confirm('Are you sure you want to reset the form?')) {
-                document.getElementById('createMarketForm').reset();
-
-                // Reset Quill editor
-                if (quillEditor) {
-                    quillEditor.setText('');
-                }
-
-                // Reset preview image
-                document.getElementById('previewImage').innerHTML = '<i class="fa-solid fa-image"></i>';
-
-                // Reset options to default 2
-                const container = document.getElementById('marketOptionsContainer');
-                container.innerHTML = `
-                    <div class="market-option-group">
-                        <input
-                            type="text"
-                            class="market-form-input market-option-input"
-                            placeholder="Option 1 (e.g., YES)"
-                            required
-                            oninput="updatePreview()"
-                        >
-                    </div>
-                    <div class="market-option-group">
-                        <input
-                            type="text"
-                            class="market-form-input market-option-input"
-                            placeholder="Option 2 (e.g., NO)"
-                            required
-                            oninput="updatePreview()"
-                        >
-                    </div>
-                `;
-
-                updatePreview();
-            }
-        }
-
-        // Initialize Quill rich text editor
-        let quillEditor = null;
-
-        // Handle create market form submission
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initialize Quill editor for market description
-            const editorContainer = document.getElementById('marketDescriptionEditor');
-            if (editorContainer && typeof Quill !== 'undefined') {
-                quillEditor = new Quill(editorContainer, {
-                    theme: 'snow',
-                    placeholder: 'Provide detailed information about the market...',
-                    modules: {
-                        toolbar: [
-                            ['bold', 'italic', 'underline', 'strike'],
-                            ['blockquote', 'code-block'],
-                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                            [{ 'header': [1, 2, 3, false] }],
-                            ['link'],
-                            ['clean']
-                        ]
-                    }
-                });
-
-                // Update preview when editor content changes
-                quillEditor.on('text-change', function() {
-                    updatePreview();
-                });
-            }
-
-            const createMarketForm = document.getElementById('createMarketForm');
-            if (createMarketForm) {
-                createMarketForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-
-                    // Gather form data
-                    const title = document.getElementById('marketTitle').value;
-
-                    // Get description from Quill editor
-                    let description = '';
-                    if (quillEditor) {
-                        description = quillEditor.getText().trim();
-                        // Check if editor is empty
-                        if (!description) {
-                            alert('Please provide a market description');
-                            return;
-                        }
-                    } else {
-                        alert('Editor not initialized');
-                        return;
-                    }
-
-                    const category = document.getElementById('marketCategory').value;
-                    const resolutionDate = document.getElementById('marketResolutionDate').value;
-                    const liquidity = document.getElementById('marketLiquidity').value || 0;
-                    const fee = document.getElementById('marketFee').value || 2;
-
-                    // Get options
-                    const optionInputs = document.querySelectorAll('.market-option-input');
-                    const options = Array.from(optionInputs)
-                        .map(input => input.value.trim())
-                        .filter(value => value !== '');
-
-                    if (options.length < 2) {
-                        alert('Please provide at least 2 options');
-                        return;
-                    }
-
-                    // Get image
-                    const imageFile = document.getElementById('marketImage').files[0];
-                    let imageUrl = null;
-
-                    try {
-                        // Upload image if provided
-                        if (imageFile && window.adminPanel) {
-                            const fileName = `market-${Date.now()}.${imageFile.name.split('.').pop()}`;
-                            const { data: uploadData, error: uploadError } = await window.adminPanel.api.db.storage
-                                .from('banners')
-                                .upload(`markets/${fileName}`, imageFile, {
-                                    cacheControl: '3600',
-                                    upsert: false
-                                });
-
-                            if (uploadError) throw uploadError;
-
-                            const { data: { publicUrl } } = window.adminPanel.api.db.storage
-                                .from('banners')
-                                .getPublicUrl(`markets/${fileName}`);
-
-                            imageUrl = publicUrl;
-                        }
-
-                        // Create market
-                        const marketData = {
-                            title,
-                            description,
-                            category,
-                            image_url: imageUrl,
-                            end_date: resolutionDate,
-                            yes_price: 0.5,
-                            no_price: 0.5,
-                            total_volume: 0,
-                            bettor_count: 0,
-                            status: 'active'
-                        };
-
-                        if (window.adminPanel) {
-                            const newMarket = await window.adminPanel.api.createMarket(marketData);
-
-                            if (newMarket && newMarket.id) {
-                                // Redirect to main site market detail page
-                                window.location.href = `index.html?openMarket=${newMarket.id}`;
-                            } else {
-                                alert('Market created successfully!');
-                                // Switch to All Markets tab
-                                switchMarketTab('all');
-                                // Reset form
-                                resetMarketForm();
-                            }
-                        } else {
-                            console.log('Market data:', marketData);
-                            alert('Admin panel not initialized. Market data logged to console.');
-                        }
-
-                    } catch (error) {
-                        console.error('Error creating market:', error);
-                        alert('Failed to create market: ' + error.message);
-                    }
-                });
-            }
-        });
-
-        // Function to clean HTML from market descriptions
-        async function cleanMarketDescriptions() {
-            if (!window.adminPanel || !window.adminPanel.api) {
-                alert('Admin panel not initialized');
-                return;
-            }
-
-            try {
-                // Get all markets
-                const { data: markets, error } = await window.adminPanel.api.db
-                    .from('markets')
-                    .select('*');
-
-                if (error) throw error;
-
-                let cleanedCount = 0;
-
-                for (const market of markets) {
-                    // Check if description contains HTML tags
-                    if (market.description && /<[^>]+>/.test(market.description)) {
-                        // Strip HTML tags and decode entities
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = market.description;
-                        const cleanText = tempDiv.textContent || tempDiv.innerText || '';
-
-                        // Update market with clean description
-                        const { error: updateError } = await window.adminPanel.api.db
-                            .from('markets')
-                            .update({ description: cleanText.trim() })
-                            .eq('id', market.id);
-
-                        if (!updateError) {
-                            cleanedCount++;
-                            console.log(`Cleaned market: ${market.title}`);
-                        } else {
-                            console.error(`Failed to clean market ${market.title}:`, updateError);
-                        }
-                    }
-                }
-
-                alert(`Successfully cleaned ${cleanedCount} market description(s)!`);
-
-                // Reload markets view if active
-                if (window.adminPanel) {
-                    window.adminPanel.switchView('markets');
-                }
-            } catch (error) {
-                console.error('Error cleaning market descriptions:', error);
-                alert('Failed to clean market descriptions: ' + error.message);
-            }
-        }
-
-        // Auto-run cleanup on page load (runs once)
-        document.addEventListener('DOMContentLoaded', () => {
-            // Wait for admin panel to initialize
-            setTimeout(() => {
-                if (window.adminPanel && window.adminPanel.api) {
-                    console.log('Running market description cleanup...');
-                    cleanMarketDescriptions();
-                }
-            }, 3000);
-        });
-    </script>
-</body>
-</html>

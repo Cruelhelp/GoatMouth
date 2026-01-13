@@ -17,6 +17,8 @@ class MarketPage {
         this.quoteTimeout = null;
         this.quoteRequestId = 0;
         this.latestQuote = null;
+        this.oddsPoller = null;
+        this.oddsApiCooldownMs = 5 * 60 * 1000;
 
         this.init();
     }
@@ -65,11 +67,17 @@ class MarketPage {
             // Fetch market data
             this.market = await this.api.getMarket(this.marketId);
 
-            try {
-                const odds = await this.api.getMarketOddsMultiplier(this.marketId);
-                this.marketOdds = odds.data;
-            } catch (error) {
-                this.marketOdds = null;
+            if (!this.shouldSkipOddsFetch()) {
+                try {
+                    const odds = await this.api.getMarketOddsMultiplier(this.marketId);
+                    this.marketOdds = odds.data;
+                    this.cacheOdds(this.marketOdds);
+                } catch (error) {
+                    this.setOddsApiCooldown();
+                    this.marketOdds = this.getCachedOdds();
+                }
+            } else {
+                this.marketOdds = this.getCachedOdds();
             }
 
             if (!this.market) {
@@ -83,6 +91,9 @@ class MarketPage {
 
             // Populate page
             this.populateMarketData();
+
+            // Start live odds polling
+            this.startOddsPolling();
 
             // Wait for chart library to load before initializing
             await this.waitForChartLibrary();
@@ -128,7 +139,7 @@ class MarketPage {
 
         // Hero section
         document.getElementById('market-title').textContent = market.title;
-        document.getElementById('market-description').textContent = market.description || 'No description provided.';
+        this.setHeroDescription(market.description);
         document.getElementById('category-badge').textContent = market.category || 'General';
         document.getElementById('market-id').textContent = market.id;
 
@@ -138,7 +149,7 @@ class MarketPage {
             heroBg.style.backgroundImage = `url('${market.image_url}')`;
             heroBg.style.backgroundSize = 'cover';
             heroBg.style.backgroundPosition = 'center';
-            heroBg.style.filter = 'blur(4px)';
+            heroBg.style.filter = 'blur(2px) brightness(1)';
             // Fade in the background
             setTimeout(() => {
                 heroBg.style.opacity = '1';
@@ -157,16 +168,7 @@ class MarketPage {
         }
 
         // Odds
-        const oddsData = this.marketOdds;
-        const yesOdds = oddsData?.yesOdds ?? (market.yes_price ? (1 / market.yes_price) : 0);
-        const noOdds = oddsData?.noOdds ?? (market.no_price ? (1 / market.no_price) : 0);
-        const yesOddsDisplay = oddsData?.yesOddsFormatted || (yesOdds ? `${yesOdds.toFixed(2)}x` : '--');
-        const noOddsDisplay = oddsData?.noOddsFormatted || (noOdds ? `${noOdds.toFixed(2)}x` : '--');
-
-        document.getElementById('yes-price').textContent = yesOddsDisplay;
-        document.getElementById('no-price').textContent = noOddsDisplay;
-        document.getElementById('yes-profit').textContent = yesOdds ? `${((yesOdds - 1) * 100).toFixed(0)}% profit` : '--';
-        document.getElementById('no-profit').textContent = noOdds ? `${((noOdds - 1) * 100).toFixed(0)}% profit` : '--';
+        this.updateOddsDisplay();
 
         // Sidebar info
         document.getElementById('info-category').textContent = market.category || 'General';
@@ -181,7 +183,8 @@ class MarketPage {
         // About section description
         const aboutDesc = document.getElementById('about-description');
         if (aboutDesc) {
-            aboutDesc.textContent = market.description || 'This market allows traders to speculate on the outcome of this event.';
+            const desc = market.description || 'This market allows traders to speculate on the outcome of this event.';
+            aboutDesc.innerHTML = this.buildDescriptionHtml(desc);
         }
 
         // Market created date
@@ -201,6 +204,200 @@ class MarketPage {
                 marketCloses.textContent = 'Closed';
                 marketCloses.classList.add('text-red-400');
             }
+        }
+    }
+
+    setHeroDescription(description) {
+        const descEl = document.getElementById('market-description');
+        if (!descEl) return;
+
+        const toggleBtn = document.getElementById('market-description-toggle');
+        const normalizedText = this.normalizeDescriptionText(description || '');
+        const fullText = normalizedText.trim();
+
+        if (!fullText) {
+            descEl.textContent = 'No description provided.';
+            if (toggleBtn) toggleBtn.classList.add('hidden');
+            return;
+        }
+
+        const { shortText, isTruncated } = this.getTruncatedDescription(fullText);
+        let isExpanded = false;
+
+        descEl.innerHTML = this.buildDescriptionHtml(shortText);
+
+        if (toggleBtn) {
+            if (!isTruncated) {
+                toggleBtn.classList.add('hidden');
+                return;
+            }
+
+            toggleBtn.classList.remove('hidden');
+            const toggleText = toggleBtn.querySelector('.toggle-text');
+            const toggleChevron = toggleBtn.querySelector('.chevron');
+            if (toggleText) toggleText.textContent = 'Show more';
+            if (toggleChevron) toggleChevron.textContent = '▾';
+            toggleBtn.onclick = () => {
+                isExpanded = !isExpanded;
+                descEl.innerHTML = this.buildDescriptionHtml(isExpanded ? fullText : shortText);
+                if (toggleText) toggleText.textContent = isExpanded ? 'Show less' : 'Show more';
+                if (toggleChevron) toggleChevron.textContent = isExpanded ? '▴' : '▾';
+            };
+        }
+    }
+
+    getTruncatedDescription(text) {
+        const sentences = text.match(/[^.!?]+[.!?]+(?:\s|$)/g);
+        if (sentences && sentences.length > 1) {
+            const shortText = sentences.slice(0, 2).join(' ').trim();
+            if (shortText.length < text.length) {
+                return { shortText, isTruncated: true };
+            }
+        }
+
+        const maxChars = 220;
+        if (text.length > maxChars) {
+            const clipped = text.slice(0, maxChars).replace(/\s+\S*$/, '');
+            return { shortText: `${clipped}...`, isTruncated: true };
+        }
+
+        return { shortText: text, isTruncated: false };
+    }
+
+    normalizeDescriptionText(text) {
+        let normalized = text.replace(/\r\n/g, '\n').replace(/\s+\n/g, '\n');
+        normalized = normalized.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+
+        const headings = [
+            'Resolution Criteria',
+            'Valid confirmation may include',
+            'Non-Qualifying Events',
+            'Edge Cases',
+            'Resolution Sources',
+            'Resolution Source'
+        ];
+
+        headings.forEach((heading) => {
+            const pattern = new RegExp(`\\b${heading}\\b`, 'gi');
+            normalized = normalized.replace(pattern, `\n\n${heading}\n`);
+        });
+
+        normalized = normalized.replace(/\n{3,}/g, '\n\n');
+        return normalized.trim();
+    }
+
+    buildDescriptionHtml(text) {
+        const normalized = this.normalizeDescriptionText(text);
+        if (!normalized) return '';
+
+        const paragraphs = normalized
+            .split(/\n{2,}/)
+            .map((paragraph) => paragraph.replace(/\n/g, ' ').trim())
+            .filter(Boolean);
+
+        return paragraphs
+            .map((paragraph) => `<p class="mb-3">${this.escapeHtmlSafe(paragraph)}</p>`)
+            .join('');
+    }
+
+    escapeHtmlSafe(text) {
+        if (typeof window !== 'undefined' && typeof window.escapeHtml === 'function') {
+            return window.escapeHtml(text);
+        }
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    updateOddsDisplay() {
+        if (!this.market) return;
+
+        const oddsData = this.marketOdds;
+        const yesOdds = oddsData?.yesOdds ?? (this.market.yes_price ? (1 / this.market.yes_price) : 0);
+        const noOdds = oddsData?.noOdds ?? (this.market.no_price ? (1 / this.market.no_price) : 0);
+        const yesOddsDisplay = oddsData?.yesOddsFormatted || (yesOdds ? `${yesOdds.toFixed(2)}x` : '--');
+        const noOddsDisplay = oddsData?.noOddsFormatted || (noOdds ? `${noOdds.toFixed(2)}x` : '--');
+
+        const yesPriceEl = document.getElementById('yes-price');
+        const noPriceEl = document.getElementById('no-price');
+        const yesProfitEl = document.getElementById('yes-profit');
+        const noProfitEl = document.getElementById('no-profit');
+
+        if (yesPriceEl) yesPriceEl.textContent = yesOddsDisplay;
+        if (noPriceEl) noPriceEl.textContent = noOddsDisplay;
+        if (yesProfitEl) {
+            yesProfitEl.textContent = yesOdds ? `${((yesOdds - 1) * 100).toFixed(0)}% profit` : '--';
+        }
+        if (noProfitEl) {
+            noProfitEl.textContent = noOdds ? `${((noOdds - 1) * 100).toFixed(0)}% profit` : '--';
+        }
+    }
+
+    startOddsPolling() {
+        if (!this.marketId) return;
+
+        const pollOnce = async () => {
+            if (this.shouldSkipOddsFetch()) {
+                return;
+            }
+            try {
+                const odds = await this.api.getMarketOddsMultiplier(this.marketId);
+                if (odds && odds.data) {
+                    this.marketOdds = odds.data;
+                    this.cacheOdds(this.marketOdds);
+                    this.updateOddsDisplay();
+                }
+            } catch (error) {
+                this.setOddsApiCooldown();
+            }
+        };
+
+        if (this.oddsPoller) {
+            clearInterval(this.oddsPoller);
+        }
+
+        pollOnce();
+        this.oddsPoller = setInterval(pollOnce, 30000);
+    }
+
+    getOddsCacheKey() {
+        return `odds-cache:${this.marketId}`;
+    }
+
+    cacheOdds(odds) {
+        if (!odds || !this.marketId) return;
+        try {
+            localStorage.setItem(this.getOddsCacheKey(), JSON.stringify(odds));
+        } catch (error) {
+            // Ignore cache write errors
+        }
+    }
+
+    getCachedOdds() {
+        if (!this.marketId) return null;
+        try {
+            const cached = localStorage.getItem(this.getOddsCacheKey());
+            return cached ? JSON.parse(cached) : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    shouldSkipOddsFetch() {
+        try {
+            const cooldownUntil = parseInt(localStorage.getItem('oddsApiDownUntil') || '0', 10);
+            return Number.isFinite(cooldownUntil) && cooldownUntil > Date.now();
+        } catch (error) {
+            return false;
+        }
+    }
+
+    setOddsApiCooldown() {
+        try {
+            const cooldownUntil = Date.now() + this.oddsApiCooldownMs;
+            localStorage.setItem('oddsApiDownUntil', String(cooldownUntil));
+        } catch (error) {
+            // Ignore cache write errors
         }
     }
 

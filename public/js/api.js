@@ -427,19 +427,51 @@ class GoatMouthAPI {
     }
 
     async getAllUsers(filters = {}) {
-        let query = this.db
-            .from('profiles')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(10000); // Ensure we fetch all users (Supabase default limit is 1000)
-
-        if (filters.role) {
-            query = query.eq('role', filters.role);
+        if (this.db?.functions?.invoke) {
+            try {
+                const { data, error } = await this.db.functions.invoke('admin-list-users', {
+                    body: { role: filters.role || null }
+                });
+                if (!error && data && Array.isArray(data.users)) {
+                    return data.users;
+                }
+            } catch (error) {
+                // Fallback to profiles query
+            }
         }
 
-        const { data, error } = await query;
-        if (error) throw error;
-        return data;
+        const pageSize = 1000;
+        let from = 0;
+        let allUsers = [];
+
+        while (true) {
+            let query = this.db
+                .from('profiles')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .range(from, from + pageSize - 1);
+
+            if (filters.role) {
+                query = query.eq('role', filters.role);
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+
+            if (!data || data.length === 0) {
+                break;
+            }
+
+            allUsers = allUsers.concat(data);
+
+            if (data.length < pageSize) {
+                break;
+            }
+
+            from += pageSize;
+        }
+
+        return allUsers;
     }
 
     async updateUserProfile(userId, updates) {
@@ -459,27 +491,23 @@ class GoatMouthAPI {
             throw new Error('Invalid role. Must be "user" or "admin"');
         }
 
-        const { data, error } = await this.db
+        const { error } = await this.db
             .from('profiles')
             .update({ role: newRole })
-            .eq('id', userId)
-            .select()
-            .single();
+            .eq('id', userId);
 
         if (error) throw error;
-        return data;
+        return { id: userId, role: newRole };
     }
 
     async updateUserBalance(userId, newBalance) {
-        const { data, error } = await this.db
+        const { error } = await this.db
             .from('profiles')
             .update({ balance: newBalance })
-            .eq('id', userId)
-            .select()
-            .single();
+            .eq('id', userId);
 
         if (error) throw error;
-        return data;
+        return { id: userId, balance: newBalance };
     }
 
     async deleteUser(userId) {

@@ -13,6 +13,14 @@ class AdminBanners {
         this.currentPosY = 50; // Default center
     }
 
+    isValidImageUrl(url) {
+        if (typeof url !== 'string') return false;
+        const trimmed = url.trim();
+        if (!trimmed) return false;
+        if (trimmed.includes('${') || trimmed.includes('%7B') || trimmed.includes('%7D')) return false;
+        return true;
+    }
+
     async init() {
         await this.loadBanners();
         this.render();
@@ -66,11 +74,12 @@ class AdminBanners {
     }
 
     renderBannerCard(banner) {
+        const safeImageUrl = this.isValidImageUrl(banner.image_url) ? banner.image_url : '';
         return `
             <div class="bg-gray-700 rounded-lg p-4 flex items-center gap-4">
                 <!-- Thumbnail -->
                 <div class="w-32 h-20 bg-gray-600 rounded overflow-hidden flex-shrink-0">
-                    <img src="${banner.image_url}" alt="${banner.title || 'Banner'}" class="w-full h-full object-cover">
+                    ${safeImageUrl ? `<img src="${safeImageUrl}" alt="${banner.title || 'Banner'}" class="w-full h-full object-cover">` : '<div class="w-full h-full flex items-center justify-center text-gray-400 text-xs">No image</div>'}
                 </div>
 
                 <!-- Info -->
@@ -116,6 +125,7 @@ class AdminBanners {
 
     showBannerModal(banner = null) {
         const isEdit = banner !== null;
+        const hasValidImage = banner?.image_url && this.isValidImageUrl(banner.image_url);
 
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
@@ -167,7 +177,7 @@ class AdminBanners {
                             </div>
 
                             <div class="space-y-3">
-                                ${banner?.image_url ? `
+                                ${hasValidImage ? `
                                     <div class="relative w-full h-64 bg-gray-700 rounded-lg overflow-hidden">
                                         <img id="bannerPreview" src="${banner.image_url}" class="w-full h-full object-cover">
                                         <div class="absolute bottom-2 right-2 bg-black bg-opacity-75 px-2 py-1 rounded text-xs text-white" id="imageDimensions">

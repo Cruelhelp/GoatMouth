@@ -376,7 +376,7 @@
     /* Adjust main content for mobile header */
     main {
         margin-left: 0 !important;
-        padding-top: 60px !important;
+        padding-top: 0 !important;
     }
 
     /* Stat cards - stack on mobile */

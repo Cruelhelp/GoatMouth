@@ -18,7 +18,7 @@ class BannerCarousel {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            this.banners = data || [];
+            this.banners = (data || []).filter((banner) => this.isValidImageUrl(banner.image_url));
             return this.banners;
         } catch (error) {
             console.error('Error loading banners:', error);
@@ -109,6 +109,7 @@ class BannerCarousel {
     renderBannerSlide(banner, index) {
         const isActive = index === this.currentIndex;
         const isMobile = window.innerWidth <= 768;
+        const imageUrl = this.isValidImageUrl(banner.image_url) ? banner.image_url : '';
 
         let imageFit = banner.image_fit || 'cover';
 
@@ -137,14 +138,14 @@ class BannerCarousel {
         return `
             <div class="banner-slide absolute inset-0 transition-opacity duration-500 ${isActive ? 'opacity-100' : 'opacity-0'}" data-index="${index}">
                 <!-- Background Image -->
-                <div class="absolute inset-0" style="background-image: url('${banner.image_url}'); background-size: ${imageFit}; background-position: ${cssPosition}; filter: brightness(0.7);"></div>
+                <div class="absolute inset-0" style="background-image: url('${imageUrl}'); background-size: ${imageFit}; background-position: ${cssPosition}; filter: brightness(0.85);"></div>
 
                 <!-- Gradient Overlay -->
-                <div class="absolute inset-0 bg-gradient-to-r from-black via-transparent to-transparent opacity-60"></div>
+                <div class="absolute inset-0 bg-gradient-to-r from-black via-transparent to-transparent opacity-40"></div>
 
                 <!-- Content -->
                 <div class="relative h-full flex items-center px-8 ${isMobile ? 'px-4' : 'px-12'}">
-                    <div class="max-w-2xl">
+                    <div class="max-w-2xl banner-text-panel">
                         ${banner.title ? `
                             <h2 class="text-white font-bold mb-3 ${isMobile ? 'text-2xl' : 'text-4xl'}" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">
                                 ${this.escapeHtml(banner.title)}
@@ -160,6 +161,14 @@ class BannerCarousel {
                 </div>
             </div>
         `;
+    }
+
+    isValidImageUrl(url) {
+        if (typeof url !== 'string') return false;
+        const trimmed = url.trim();
+        if (!trimmed) return false;
+        if (trimmed.includes('${') || trimmed.includes('%7B') || trimmed.includes('%7D')) return false;
+        return true;
     }
 
     renderBannerAction(banner, isMobile) {

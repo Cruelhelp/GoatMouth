@@ -1165,17 +1165,6 @@ class GoatMouth {
             const currentPage = Math.floor(startIndex / this.marketsPerPage) + 1;
 
             container.innerHTML = `
-                <!-- Banner Carousel (only on "all" category) -->
-                ${this.currentCategory === 'all' ? `
-                    <div id="banner-container"></div>
-                    <div id="banner-reopen-container" class="banner-reopen-container hidden">
-                        <button class="banner-reopen-btn" onclick="reopenBanner()" title="Show banner">
-                            <i class="fa-solid fa-image"></i>
-                            <span class="reopen-text">Show Banner</span>
-                        </button>
-                    </div>
-                ` : ''}
-
                 ${this.currentProfile && this.currentProfile.role === 'admin' ? `
                     <div class="mb-6 flex justify-end">
                         <button class="px-4 py-2 rounded-lg text-white transition" style="background-color: #027A40;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'" onclick="app.showCreateMarketModal()">Create Market</button>
@@ -2480,7 +2469,7 @@ class GoatMouth {
                 localStorage.setItem('oauth_redirect', window.location.origin);
 
                 // Use current site's URL with app identifier for redirect
-                const redirectUrl = `${window.location.origin}/index.html?app=goatmouth`;
+                const redirectUrl = `${window.location.origin}/index.html`;
                 console.log('Google OAuth redirect URL:', redirectUrl);
 
                 const { data, error } = await this.api.db.auth.signInWithOAuth({

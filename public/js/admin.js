@@ -5,6 +5,15 @@ class AdminPanel {
         this.currentView = 'dashboard';
         this.currentUser = null;
         this.currentProfile = null;
+        this.lastDashboardData = {
+            transactions: [],
+            markets: [],
+            users: []
+        };
+        this.dashboardCharts = {
+            activity: null,
+            market: null
+        };
     }
 
     async init() {
@@ -23,6 +32,9 @@ class AdminPanel {
 
         // Render initial view
         this.switchView('dashboard');
+
+        // Signal that admin panel is ready for deferred UI loaders.
+        window.dispatchEvent(new Event('adminPanelReady'));
     }
 
     attachListeners() {
@@ -210,28 +222,71 @@ class AdminPanel {
             }
         }
 
+        const userIds = new Set();
+        const marketIds = new Set();
+
+        if (recentBets?.data) {
+            recentBets.data.forEach((bet) => {
+                if (bet.user_id) userIds.add(bet.user_id);
+                if (bet.market_id) marketIds.add(bet.market_id);
+            });
+        }
+
+        if (recentMarkets?.data) {
+            recentMarkets.data.forEach((market) => {
+                if (market.created_by) userIds.add(market.created_by);
+            });
+        }
+
+        if (recentComments?.data) {
+            recentComments.data.forEach((comment) => {
+                if (comment.user_id) userIds.add(comment.user_id);
+                if (comment.market_id) marketIds.add(comment.market_id);
+            });
+        }
+
+        if (recentProposals?.data) {
+            recentProposals.data.forEach((proposal) => {
+                if (proposal.user_id) userIds.add(proposal.user_id);
+            });
+        }
+
+        if (transactions) {
+            transactions.forEach((tx) => {
+                if (tx.user_id) userIds.add(tx.user_id);
+            });
+        }
+
+        const [profilesMap, marketsMap] = await Promise.all([
+            this.buildProfilesMap(Array.from(userIds)),
+            this.buildMarketsMap(Array.from(marketIds))
+        ]);
+
         // Combine all activities into unified feed
         const allActivities = [];
 
         // Add bets
         if (recentBets?.data) {
-            recentBets.data.forEach(bet => {
+            recentBets.data.forEach((bet) => {
+                const betUser = bet.user?.username || profilesMap.get(bet.user_id) || 'Unknown';
+                const betMarketTitle = bet.market?.title || marketsMap.get(bet.market_id) || 'Unknown Market';
                 allActivities.push({
                     type: 'bet',
                     created_at: bet.created_at,
-                    user: bet.user?.username || 'Unknown',
-                    data: bet
+                    user: betUser,
+                    data: { ...bet, market: { title: betMarketTitle } }
                 });
             });
         }
 
         // Add new markets
         if (recentMarkets?.data) {
-            recentMarkets.data.forEach(market => {
+            recentMarkets.data.forEach((market) => {
+                const marketUser = market.creator?.username || profilesMap.get(market.created_by) || 'Unknown';
                 allActivities.push({
                     type: 'market_created',
                     created_at: market.created_at,
-                    user: market.creator?.username || 'Unknown',
+                    user: marketUser,
                     data: market
                 });
             });
@@ -239,23 +294,25 @@ class AdminPanel {
 
         // Add comments
         if (recentComments?.data) {
-            recentComments.data.forEach(comment => {
+            recentComments.data.forEach((comment) => {
+                const commentUser = comment.user?.username || profilesMap.get(comment.user_id) || 'Unknown';
+                const commentMarketTitle = comment.market?.title || marketsMap.get(comment.market_id) || 'Unknown Market';
                 allActivities.push({
                     type: 'comment',
                     created_at: comment.created_at,
-                    user: comment.user?.username || 'Unknown',
-                    data: comment
+                    user: commentUser,
+                    data: { ...comment, market: { title: commentMarketTitle } }
                 });
             });
         }
 
         // Add new users
         if (recentUsers?.data) {
-            recentUsers.data.forEach(user => {
+            recentUsers.data.forEach((user) => {
                 allActivities.push({
                     type: 'user_joined',
                     created_at: user.created_at,
-                    user: user.username,
+                    user: user.username || user.email || 'Unknown',
                     data: user
                 });
             });
@@ -263,11 +320,12 @@ class AdminPanel {
 
         // Add proposals
         if (recentProposals?.data) {
-            recentProposals.data.forEach(proposal => {
+            recentProposals.data.forEach((proposal) => {
+                const proposalUser = proposal.user?.username || profilesMap.get(proposal.user_id) || 'Unknown';
                 allActivities.push({
                     type: 'proposal',
                     created_at: proposal.created_at,
-                    user: proposal.user?.username || 'Unknown',
+                    user: proposalUser,
                     data: proposal
                 });
             });
@@ -275,12 +333,13 @@ class AdminPanel {
 
         // Add transactions (payouts, deposits, withdrawals)
         if (transactions) {
-            transactions.forEach(tx => {
-                if (tx.type !== 'bet') { // Bets are already included from bets table
+            transactions.forEach((tx) => {
+                if (tx.type !== 'bet') {
+                    const txUser = tx.user?.username || tx.profiles?.username || profilesMap.get(tx.user_id) || 'Unknown';
                     allActivities.push({
                         type: tx.type,
                         created_at: tx.created_at,
-                        user: tx.user?.username || 'Unknown',
+                        user: txUser,
                         data: tx
                     });
                 }
@@ -617,7 +676,17 @@ class AdminPanel {
         `;
         */
         // OLD DASHBOARD CODE END - Stats now update directly in HTML
-    }
+    
+        this.lastDashboardData = {
+            transactions: transactions || [],
+            markets: allMarkets || [],
+            users: recentUsers?.data || []
+        };
+
+        requestAnimationFrame(() => {
+            this.renderDashboardCharts(this.lastDashboardData);
+        });
+}
 
     initDashboardCharts(activeMarkets, closedMarkets, resolvedMarkets, allMarkets) {
         // Market Status Distribution Pie Chart
@@ -1607,7 +1676,8 @@ class AdminPanel {
                     </div>
                     <div class="form-group">
                         <label class="form-label">Description</label>
-                        <textarea name="description" rows="3" class="form-input" placeholder="Market resolution criteria..."></textarea>
+                        <div id="adminMarketDescriptionEditor" class="bg-admin-bg border border-admin-border rounded-lg min-h-[240px]"></div>
+                        <input type="hidden" name="description" id="adminMarketDescriptionInput">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Category</label>
@@ -1698,6 +1768,28 @@ class AdminPanel {
         `;
 
         document.body.appendChild(modal);
+
+        let descriptionEditor = null;
+        const descriptionInput = modal.querySelector('#adminMarketDescriptionInput');
+        const descriptionEditorEl = modal.querySelector('#adminMarketDescriptionEditor');
+        if (descriptionEditorEl && window.Quill) {
+            descriptionEditor = new Quill(descriptionEditorEl, {
+                theme: 'snow',
+                placeholder: 'Market resolution criteria...',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                        ['link', 'clean']
+                    ]
+                }
+            });
+            descriptionEditor.on('text-change', () => {
+                if (descriptionInput) {
+                    descriptionInput.value = descriptionEditor.root.innerHTML;
+                }
+            });
+        }
 
         const categorySelect = modal.querySelector('select[name="category"]');
         if (categorySelect) {
@@ -1796,7 +1888,17 @@ class AdminPanel {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<div class="spinner-glow inline-block w-4 h-4 mr-2"></div>Creating...';
 
+                if (descriptionEditor && descriptionInput) {
+                    descriptionInput.value = descriptionEditor.root.innerHTML;
+                }
+
+                
+                if (editDescriptionEditor && editDescriptionInput) {
+                    editDescriptionInput.value = editDescriptionEditor.root.innerHTML;
+                }
+
                 const formData = new FormData(e.target);
+
                 const data = Object.fromEntries(formData);
                 let imageUrl = null;
 
@@ -1823,9 +1925,14 @@ class AdminPanel {
                     imageUrl = urlData.publicUrl;
                 }
 
+                const rawDescription = data.description || '';
+                const safeDescription = window.DOMPurify
+                    ? window.DOMPurify.sanitize(rawDescription)
+                    : rawDescription;
+
                 await this.api.createMarket({
                     title: data.title,
-                    description: data.description,
+                    description: safeDescription,
                     category: data.category,
                     image_url: imageUrl,
                     end_date: new Date(data.end_date).toISOString(),
@@ -1865,10 +1972,11 @@ class AdminPanel {
                             <label class="form-label">Title</label>
                             <input type="text" name="title" required class="form-input" value="${market.title.replace(/"/g, '&quot;')}">
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Description</label>
-                            <textarea name="description" rows="3" class="form-input">${market.description || ''}</textarea>
-                        </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <div id="adminMarketEditDescriptionEditor" class="bg-admin-bg border border-admin-border rounded-lg min-h-[240px]"></div>
+                        <input type="hidden" name="description" id="adminMarketEditDescriptionInput">
+                    </div>
                         <div class="form-group">
                             <label class="form-label">Category</label>
                             <select name="category" class="form-select">
@@ -1941,6 +2049,37 @@ class AdminPanel {
             `;
 
             document.body.appendChild(modal);
+
+            let editDescriptionEditor = null;
+            const editDescriptionInput = modal.querySelector('#adminMarketEditDescriptionInput');
+            const editDescriptionEditorEl = modal.querySelector('#adminMarketEditDescriptionEditor');
+            if (editDescriptionEditorEl && window.Quill) {
+                editDescriptionEditor = new Quill(editDescriptionEditorEl, {
+                    theme: 'snow',
+                    modules: {
+                        toolbar: [
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                            ['link', 'clean']
+                        ]
+                    }
+                });
+                if (market.description) {
+                    const safeExisting = window.DOMPurify
+                        ? window.DOMPurify.sanitize(market.description)
+                        : market.description;
+                    editDescriptionEditor.root.innerHTML = safeExisting;
+                    if (editDescriptionInput) {
+                        editDescriptionInput.value = safeExisting;
+                    }
+                }
+                editDescriptionEditor.on('text-change', () => {
+                    if (editDescriptionInput) {
+                        editDescriptionInput.value = editDescriptionEditor.root.innerHTML;
+                    }
+                });
+            }
+
 
             // Handle image preview
             const imageInput = document.getElementById('editAdminMarketImageInput');
@@ -2032,8 +2171,17 @@ class AdminPanel {
                     submitBtn.disabled = true;
                     submitBtn.innerHTML = '<div class="spinner-glow inline-block w-4 h-4 mr-2"></div>Updating...';
 
+                    if (editDescriptionEditor && editDescriptionInput) {
+                        editDescriptionInput.value = editDescriptionEditor.root.innerHTML;
+                    }
+
                     const formData = new FormData(e.target);
                     const data = Object.fromEntries(formData);
+                    const rawDescription = data.description || '';
+                    const safeDescription = window.DOMPurify
+                        ? window.DOMPurify.sanitize(rawDescription)
+                        : rawDescription;
+
                     let imageUrl = market.image_url; // Keep existing image by default
 
                     // Upload new image if selected
@@ -2061,7 +2209,7 @@ class AdminPanel {
 
                     const marketData = {
                         title: data.title,
-                        description: data.description,
+                        description: safeDescription,
                         category: data.category,
                         image_url: imageUrl,
                         yes_price: parseFloat(data.yes_price),
@@ -2863,20 +3011,137 @@ class AdminPanel {
         return div.innerHTML;
     }
 
+    async buildProfilesMap(userIds) {
+        const ids = Array.from(new Set(userIds.filter(Boolean)));
+        if (ids.length === 0) return new Map();
+
+        const { data, error } = await this.api.db
+            .from('profiles')
+            .select('id, username')
+            .in('id', ids);
+
+        if (error) {
+            console.warn('Failed to load profiles for activity feed:', error);
+            return new Map();
+        }
+
+        return new Map((data || []).map((profile) => [profile.id, profile.username]));
+    }
+
+    async buildMarketsMap(marketIds) {
+        const ids = Array.from(new Set(marketIds.filter(Boolean)));
+        if (ids.length === 0) return new Map();
+
+        const { data, error } = await this.api.db
+            .from('markets')
+            .select('id, title')
+            .in('id', ids);
+
+        if (error) {
+            console.warn('Failed to load markets for activity feed:', error);
+            return new Map();
+        }
+
+        return new Map((data || []).map((market) => [market.id, market.title]));
+    }
+
     async renderBanners(container) {
+        if (!container) {
+            if (typeof window.loadBannerList === 'function') {
+                window.loadBannerList();
+                return;
+            }
+            const bannerListContainer = document.getElementById('bannerListContainer');
+            if (bannerListContainer) {
+                await this.renderBannerListInline(bannerListContainer);
+                return;
+            }
+            console.warn('Banner container missing and no banner loader available.');
+            return;
+        }
+
         container.innerHTML = '<div id="admin-banners-section"></div>';
 
-        // Initialize and render the AdminBanners component
+        // Initialize and render the AdminBanners component.
         if (window.AdminBanners) {
             window.adminBanners = new AdminBanners(this.api);
             await window.adminBanners.init();
-        } else {
-            container.innerHTML = '<div class="text-center py-12 text-red-400">Banner management component not loaded</div>';
+            return;
+        }
+
+        // Fallback to the inline banner editor in admin.html.
+        if (typeof window.loadBannerList === 'function') {
+            window.loadBannerList();
+            return;
+        }
+        const bannerListContainer = document.getElementById('bannerListContainer');
+        if (bannerListContainer) {
+            await this.renderBannerListInline(bannerListContainer);
+            return;
+        }
+
+        container.innerHTML = '<div class="text-center py-12 text-red-400">Banner management component not loaded</div>';
+    }
+
+    async renderBannerListInline(container) {
+        container.innerHTML = `
+            <div class="text-center p-10 text-gray-500">
+                <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-4"></i>
+                <p>Loading banners...</p>
+            </div>
+        `;
+
+        try {
+            const { data, error } = await this.api.db
+                .from('banners')
+                .select('*')
+                .order('order_index', { ascending: true })
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            const banners = data || [];
+
+            if (banners.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center p-10 text-gray-500">
+                        <i class="fa-solid fa-image text-5xl opacity-30 mb-4"></i>
+                        <p>No banners yet. Upload your first banner above!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = banners.map((banner) => {
+                const safeImageUrl = (typeof banner.image_url === 'string' && banner.image_url.trim() && !banner.image_url.includes('${'))
+                    ? banner.image_url
+                    : '';
+                return `
+                    <div class="banner-list-item" data-banner-id="${banner.id}" data-banner-url="${safeImageUrl}" data-pos-x="${banner.custom_position_x || 50}" data-pos-y="${banner.custom_position_y || 50}" data-fit="${banner.image_fit || 'cover'}" data-scale="${banner.image_scale || 100}" data-pos-x-mobile="${banner.custom_position_x_mobile || 50}" data-pos-y-mobile="${banner.custom_position_y_mobile || 50}">
+                        <div class="banner-list-thumb">
+                            ${safeImageUrl ? `<img src="${safeImageUrl}" alt="${banner.title || 'Banner'}" class="object-cover">` : '<div class="bg-gray-700 w-full h-full flex items-center justify-center text-gray-500"><i class="fa-solid fa-image"></i></div>'}
+                        </div>
+                        <div class="banner-list-info">
+                            <div class="banner-list-title">${banner.title || 'Untitled Banner'}</div>
+                            <div class="banner-list-meta">
+                                <span style="color: ${banner.active ? 'var(--success)' : 'var(--muted)'}">${banner.active ? 'Active' : 'Inactive'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } catch (error) {
+            console.error('Error loading banners:', error);
+            container.innerHTML = `
+                <div class="text-center p-10 text-red-500">
+                    <i class="fa-solid fa-exclamation-triangle text-3xl mb-4"></i>
+                    <p>Failed to load banners</p>
+                </div>
+            `;
         }
     }
 
     async renderApiInsights(container) {
-        const [configRes, logsRes, healthRes, statsRes, overridesRes] = await Promise.all([
+        const [configRes, logsRes, healthRes, statsRes, overridesRes, marketsRes] = await Promise.all([
             window.supabaseClient
                 .from('odds_guidance_config')
                 .select('*')
@@ -2900,7 +3165,8 @@ class AdminPanel {
             window.supabaseClient
                 .from('odds_guidance_overrides')
                 .select('*')
-                .order('created_at', { ascending: false })
+                .order('created_at', { ascending: false }),
+            this.api.getMarkets().catch(() => [])
         ]);
 
         const config = configRes?.data || {
@@ -2916,6 +3182,7 @@ class AdminPanel {
         const healthChecks = healthRes?.data || [];
         const stats = statsRes?.data || [];
         const overrides = overridesRes?.data || [];
+        const markets = marketsRes || [];
 
         const totalLogs = logs.length;
         const errorLogs = logs.filter(log => log.status >= 400).length;
@@ -2923,10 +3190,59 @@ class AdminPanel {
             ? Math.round(logs.reduce((sum, log) => sum + (log.duration_ms || 0), 0) / totalLogs)
             : 0;
 
+        const lastLog = logs[0];
         const lastHealth = healthChecks[0];
         const lastHealthLabel = lastHealth
-            ? `${lastHealth.status.toUpperCase()} • ${lastHealth.latency_ms || 0}ms`
+            ? `${lastHealth.status.toUpperCase()} - ${lastHealth.latency_ms || 0}ms`
             : 'No checks yet';
+
+        const marketsMap = new Map((markets || []).map(market => [market.id, market.title || 'Untitled Market']));
+
+        const logsByMarket = new Map();
+        logs.forEach((log) => {
+            if (!log.market_id || logsByMarket.has(log.market_id)) {
+                return;
+            }
+            logsByMarket.set(log.market_id, log);
+        });
+
+        const getOddsFromMeta = (meta) => {
+            if (!meta || typeof meta !== 'object') return null;
+            const yes = meta.yes_price ?? meta.yes_odds ?? meta.yesProbability ?? meta.yes_prob ?? meta.yes;
+            const no = meta.no_price ?? meta.no_odds ?? meta.noProbability ?? meta.no_prob ?? meta.no;
+            if (yes == null && no == null) {
+                return null;
+            }
+            return { yes, no };
+        };
+
+        const formatMaybePrice = (value) => {
+            if (value == null) return '-';
+            const num = typeof value === 'number' ? value : Number(value);
+            if (Number.isNaN(num)) return String(value);
+            if (num >= 0 && num <= 1) return this.formatOdds(num);
+            return `${num.toFixed(2)}x`;
+        };
+
+        const recentFeed = logs.slice(0, 8);
+
+        const marketInsightRows = Array.from(logsByMarket.entries()).map(([marketId, log]) => {
+            const title = marketsMap.get(marketId) || marketId;
+            const odds = getOddsFromMeta(log.response_meta);
+            const yesDisplay = odds ? formatMaybePrice(odds.yes) : '-';
+            const noDisplay = odds ? formatMaybePrice(odds.no) : '-';
+            return `
+                <tr>
+                    <td class="font-semibold">${title}</td>
+                    <td>${log.status || '-'}</td>
+                    <td>${log.duration_ms || 0}ms</td>
+                    <td>${log.outcome || '-'}</td>
+                    <td>${yesDisplay}</td>
+                    <td>${noDisplay}</td>
+                    <td>${new Date(log.created_at).toLocaleString()}</td>
+                </tr>
+            `;
+        }).join('');
 
         container.innerHTML = `
             <div class="stats-grid">
@@ -2956,36 +3272,116 @@ class AdminPanel {
                 </div>
             </div>
 
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="card lg:col-span-2">
+                    <h3>Live ML + Odds Feed</h3>
+                    <div class="text-sm text-gray-400 mb-3">
+                        Streaming snapshot from the latest requests and guidance updates.
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                        <div class="bg-admin-bg2 border border-admin-border rounded-lg p-3">
+                            <div class="text-xs text-gray-500 mb-1">Last Request</div>
+                            <div class="text-sm font-semibold">${lastLog ? new Date(lastLog.created_at).toLocaleString() : 'No logs yet'}</div>
+                        </div>
+                        <div class="bg-admin-bg2 border border-admin-border rounded-lg p-3">
+                            <div class="text-xs text-gray-500 mb-1">Logging Status</div>
+                            <div class="text-sm font-semibold">${config.logging_enabled ? 'Enabled' : 'Disabled'}</div>
+                        </div>
+                        <div class="bg-admin-bg2 border border-admin-border rounded-lg p-3">
+                            <div class="text-xs text-gray-500 mb-1">Guidance Mode</div>
+                            <div class="text-sm font-semibold">${config.guidance_enabled ? 'Active' : 'Paused'}</div>
+                        </div>
+                        <div class="bg-admin-bg2 border border-admin-border rounded-lg p-3">
+                            <div class="text-xs text-gray-500 mb-1">Retention</div>
+                            <div class="text-sm font-semibold">${config.retention_days} days</div>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Endpoint</th>
+                                    <th>Status</th>
+                                    <th>Latency</th>
+                                    <th>Market</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${recentFeed.length ? recentFeed.map(log => `
+                                    <tr>
+                                        <td class="text-sm">${log.method} ${log.endpoint}</td>
+                                        <td>${log.status}</td>
+                                        <td>${log.duration_ms || 0}ms</td>
+                                        <td class="text-xs text-gray-400">${marketsMap.get(log.market_id) || log.market_id || '-'}</td>
+                                        <td>${new Date(log.created_at).toLocaleString()}</td>
+                                    </tr>
+                                `).join('') : `
+                                    <tr><td colspan="5" class="text-center text-gray-400 py-6">No logs yet</td></tr>
+                                `}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>API Controls</h3>
+                    <div class="grid grid-cols-1 gap-3">
+                        <label class="flex items-center gap-3" for="config-logging-enabled">
+                            <input type="checkbox" id="config-logging-enabled" ${config.logging_enabled ? 'checked' : ''}>
+                            <span>Enable request logging</span>
+                        </label>
+                        <label class="flex items-center gap-3" for="config-guidance-enabled">
+                            <input type="checkbox" id="config-guidance-enabled" ${config.guidance_enabled ? 'checked' : ''}>
+                            <span>Enable odds guidance</span>
+                        </label>
+                        <label class="flex flex-col gap-2" for="config-retention-days">
+                            <span>Retention (days)</span>
+                            <input id="config-retention-days" type="number" min="1" class="form-input" value="${config.retention_days}">
+                        </label>
+                        <label class="flex flex-col gap-2" for="config-smoothing-alpha">
+                            <span>Smoothing Alpha</span>
+                            <input id="config-smoothing-alpha" type="number" min="0.1" step="0.1" class="form-input" value="${config.smoothing_alpha}">
+                        </label>
+                        <label class="flex flex-col gap-2" for="config-global-prior">
+                            <span>Global Prior (0-1)</span>
+                            <input id="config-global-prior" type="number" min="0" max="1" step="0.01" class="form-input" value="${config.global_prior}">
+                        </label>
+                    </div>
+                    <div class="flex flex-wrap gap-3 mt-4">
+                        <button class="btn" id="save-api-config"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button>
+                        <button class="btn secondary" id="run-health-check"><i class="fa-solid fa-heart-pulse"></i> Run Health Check</button>
+                        <button class="btn secondary" id="recompute-guidance"><i class="fa-solid fa-rotate"></i> Recompute Guidance</button>
+                    </div>
+                    <div id="api-config-status" class="text-xs text-gray-400 mt-2"></div>
+                </div>
+            </div>
+
             <div class="card">
-                <h3>API Controls</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <label class="flex items-center gap-3">
-                        <input type="checkbox" id="config-logging-enabled" ${config.logging_enabled ? 'checked' : ''}>
-                        <span>Enable request logging</span>
-                    </label>
-                    <label class="flex items-center gap-3">
-                        <input type="checkbox" id="config-guidance-enabled" ${config.guidance_enabled ? 'checked' : ''}>
-                        <span>Enable odds guidance</span>
-                    </label>
-                    <label class="flex flex-col gap-2">
-                        <span>Retention (days)</span>
-                        <input id="config-retention-days" type="number" min="1" class="form-input" value="${config.retention_days}">
-                    </label>
-                    <label class="flex flex-col gap-2">
-                        <span>Smoothing Alpha</span>
-                        <input id="config-smoothing-alpha" type="number" min="0.1" step="0.1" class="form-input" value="${config.smoothing_alpha}">
-                    </label>
-                    <label class="flex flex-col gap-2">
-                        <span>Global Prior (0-1)</span>
-                        <input id="config-global-prior" type="number" min="0" max="1" step="0.01" class="form-input" value="${config.global_prior}">
-                    </label>
+                <h3>Per-Market Odds Snapshot</h3>
+                <div class="text-sm text-gray-400 mb-3">
+                    Latest API odds and latency per market based on recent logs.
                 </div>
-                <div class="flex flex-wrap gap-3 mt-4">
-                    <button class="btn" id="save-api-config"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button>
-                    <button class="btn secondary" id="run-health-check"><i class="fa-solid fa-heart-pulse"></i> Run Health Check</button>
-                    <button class="btn secondary" id="recompute-guidance"><i class="fa-solid fa-rotate"></i> Recompute Guidance</button>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Market</th>
+                                <th>Status</th>
+                                <th>Latency</th>
+                                <th>Outcome</th>
+                                <th>YES</th>
+                                <th>NO</th>
+                                <th>Last Seen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${marketInsightRows || `
+                                <tr><td colspan="7" class="text-center text-gray-400 py-6">No market telemetry yet</td></tr>
+                            `}
+                        </tbody>
+                    </table>
                 </div>
-                <div id="api-config-status" class="text-xs text-gray-400 mt-2"></div>
             </div>
 
             <div class="card">
@@ -3055,38 +3451,6 @@ class AdminPanel {
             </div>
 
             <div class="chart-container">
-                <h3>Recent Odds API Logs</h3>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Endpoint</th>
-                                <th>Status</th>
-                                <th>Latency</th>
-                                <th>Market</th>
-                                <th>Outcome</th>
-                                <th>Time</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${logs.length ? logs.map(log => `
-                                <tr>
-                                    <td class="text-sm">${log.method} ${log.endpoint}</td>
-                                    <td>${log.status}</td>
-                                    <td>${log.duration_ms || 0}ms</td>
-                                    <td class="text-xs text-gray-400">${log.market_id || '-'}</td>
-                                    <td>${log.outcome || '-'}</td>
-                                    <td>${new Date(log.created_at).toLocaleString()}</td>
-                                </tr>
-                            `).join('') : `
-                                <tr><td colspan="6" class="text-center text-gray-400 py-6">No logs yet</td></tr>
-                            `}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="chart-container">
                 <h3>Guidance Stats by Category</h3>
                 <div class="table-container">
                     <table class="data-table">
@@ -3116,6 +3480,7 @@ class AdminPanel {
                 </div>
             </div>
         `;
+
 
         const saveBtn = container.querySelector('#save-api-config');
         const healthBtn = container.querySelector('#run-health-check');
@@ -3394,6 +3759,195 @@ class AdminPanel {
         return `${(1 / probability).toFixed(2)}x`;
     }
 
+
+    renderDashboardCharts({ transactions, markets, users }) {
+        if (!window.Chart) {
+            return;
+        }
+
+        const activityCtx = document.getElementById('activityChart');
+        const marketCtx = document.getElementById('marketChart');
+
+        if (!activityCtx || !marketCtx) {
+            return;
+        }
+
+        const days = [];
+        const labels = [];
+        const dayIndex = new Map();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        for (let i = 6; i >= 0; i -= 1) {
+            const date = new Date(today);
+            date.setDate(today.getDate() - i);
+            const key = date.toISOString().slice(0, 10);
+            dayIndex.set(key, days.length);
+            days.push(date);
+            labels.push(date.toLocaleDateString('en-US', { weekday: 'short' }));
+        }
+
+        const buildCounts = (items, dateKey) => {
+            const counts = new Array(days.length).fill(0);
+            items.forEach((item) => {
+                const raw = item?.[dateKey];
+                if (!raw) return;
+                const date = new Date(raw);
+                if (Number.isNaN(date.getTime())) return;
+                date.setHours(0, 0, 0, 0);
+                const key = date.toISOString().slice(0, 10);
+                const idx = dayIndex.get(key);
+                if (idx != null) {
+                    counts[idx] += 1;
+                }
+            });
+            return counts;
+        };
+
+        const userSeries = buildCounts(users, 'created_at');
+        const txSeries = buildCounts(transactions, 'created_at');
+        const marketSeries = buildCounts(markets, 'created_at');
+
+        const existingActivityChart = Chart.getChart(activityCtx);
+        if (existingActivityChart) {
+            existingActivityChart.destroy();
+        }
+        if (this.dashboardCharts.activity) {
+            this.dashboardCharts.activity.destroy();
+        }
+        this.dashboardCharts.activity = new Chart(activityCtx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Users',
+                        data: userSeries,
+                        borderColor: '#1a4d2e',
+                        backgroundColor: 'rgba(26, 77, 46, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Transactions',
+                        data: txSeries,
+                        borderColor: '#ff9800',
+                        backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Markets',
+                        data: marketSeries,
+                        borderColor: '#2196f3',
+                        backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#D4D4D4',
+                            font: {
+                                size: 12,
+                                family: 'Inter'
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: '#666'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#666'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        }
+                    }
+                }
+            }
+        });
+
+        const statusCounts = {
+            active: 0,
+            pending: 0,
+            closed: 0,
+            resolved: 0
+        };
+
+        markets.forEach((market) => {
+            const status = market?.status;
+            if (statusCounts[status] != null) {
+                statusCounts[status] += 1;
+            }
+        });
+
+        const existingMarketChart = Chart.getChart(marketCtx);
+        if (existingMarketChart) {
+            existingMarketChart.destroy();
+        }
+        if (this.dashboardCharts.market) {
+            this.dashboardCharts.market.destroy();
+        }
+        this.dashboardCharts.market = new Chart(marketCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Active', 'Pending', 'Closed', 'Resolved'],
+                datasets: [{
+                    data: [
+                        statusCounts.active,
+                        statusCounts.pending,
+                        statusCounts.closed,
+                        statusCounts.resolved
+                    ],
+                    backgroundColor: [
+                        '#1a4d2e',
+                        '#ff9800',
+                        '#e53935',
+                        '#2196f3'
+                    ],
+                    borderColor: '#1E1E1E',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#D4D4D4',
+                            font: {
+                                size: 12,
+                                family: 'Inter'
+                            },
+                            padding: 15
+                        }
+                    }
+                }
+            }
+        });
+
+    }
+
+
+
+
     async renderActivity(container) {
         try {
             // Fetch all activities
@@ -3426,28 +3980,71 @@ class AdminPanel {
                 this.api.getAllTransactions({ limit: 100 })
             ]);
 
+            const userIds = new Set();
+            const marketIds = new Set();
+
+            if (recentBets?.data) {
+                recentBets.data.forEach((bet) => {
+                    if (bet.user_id) userIds.add(bet.user_id);
+                    if (bet.market_id) marketIds.add(bet.market_id);
+                });
+            }
+
+            if (recentMarkets?.data) {
+                recentMarkets.data.forEach((market) => {
+                    if (market.created_by) userIds.add(market.created_by);
+                });
+            }
+
+            if (recentComments?.data) {
+                recentComments.data.forEach((comment) => {
+                    if (comment.user_id) userIds.add(comment.user_id);
+                    if (comment.market_id) marketIds.add(comment.market_id);
+                });
+            }
+
+            if (recentProposals?.data) {
+                recentProposals.data.forEach((proposal) => {
+                    if (proposal.user_id) userIds.add(proposal.user_id);
+                });
+            }
+
+            if (transactions) {
+                transactions.forEach((tx) => {
+                    if (tx.user_id) userIds.add(tx.user_id);
+                });
+            }
+
+            const [profilesMap, marketsMap] = await Promise.all([
+                this.buildProfilesMap(Array.from(userIds)),
+                this.buildMarketsMap(Array.from(marketIds))
+            ]);
+
             // Combine all activities
             const allActivities = [];
 
             // Add bets
             if (recentBets?.data) {
-                recentBets.data.forEach(bet => {
+                recentBets.data.forEach((bet) => {
+                    const betUser = bet.user?.username || profilesMap.get(bet.user_id) || 'Unknown';
+                    const betMarketTitle = bet.market?.title || marketsMap.get(bet.market_id) || 'Unknown Market';
                     allActivities.push({
                         type: 'bet',
                         created_at: bet.created_at,
-                        user: bet.user?.username || 'Unknown',
-                        data: bet
+                        user: betUser,
+                        data: { ...bet, market: { title: betMarketTitle } }
                     });
                 });
             }
 
             // Add new markets
             if (recentMarkets?.data) {
-                recentMarkets.data.forEach(market => {
+                recentMarkets.data.forEach((market) => {
+                    const marketUser = market.creator?.username || profilesMap.get(market.created_by) || 'Unknown';
                     allActivities.push({
                         type: 'market_created',
                         created_at: market.created_at,
-                        user: market.creator?.username || 'Unknown',
+                        user: marketUser,
                         data: market
                     });
                 });
@@ -3455,23 +4052,25 @@ class AdminPanel {
 
             // Add comments
             if (recentComments?.data) {
-                recentComments.data.forEach(comment => {
+                recentComments.data.forEach((comment) => {
+                    const commentUser = comment.user?.username || profilesMap.get(comment.user_id) || 'Unknown';
+                    const commentMarketTitle = comment.market?.title || marketsMap.get(comment.market_id) || 'Unknown Market';
                     allActivities.push({
                         type: 'comment',
                         created_at: comment.created_at,
-                        user: comment.user?.username || 'Unknown',
-                        data: comment
+                        user: commentUser,
+                        data: { ...comment, market: { title: commentMarketTitle } }
                     });
                 });
             }
 
             // Add new users
             if (recentUsers?.data) {
-                recentUsers.data.forEach(user => {
+                recentUsers.data.forEach((user) => {
                     allActivities.push({
                         type: 'user_joined',
                         created_at: user.created_at,
-                        user: user.username,
+                        user: user.username || user.email || 'Unknown',
                         data: user
                     });
                 });
@@ -3479,11 +4078,12 @@ class AdminPanel {
 
             // Add proposals
             if (recentProposals?.data) {
-                recentProposals.data.forEach(proposal => {
+                recentProposals.data.forEach((proposal) => {
+                    const proposalUser = proposal.user?.username || profilesMap.get(proposal.user_id) || 'Unknown';
                     allActivities.push({
                         type: 'proposal',
                         created_at: proposal.created_at,
-                        user: proposal.user?.username || 'Unknown',
+                        user: proposalUser,
                         data: proposal
                     });
                 });
@@ -3491,12 +4091,13 @@ class AdminPanel {
 
             // Add transactions (payouts, deposits, withdrawals)
             if (transactions) {
-                transactions.forEach(tx => {
+                transactions.forEach((tx) => {
                     if (tx.type !== 'bet') {
+                        const txUser = tx.user?.username || tx.profiles?.username || profilesMap.get(tx.user_id) || 'Unknown';
                         allActivities.push({
                             type: tx.type,
                             created_at: tx.created_at,
-                            user: tx.user?.username || 'Unknown',
+                            user: txUser,
                             data: tx
                         });
                     }
