@@ -34,7 +34,7 @@ class MarketPage {
                 return;
             }
 
-            // Check authentication
+            // Check authentication (non-blocking render)
             this.currentUser = await this.api.getCurrentUser();
             if (this.currentUser) {
                 this.currentProfile = await this.api.getProfile(this.currentUser.id);
@@ -43,7 +43,7 @@ class MarketPage {
             // Update header UI
             updateHeaderUI(this.currentUser, this.currentProfile);
 
-            // Load market data
+            // Load market data (render ASAP)
             await this.loadMarket();
 
             // Setup event listeners
@@ -64,22 +64,8 @@ class MarketPage {
 
     async loadMarket() {
         try {
-            // Fetch market data
+            // Fetch market data first so we can render quickly
             this.market = await this.api.getMarket(this.marketId);
-
-            if (!this.shouldSkipOddsFetch()) {
-                try {
-                    const odds = await this.api.getMarketOddsMultiplier(this.marketId);
-                    this.marketOdds = odds.data;
-                    this.cacheOdds(this.marketOdds);
-                } catch (error) {
-                    this.setOddsApiCooldown();
-                    this.marketOdds = this.getCachedOdds();
-                }
-            } else {
-                this.marketOdds = this.getCachedOdds();
-            }
-
             if (!this.market) {
                 this.showError();
                 return;
@@ -89,25 +75,52 @@ class MarketPage {
             document.getElementById('loading-state').classList.add('hidden');
             document.getElementById('market-content').classList.remove('hidden');
 
-            // Populate page
+            // Populate page immediately
             this.populateMarketData();
 
-            // Start live odds polling
-            this.startOddsPolling();
-
-            // Wait for chart library to load before initializing
-            await this.waitForChartLibrary();
-            this.initializeChart();
-
-            await this.loadComments();
-            await this.loadActivity();
-
-            // Update page title
+            // Update page title early
             document.title = `${this.market.title} - GoatMouth`;
 
+            // Odds load in background (avoid blocking initial render)
+            this.marketOdds = this.getCachedOdds();
+            this.updateOddsDisplay();
+            this.refreshOddsInBackground();
+
+            // Start live odds polling after initial render
+            this.startOddsPolling();
+
+            // Initialize chart without blocking render
+            this.waitForChartLibrary().then((ready) => {
+                if (ready) {
+                    this.initializeChart();
+                }
+            });
+
+            // Load comments/activity in background
+            this.loadComments().catch((error) => {
+                console.warn('Comments load failed:', error);
+            });
+            this.loadActivity().catch((error) => {
+                console.warn('Activity load failed:', error);
+            });
         } catch (error) {
             console.error('Error loading market:', error);
             this.showError();
+        }
+    }
+
+    async refreshOddsInBackground() {
+        if (this.shouldSkipOddsFetch()) {
+            return;
+        }
+
+        try {
+            const odds = await this.api.getMarketOddsMultiplier(this.marketId);
+            this.marketOdds = odds.data;
+            this.cacheOdds(this.marketOdds);
+            this.updateOddsDisplay();
+        } catch (error) {
+            this.setOddsApiCooldown();
         }
     }
 
