@@ -1,43 +1,55 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.3";
 
-const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS"
-};
+const allowedOrigins = new Set([
+    "https://goatmouth.com",
+    "http://127.0.0.1:5500",
+    "http://localhost:5500"
+]);
 
-function jsonResponse(body, status = 200) {
+function buildCorsHeaders(origin: string | null) {
+    const resolvedOrigin = origin && allowedOrigins.has(origin)
+        ? origin
+        : "https://goatmouth.com";
+    return {
+        "Access-Control-Allow-Origin": resolvedOrigin,
+        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Vary": "Origin"
+    };
+}
+
+function jsonResponse(body, status = 200, origin: string | null = null) {
     return new Response(JSON.stringify(body), {
         status,
         headers: {
             "Content-Type": "application/json",
-            ...corsHeaders
+            ...buildCorsHeaders(origin)
         }
     });
 }
 
 serve(async (req) => {
     if (req.method === "OPTIONS") {
-        return new Response("ok", { headers: corsHeaders });
+        return new Response("ok", { headers: buildCorsHeaders(req.headers.get("origin")) });
     }
 
     if (req.method !== "POST") {
-        return jsonResponse({ error: "Method not allowed" }, 405);
+        return jsonResponse({ error: "Method not allowed" }, 405, req.headers.get("origin"));
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
     if (!supabaseUrl || !serviceRoleKey) {
-        return jsonResponse({ error: "Missing Supabase environment variables" }, 500);
+        return jsonResponse({ error: "Missing Supabase environment variables" }, 500, req.headers.get("origin"));
     }
 
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
     if (!token) {
-        return jsonResponse({ error: "Missing authorization token" }, 401);
+        return jsonResponse({ error: "Missing authorization token" }, 401, req.headers.get("origin"));
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
@@ -46,7 +58,7 @@ serve(async (req) => {
 
     const { data: authData, error: authError } = await adminClient.auth.getUser(token);
     if (authError || !authData?.user) {
-        return jsonResponse({ error: "Unauthorized" }, 401);
+        return jsonResponse({ error: "Unauthorized" }, 401, req.headers.get("origin"));
     }
 
     const { data: callerProfile, error: profileError } = await adminClient
@@ -56,11 +68,11 @@ serve(async (req) => {
         .maybeSingle();
 
     if (profileError) {
-        return jsonResponse({ error: "Failed to validate profile" }, 500);
+        return jsonResponse({ error: "Failed to validate profile" }, 500, req.headers.get("origin"));
     }
 
     if (!callerProfile || callerProfile.role !== "admin") {
-        return jsonResponse({ error: "Forbidden" }, 403);
+        return jsonResponse({ error: "Forbidden" }, 403, req.headers.get("origin"));
     }
 
     let roleFilter = null;
@@ -78,7 +90,7 @@ serve(async (req) => {
     while (true) {
         const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage });
         if (error) {
-            return jsonResponse({ error: "Failed to list users" }, 500);
+            return jsonResponse({ error: "Failed to list users" }, 500, req.headers.get("origin"));
         }
 
         users.push(...(data?.users || []));
@@ -100,7 +112,7 @@ serve(async (req) => {
             .in("id", userIds);
 
         if (profilesError) {
-            return jsonResponse({ error: "Failed to load profiles" }, 500);
+            return jsonResponse({ error: "Failed to load profiles" }, 500, req.headers.get("origin"));
         }
 
         (profiles || []).forEach((profile) => {
@@ -133,5 +145,5 @@ serve(async (req) => {
         ? mergedUsers.filter((user) => user.role === roleFilter)
         : mergedUsers;
 
-    return jsonResponse({ users: filteredUsers, total: filteredUsers.length });
+    return jsonResponse({ users: filteredUsers, total: filteredUsers.length }, 200, req.headers.get("origin"));
 });
