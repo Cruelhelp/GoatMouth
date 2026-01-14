@@ -1032,6 +1032,8 @@ button, .touch-target, a {
     }
 }
 
+}
+
 /* Extra small mobile devices */
 @media (max-width: 375px) {
     .skeleton-market-card {
