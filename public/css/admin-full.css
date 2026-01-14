@@ -380,14 +380,14 @@
         }
 
         .stat-card:hover::before {
-            transform: translate(20%, -20%) scale(1.2);
-            opacity: 0.1;
+            opacity: 0.06;
         }
 
         .stat-card:hover {
             background: linear-gradient(135deg, var(--bg3) 0%, var(--bg2) 100%);
-            transform: translateY(-4px);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            border-color: var(--accent);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transform: none;
         }
 
         .stat-card.clickable-card {
@@ -396,12 +396,13 @@
         }
 
         .stat-card.clickable-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 12px 32px rgba(26, 77, 46, 0.4);
+            border-color: var(--accent);
+            box-shadow: 0 3px 10px rgba(26, 77, 46, 0.25);
+            transform: none;
         }
 
         .stat-card.clickable-card:active {
-            transform: translateY(-4px) scale(1.01);
+            transform: none;
         }
 
         .stat-card h3 {
@@ -2257,7 +2258,8 @@
         .message-stat-card:hover {
             background: var(--bg3);
             border-color: var(--accent);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+            transform: none;
         }
 
         .message-stat-card.active {
@@ -2302,7 +2304,8 @@
 
         .message-card:hover {
             border-color: var(--accent);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+            transform: none;
         }
 
         .message-header {
@@ -2752,7 +2755,8 @@
         .voting-stat-card:hover {
             background: var(--bg3);
             border-color: #047857;
-            box-shadow: 0 2px 8px rgba(4, 120, 87, 0.15);
+            box-shadow: 0 2px 6px rgba(4, 120, 87, 0.12);
+            transform: none;
         }
 
         .voting-stat-card.active {
@@ -2802,7 +2806,8 @@
 
         .proposal-list-item:hover {
             border-color: #047857;
-            box-shadow: 0 2px 8px rgba(4, 120, 87, 0.15);
+            box-shadow: 0 2px 6px rgba(4, 120, 87, 0.12);
+            transform: none;
         }
 
         .proposal-list-image {
@@ -3378,8 +3383,8 @@
 
         .preview-market-card:hover {
             border-color: var(--accent);
-            transform: translateY(-4px);
-            box-shadow: 0 8px 24px rgba(0, 203, 151, 0.2);
+            box-shadow: 0 3px 8px rgba(0, 203, 151, 0.12);
+            transform: none;
         }
 
         .preview-market-image {

@@ -189,6 +189,118 @@ class AdminPanel {
         const unreadMessages = contactMessages?.length || 0;
         const pendingProposals = proposals?.count || 0;
 
+        const trendUsers = document.getElementById('stat-users-trend');
+        const trendMarkets = document.getElementById('stat-markets-trend');
+        const trendTransactions = document.getElementById('stat-transactions-trend');
+        const trendMessages = document.getElementById('stat-messages-trend');
+
+        const applyTrend = (el, current, previous) => {
+            if (!el) return;
+            const safeCurrent = Number.isFinite(current) ? current : 0;
+            const safePrevious = Number.isFinite(previous) ? previous : 0;
+            const delta = safeCurrent - safePrevious;
+            const pct = safePrevious > 0 ? (delta / safePrevious) * 100 : (safeCurrent > 0 ? 100 : 0);
+            const pctText = `${Math.round(Math.abs(pct))}%`;
+            const isUp = pct >= 0;
+            el.classList.toggle('up', isUp);
+            el.classList.toggle('down', !isUp);
+            el.innerHTML = `<i class="fa-solid ${isUp ? 'fa-arrow-up' : 'fa-arrow-down'}"></i> ${pctText}`;
+        };
+
+        let usersCurrent = 0;
+        let usersPrevious = 0;
+        let marketsCurrent = 0;
+        let marketsPrevious = 0;
+        let transactionsCurrent = 0;
+        let transactionsPrevious = 0;
+        let messagesCurrent = 0;
+        let messagesPrevious = 0;
+
+        if (window.supabaseClient) {
+            const now = new Date();
+            const currentStart = new Date(now);
+            currentStart.setDate(currentStart.getDate() - 30);
+            const previousStart = new Date(now);
+            previousStart.setDate(previousStart.getDate() - 60);
+            const currentStartIso = currentStart.toISOString();
+            const previousStartIso = previousStart.toISOString();
+
+            const safeCount = (res) => (res && typeof res.count === 'number' ? res.count : 0);
+
+            const [
+                usersCurrentRes,
+                usersPreviousRes,
+                marketsCurrentRes,
+                marketsPreviousRes,
+                transactionsCurrentRes,
+                transactionsPreviousRes,
+                messagesCurrentRes,
+                messagesPreviousRes
+            ] = await Promise.all([
+                window.supabaseClient
+                    .from('profiles')
+                    .select('id', { count: 'exact', head: true })
+                    .gte('created_at', currentStartIso)
+                    .then(r => r)
+                    .catch(() => ({ count: 0 })),
+                window.supabaseClient
+                    .from('profiles')
+                    .select('id', { count: 'exact', head: true })
+                    .gte('created_at', previousStartIso)
+                    .lt('created_at', currentStartIso)
+                    .then(r => r)
+                    .catch(() => ({ count: 0 })),
+                window.supabaseClient
+                    .from('markets')
+                    .select('id', { count: 'exact', head: true })
+                    .gte('created_at', currentStartIso)
+                    .then(r => r)
+                    .catch(() => ({ count: 0 })),
+                window.supabaseClient
+                    .from('markets')
+                    .select('id', { count: 'exact', head: true })
+                    .gte('created_at', previousStartIso)
+                    .lt('created_at', currentStartIso)
+                    .then(r => r)
+                    .catch(() => ({ count: 0 })),
+                window.supabaseClient
+                    .from('transactions')
+                    .select('id', { count: 'exact', head: true })
+                    .gte('created_at', currentStartIso)
+                    .then(r => r)
+                    .catch(() => ({ count: 0 })),
+                window.supabaseClient
+                    .from('transactions')
+                    .select('id', { count: 'exact', head: true })
+                    .gte('created_at', previousStartIso)
+                    .lt('created_at', currentStartIso)
+                    .then(r => r)
+                    .catch(() => ({ count: 0 })),
+                window.supabaseClient
+                    .from('contact_messages')
+                    .select('id', { count: 'exact', head: true })
+                    .gte('created_at', currentStartIso)
+                    .then(r => r)
+                    .catch(() => ({ count: 0 })),
+                window.supabaseClient
+                    .from('contact_messages')
+                    .select('id', { count: 'exact', head: true })
+                    .gte('created_at', previousStartIso)
+                    .lt('created_at', currentStartIso)
+                    .then(r => r)
+                    .catch(() => ({ count: 0 }))
+            ]);
+
+            usersCurrent = safeCount(usersCurrentRes);
+            usersPrevious = safeCount(usersPreviousRes);
+            marketsCurrent = safeCount(marketsCurrentRes);
+            marketsPrevious = safeCount(marketsPreviousRes);
+            transactionsCurrent = safeCount(transactionsCurrentRes);
+            transactionsPrevious = safeCount(transactionsPreviousRes);
+            messagesCurrent = safeCount(messagesCurrentRes);
+            messagesPrevious = safeCount(messagesPreviousRes);
+        }
+
         // Update stat cards
         const statUsers = document.getElementById('stat-users');
         const statMarkets = document.getElementById('stat-markets');
@@ -197,8 +309,13 @@ class AdminPanel {
 
         if (statUsers) statUsers.textContent = userStats.total || 0;
         if (statMarkets) statMarkets.textContent = activeMarkets || 0;
-        if (statTransactions) statTransactions.textContent = transactions?.length || 0;
-        if (statMessages) statMessages.textContent = unreadMessages;
+        if (statTransactions) statTransactions.textContent = transactionsCurrent || 0;
+        if (statMessages) statMessages.textContent = messagesCurrent || 0;
+
+        applyTrend(trendUsers, usersCurrent, usersPrevious);
+        applyTrend(trendMarkets, marketsCurrent, marketsPrevious);
+        applyTrend(trendTransactions, transactionsCurrent, transactionsPrevious);
+        applyTrend(trendMessages, messagesCurrent, messagesPrevious);
 
         // Update badges
         const unreadBadge = document.getElementById('unread-badge');
@@ -424,6 +541,8 @@ class AdminPanel {
                             description = activity.data.description || '';
                     }
 
+                    const action = this.getActivityAction(activity);
+                    const detailsHtml = this.renderActivityDetails(activity);
                     return `
                         <div class="activity-item" style="border-left: 3px solid ${typeColor};">
                             <div style="display: flex; align-items: center; gap: 12px;">
@@ -442,6 +561,13 @@ class AdminPanel {
                                             ${description}
                                         </div>
                                     ` : ''}
+                                    <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                                        <button class="btn secondary btn-sm" data-action="activity-toggle" type="button">Details</button>
+                                        ${action ? this.renderActivityAction(action) : ''}
+                                    </div>
+                                    <div class="activity-details hidden" style="margin-top: 10px;">
+                                        ${detailsHtml}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -449,6 +575,7 @@ class AdminPanel {
                 }).join('');
             }
         }
+        this.attachActivityHandlers(activityList);
 
         // For backward compatibility, keep the old rendering code but skip it
         /* OLD DASHBOARD CODE REMOVED - Now using stat cards in HTML
@@ -4185,8 +4312,10 @@ class AdminPanel {
                                         description = activity.data.description || '';
                                 }
 
+                                const action = this.getActivityAction(activity);
+                                const detailsHtml = this.renderActivityDetails(activity);
                                 return `
-                                    <div style="display: flex; align-items: center; gap: 16px; padding: 16px; border-bottom: 1px solid var(--bg3); transition: background 0.2s;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='transparent'">
+                                    <div class="activity-item" style="display: flex; align-items: center; gap: 16px; padding: 16px; border-bottom: 1px solid var(--bg3); transition: background 0.2s;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='transparent'">
                                         <div style="flex-shrink: 0;">
                                             <i class="fa-solid ${typeIcon}" style="color: ${typeColor}; font-size: 20px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: rgba(${parseInt(typeColor.slice(1,3), 16)}, ${parseInt(typeColor.slice(3,5), 16)}, ${parseInt(typeColor.slice(5,7), 16)}, 0.1); border-radius: 8px;"></i>
                                         </div>
@@ -4198,6 +4327,13 @@ class AdminPanel {
                                             </div>
                                             <div style="color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                                 ${description}
+                                            </div>
+                                            <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                                                <button class="btn secondary btn-sm" data-action="activity-toggle" type="button">Details</button>
+                                                ${action ? this.renderActivityAction(action) : ''}
+                                            </div>
+                                            <div class="activity-details hidden" style="margin-top: 10px;">
+                                                ${detailsHtml}
                                             </div>
                                         </div>
                                         <div style="flex-shrink: 0; text-align: right;">
@@ -4212,10 +4348,135 @@ class AdminPanel {
                 </div>
             `;
 
+            this.attachActivityHandlers(container);
         } catch (error) {
             console.error('Error loading activities:', error);
             container.innerHTML = `<div class="text-center py-12" style="color: var(--error);">Error loading activities: ${error.message}</div>`;
         }
+    }
+
+    attachActivityHandlers(container) {
+        if (!container || container.dataset.activityBound) return;
+        container.dataset.activityBound = 'true';
+        container.addEventListener('click', (event) => {
+            const toggleBtn = event.target.closest('[data-action="activity-toggle"]');
+            if (toggleBtn) {
+                const item = toggleBtn.closest('.activity-item');
+                const details = item?.querySelector('.activity-details');
+                if (details) {
+                    details.classList.toggle('hidden');
+                    toggleBtn.textContent = details.classList.contains('hidden') ? 'Details' : 'Hide details';
+                }
+                return;
+            }
+
+            const openBtn = event.target.closest('[data-action="activity-open"]');
+            if (!openBtn) return;
+            const href = openBtn.getAttribute('data-href');
+            const view = openBtn.getAttribute('data-view');
+            if (href) {
+                window.open(href, '_blank');
+                return;
+            }
+            if (view && typeof this.switchView === 'function') {
+                this.switchView(view);
+            }
+        });
+    }
+
+    getActivityAction(activity) {
+        const data = activity?.data || {};
+        switch (activity?.type) {
+            case 'bet':
+            case 'comment':
+                if (data.market_id) {
+                    return { label: 'View market', href: `market.html?id=${data.market_id}` };
+                }
+                return null;
+            case 'market_created':
+                if (data.id) {
+                    return { label: 'View market', href: `market.html?id=${data.id}` };
+                }
+                return null;
+            case 'proposal':
+                return { label: 'View proposals', view: 'voting' };
+            case 'user_joined':
+                return { label: 'View users', view: 'users' };
+            case 'payout':
+            case 'deposit':
+            case 'withdrawal':
+                return { label: 'View transactions', view: 'transactions' };
+            default:
+                return null;
+        }
+    }
+
+    renderActivityAction(action) {
+        if (!action) return '';
+        const href = action.href ? ` data-href="${action.href}"` : '';
+        const view = action.view ? ` data-view="${action.view}"` : '';
+        return `<button class="btn btn-sm" data-action="activity-open"${href}${view} type="button">${action.label}</button>`;
+    }
+
+    renderActivityDetails(activity) {
+        const data = activity?.data || {};
+        const rows = [];
+        const pushRow = (label, value) => {
+            if (value === undefined || value === null || value === '') return;
+            rows.push({ label, value });
+        };
+
+        switch (activity?.type) {
+            case 'bet':
+                pushRow('Market', data.market?.title);
+                pushRow('Outcome', data.outcome?.toUpperCase());
+                pushRow('Amount', data.amount ? `J$${parseFloat(data.amount).toFixed(2)}` : undefined);
+                pushRow('Bet ID', data.id);
+                pushRow('Market ID', data.market_id);
+                break;
+            case 'market_created':
+                pushRow('Market', data.title);
+                pushRow('Category', data.category);
+                pushRow('Status', data.status);
+                pushRow('Market ID', data.id);
+                break;
+            case 'comment':
+                pushRow('Market', data.market?.title);
+                pushRow('Comment', data.content || data.text);
+                pushRow('Comment ID', data.id);
+                pushRow('Market ID', data.market_id);
+                break;
+            case 'user_joined':
+                pushRow('Username', data.username);
+                pushRow('Email', data.email);
+                pushRow('Role', data.role);
+                pushRow('User ID', data.id);
+                break;
+            case 'proposal':
+                pushRow('Proposal', data.title || data.market_question);
+                pushRow('Status', data.status);
+                pushRow('Proposal ID', data.id);
+                break;
+            case 'payout':
+            case 'deposit':
+            case 'withdrawal':
+                pushRow('Amount', data.amount ? `J$${parseFloat(data.amount).toFixed(2)}` : undefined);
+                pushRow('Transaction ID', data.id);
+                break;
+            default:
+                pushRow('Details', data.description);
+        }
+
+        if (rows.length === 0) {
+            return `<div style="color: var(--muted); font-size: 12px;">No additional details.</div>`;
+        }
+
+        return rows.map(row => `
+            <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--muted); margin-bottom: 4px;">
+                <span>${row.label}</span>
+                <span style="color: var(--text-primary); text-align: right;">${row.value}</span>
+            </div>
+        `).join('');
     }
 
     getTimeAgo(date) {

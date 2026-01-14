@@ -5,6 +5,12 @@
     box-shadow: none;
 }
 
+/* Ensure admin header actions are visible on desktop */
+.logo-header .user-info > *:not(.auth-loading) {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
 @media (max-width: 768px) {
     .app-container {
         top: 56px;
@@ -30,4 +36,3 @@
         transform: translateY(-12px);
     }
 }
-

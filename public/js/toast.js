@@ -43,6 +43,26 @@ class Toast {
 
         this.container.appendChild(toast);
 
+        const titleMap = {
+            success: 'Success',
+            error: 'Error',
+            warning: 'Warning',
+            info: 'Info'
+        };
+
+        const notificationPayload = {
+            title: titleMap[type] || 'Notice',
+            message,
+            type,
+            source: 'toast'
+        };
+
+        if (window.pushNotification) {
+            window.pushNotification(notificationPayload);
+        }
+
+        window.dispatchEvent(new CustomEvent('toast:created', { detail: notificationPayload }));
+
         // Trigger animation
         setTimeout(() => toast.classList.add('toast-show'), 10);
 

@@ -128,7 +128,11 @@ document.addEventListener('click', function(event) {
 
 // ============ Notifications Functions ============
 let notificationsCache = [];
+let runtimeNotifications = [];
 let notificationsPollInterval = null;
+const RUNTIME_NOTIFICATION_STORAGE_KEY = 'runtimeNotifications';
+const MAX_RUNTIME_NOTIFICATIONS = 50;
+const RUNTIME_DEDUP_WINDOW_MS = 30000;
 
 function toggleNotifications() {
     const dropdown = document.getElementById('notificationsDropdown');
@@ -150,12 +154,167 @@ function closeNotifications() {
     }
 }
 
-async function loadNotifications() {
-    try {
-        if (!window.supabaseClient) return;
+function loadRuntimeNotifications() {
+    if (runtimeNotifications.length) return;
 
+    try {
+        const raw = localStorage.getItem(RUNTIME_NOTIFICATION_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+            runtimeNotifications = parsed;
+        }
+    } catch (error) {
+        console.warn('Failed to load runtime notifications:', error);
+    }
+}
+
+function saveRuntimeNotifications() {
+    try {
+        const trimmed = runtimeNotifications.slice(0, MAX_RUNTIME_NOTIFICATIONS);
+        localStorage.setItem(RUNTIME_NOTIFICATION_STORAGE_KEY, JSON.stringify(trimmed));
+    } catch (error) {
+        console.warn('Failed to save runtime notifications:', error);
+    }
+}
+
+function normalizeRuntimeNotification(notification) {
+    const createdAt = notification.created_at
+        ? new Date(notification.created_at)
+        : new Date();
+
+    return {
+        id: notification.id || `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        title: notification.title || 'Notification',
+        message: notification.message || '',
+        type: notification.type || 'info',
+        action_url: notification.action_url || '',
+        is_read: !!notification.is_read,
+        source: notification.source || 'runtime',
+        created_at: createdAt.toISOString()
+    };
+}
+
+function isDuplicateRuntimeNotification(next) {
+    const nextTime = new Date(next.created_at).getTime();
+    return runtimeNotifications.some((existing) => {
+        if (existing.type !== next.type || existing.message !== next.message) return false;
+        const existingTime = new Date(existing.created_at).getTime();
+        return Math.abs(nextTime - existingTime) <= RUNTIME_DEDUP_WINDOW_MS;
+    });
+}
+
+function addRuntimeNotification(notification) {
+    loadRuntimeNotifications();
+    const normalized = normalizeRuntimeNotification(notification);
+
+    if (isDuplicateRuntimeNotification(normalized)) {
+        return null;
+    }
+
+    runtimeNotifications.unshift(normalized);
+    runtimeNotifications = runtimeNotifications.slice(0, MAX_RUNTIME_NOTIFICATIONS);
+    saveRuntimeNotifications();
+    return normalized;
+}
+
+function mergeNotifications(remoteNotifications) {
+    loadRuntimeNotifications();
+    const remote = (remoteNotifications || []).map((notification) => ({
+        ...notification,
+        source: notification.source || 'remote'
+    }));
+    const combined = [...remote, ...runtimeNotifications];
+    const byId = new Map();
+    combined.forEach((notification) => {
+        if (!byId.has(notification.id)) {
+            byId.set(notification.id, notification);
+        }
+    });
+
+    return Array.from(byId.values())
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, MAX_RUNTIME_NOTIFICATIONS);
+}
+
+async function pushNotification({
+    title,
+    message,
+    type = 'info',
+    actionUrl = '',
+    source = 'runtime',
+    persist = false
+} = {}) {
+    if (!message) return;
+
+    const resolvedTitle = title || type.charAt(0).toUpperCase() + type.slice(1);
+    const localNotification = addRuntimeNotification({
+        title: resolvedTitle,
+        message,
+        type,
+        action_url: actionUrl,
+        source,
+        is_read: false
+    });
+
+    if (localNotification) {
+        notificationsCache = mergeNotifications(notificationsCache);
+        renderNotifications(notificationsCache);
+        updateNotificationBadge();
+    }
+
+    if (!persist || !window.supabaseClient) return;
+
+    try {
         const { data: { session } } = await window.supabaseClient.auth.getSession();
         if (!session) return;
+
+        await window.supabaseClient
+            .from('notifications')
+            .insert([{
+                user_id: session.user.id,
+                type,
+                title: resolvedTitle,
+                message,
+                action_url: actionUrl || null,
+                is_read: false,
+                is_global: false,
+                target_role: null
+            }]);
+    } catch (error) {
+        console.warn('Failed to persist notification:', error);
+    }
+}
+
+window.pushNotification = pushNotification;
+
+window.addEventListener('toast:created', (event) => {
+    const detail = event.detail || {};
+    pushNotification({
+        title: detail.title,
+        message: detail.message,
+        type: detail.type || 'info',
+        actionUrl: detail.actionUrl || '',
+        source: detail.source || 'toast'
+    });
+});
+
+async function loadNotifications() {
+    try {
+        if (!window.supabaseClient) {
+            notificationsCache = mergeNotifications([]);
+            renderNotifications(notificationsCache);
+            updateNotificationBadge();
+            return;
+        }
+
+        const { data: { session } } = await window.supabaseClient.auth.getSession();
+        if (!session) {
+            notificationsCache = mergeNotifications([]);
+            renderNotifications(notificationsCache);
+            updateNotificationBadge();
+            return;
+        }
 
         // Get user profile for role-based filtering
         const { data: profile } = await window.supabaseClient
@@ -179,8 +338,8 @@ async function loadNotifications() {
             return;
         }
 
-        notificationsCache = notifications || [];
-        renderNotifications(notifications || []);
+        notificationsCache = mergeNotifications(notifications || []);
+        renderNotifications(notificationsCache);
         updateNotificationBadge();
 
     } catch (error) {
@@ -271,6 +430,16 @@ async function handleNotificationClick(notificationId, actionUrl) {
 
 async function markNotificationRead(notificationId) {
     try {
+        const localNotification = runtimeNotifications.find(n => n.id === notificationId);
+        if (localNotification) {
+            localNotification.is_read = true;
+            saveRuntimeNotifications();
+            notificationsCache = mergeNotifications(notificationsCache);
+            renderNotifications(notificationsCache);
+            updateNotificationBadge();
+            return;
+        }
+
         if (!window.supabaseClient) return;
 
         await window.supabaseClient
@@ -292,10 +461,23 @@ async function markNotificationRead(notificationId) {
 
 async function markAllNotificationsRead() {
     try {
-        if (!window.supabaseClient) return;
+        runtimeNotifications.forEach(n => n.is_read = true);
+        saveRuntimeNotifications();
+
+        if (!window.supabaseClient) {
+            notificationsCache = mergeNotifications([]);
+            renderNotifications(notificationsCache);
+            updateNotificationBadge();
+            return;
+        }
 
         const { data: { session } } = await window.supabaseClient.auth.getSession();
-        if (!session) return;
+        if (!session) {
+            notificationsCache = mergeNotifications([]);
+            renderNotifications(notificationsCache);
+            updateNotificationBadge();
+            return;
+        }
 
         await window.supabaseClient
             .from('notifications')
