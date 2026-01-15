@@ -17,6 +17,14 @@
     };
     window.__bannerUiState = bannerUiState;
 
+    function isValidBannerUrl(url) {
+        if (typeof url !== 'string') return false;
+        const trimmed = url.trim();
+        if (!trimmed) return false;
+        if (trimmed.includes('${') || trimmed.includes('%7B') || trimmed.includes('%7D')) return false;
+        return true;
+    }
+
     function toggleMobileMenu() {
         const hamburger = document.getElementById('hamburger');
         const menubar = document.querySelector('.menubar');
@@ -51,6 +59,17 @@
                     <div>
                         <i class="fa-solid fa-image text-3xl mb-2 opacity-30"></i>
                         <p class="text-[13px]">Select or upload a banner to preview</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        if (!isValidBannerUrl(bannerUiState.currentImage)) {
+            preview.innerHTML = `
+                <div class="flex items-center justify-center h-full text-gray-500 text-center">
+                    <div>
+                        <i class="fa-solid fa-image text-3xl mb-2 opacity-30"></i>
+                        <p class="text-[13px]">Banner image missing or invalid</p>
                     </div>
                 </div>
             `;
@@ -97,7 +116,7 @@
     }
 
     function selectBanner(id, imageUrl, posX, posY, fit, scale, posXMobile, posYMobile) {
-        bannerUiState.currentImage = imageUrl;
+        bannerUiState.currentImage = isValidBannerUrl(imageUrl) ? imageUrl : null;
         bannerUiState.posX = Number.isFinite(posX) ? posX : 50;
         bannerUiState.posY = Number.isFinite(posY) ? posY : 50;
         bannerUiState.posXMobile = Number.isFinite(posXMobile) ? posXMobile : 50;
@@ -110,8 +129,9 @@
 
         const statusEl = document.getElementById('bannerStatus');
         if (statusEl) {
-            statusEl.textContent = 'Loaded';
-            statusEl.style.color = 'var(--info)';
+            const hasImage = !!bannerUiState.currentImage;
+            statusEl.textContent = hasImage ? 'Loaded' : 'Invalid image';
+            statusEl.style.color = hasImage ? 'var(--info)' : 'var(--error)';
         }
 
         document.querySelectorAll('.banner-list-item').forEach(item => {
