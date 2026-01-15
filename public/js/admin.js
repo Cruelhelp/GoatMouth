@@ -134,14 +134,56 @@ class AdminPanel {
     }
 
     async renderDashboard() {
-        const [marketStats, userStats, transactions, allMarkets, contactMessages, proposals] = await Promise.all([
+        const [
+            marketStatsResult,
+            userStatsResult,
+            transactionsResult,
+            allMarketsResult,
+            contactMessagesResult,
+            proposalsResult
+        ] = await Promise.allSettled([
             this.api.getMarketStats(),
             this.api.getUserStats(),
             this.api.getAllTransactions({ limit: 50 }), // Increased for activity feed
             this.api.getMarkets(),
             this.api.getContactMessages({ status: 'new' }),
-            window.supabaseClient.from('proposals').select('*', { count: 'exact' }).eq('status', 'pending').then(r => r).catch(() => ({ count: 0 }))
+            window.supabaseClient
+                .from('proposals')
+                .select('*', { count: 'exact' })
+                .eq('status', 'pending')
+                .then(r => r)
+                .catch(() => ({ count: 0 }))
         ]);
+
+        if (marketStatsResult.status === 'rejected') {
+            console.warn('[Admin] Failed to load market stats:', marketStatsResult.reason);
+        }
+        if (userStatsResult.status === 'rejected') {
+            console.warn('[Admin] Failed to load user stats:', userStatsResult.reason);
+        }
+        if (transactionsResult.status === 'rejected') {
+            console.warn('[Admin] Failed to load transactions:', transactionsResult.reason);
+        }
+        if (allMarketsResult.status === 'rejected') {
+            console.warn('[Admin] Failed to load markets:', allMarketsResult.reason);
+        }
+        if (contactMessagesResult.status === 'rejected') {
+            console.warn('[Admin] Failed to load contact messages:', contactMessagesResult.reason);
+        }
+        if (proposalsResult.status === 'rejected') {
+            console.warn('[Admin] Failed to load proposals:', proposalsResult.reason);
+        }
+
+        const marketStats = marketStatsResult.status === 'fulfilled'
+            ? marketStatsResult.value
+            : { total: 0, active: 0, resolved: 0, totalVolume: 0 };
+        const userStats = userStatsResult.status === 'fulfilled'
+            ? userStatsResult.value
+            : { total: 0, admins: 0, users: 0, totalBalance: 0 };
+        const transactions = transactionsResult.status === 'fulfilled' ? transactionsResult.value : [];
+        const allMarkets = allMarketsResult.status === 'fulfilled' ? allMarketsResult.value : [];
+        const contactMessages = contactMessagesResult.status === 'fulfilled' ? contactMessagesResult.value : [];
+        const proposals = proposalsResult.status === 'fulfilled' ? proposalsResult.value : { count: 0 };
 
         // Fetch additional data for comprehensive activity feed
         // Note: Some queries may fail with 400 errors if foreign key relationships don't exist in the database
@@ -4077,8 +4119,15 @@ class AdminPanel {
 
     async renderActivity(container) {
         try {
-            // Fetch all activities
-            const [recentBets, recentMarkets, recentComments, recentUsers, recentProposals, transactions] = await Promise.all([
+            // Fetch all activities (guard against partial failures in prod)
+            const [
+                recentBetsResult,
+                recentMarketsResult,
+                recentCommentsResult,
+                recentUsersResult,
+                recentProposalsResult,
+                transactionsResult
+            ] = await Promise.allSettled([
                 window.supabaseClient
                     .from('bets')
                     .select('*')
@@ -4106,6 +4155,48 @@ class AdminPanel {
                     .limit(20),
                 this.api.getAllTransactions({ limit: 100 })
             ]);
+
+            const recentBets = recentBetsResult.status === 'fulfilled' ? recentBetsResult.value : { data: [] };
+            const recentMarkets = recentMarketsResult.status === 'fulfilled' ? recentMarketsResult.value : { data: [] };
+            const recentComments = recentCommentsResult.status === 'fulfilled' ? recentCommentsResult.value : { data: [] };
+            const recentUsers = recentUsersResult.status === 'fulfilled' ? recentUsersResult.value : { data: [] };
+            const recentProposals = recentProposalsResult.status === 'fulfilled' ? recentProposalsResult.value : { data: [] };
+            const transactions = transactionsResult.status === 'fulfilled' ? transactionsResult.value : [];
+
+            if (recentBetsResult.status === 'rejected') {
+                console.warn('Failed to load recent bets for activity feed:', recentBetsResult.reason);
+            }
+            if (recentMarketsResult.status === 'rejected') {
+                console.warn('Failed to load recent markets for activity feed:', recentMarketsResult.reason);
+            }
+            if (recentCommentsResult.status === 'rejected') {
+                console.warn('Failed to load recent comments for activity feed:', recentCommentsResult.reason);
+            }
+            if (recentUsersResult.status === 'rejected') {
+                console.warn('Failed to load recent users for activity feed:', recentUsersResult.reason);
+            }
+            if (recentProposalsResult.status === 'rejected') {
+                console.warn('Failed to load recent proposals for activity feed:', recentProposalsResult.reason);
+            }
+            if (transactionsResult.status === 'rejected') {
+                console.warn('Failed to load transactions for activity feed:', transactionsResult.reason);
+            }
+
+            if (recentBets?.error) {
+                console.warn('Recent bets returned error:', recentBets.error);
+            }
+            if (recentMarkets?.error) {
+                console.warn('Recent markets returned error:', recentMarkets.error);
+            }
+            if (recentComments?.error) {
+                console.warn('Recent comments returned error:', recentComments.error);
+            }
+            if (recentUsers?.error) {
+                console.warn('Recent users returned error:', recentUsers.error);
+            }
+            if (recentProposals?.error) {
+                console.warn('Recent proposals returned error:', recentProposals.error);
+            }
 
             const userIds = new Set();
             const marketIds = new Set();
