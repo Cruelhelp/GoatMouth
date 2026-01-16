@@ -7,6 +7,7 @@
 
     const bannerUiState = window.__bannerUiState || {
         currentImage: null,
+        currentBannerId: null,
         posX: 50,
         posY: 50,
         posXMobile: 50,
@@ -16,6 +17,62 @@
         previewMode: 'desktop'
     };
     window.__bannerUiState = bannerUiState;
+
+    const bannerPreviewCacheKey = 'adminBannerPreviewCacheV1';
+
+    function readBannerPreviewCache() {
+        try {
+            const raw = localStorage.getItem(bannerPreviewCacheKey);
+            return raw ? JSON.parse(raw) : {};
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function writeBannerPreviewCache(cache) {
+        try {
+            localStorage.setItem(bannerPreviewCacheKey, JSON.stringify(cache));
+        } catch (error) {
+            console.warn('Failed to cache banner preview state', error);
+        }
+    }
+
+    function getCachedBannerState(bannerId) {
+        if (!bannerId) return null;
+        const cache = readBannerPreviewCache();
+        return cache[bannerId] || null;
+    }
+
+    function persistBannerPreview() {
+        if (!bannerUiState.currentBannerId) return;
+        if (!isValidBannerUrl(bannerUiState.currentImage)) return;
+        const cache = readBannerPreviewCache();
+        cache[bannerUiState.currentBannerId] = {
+            imageUrl: bannerUiState.currentImage,
+            posX: bannerUiState.posX,
+            posY: bannerUiState.posY,
+            posXMobile: bannerUiState.posXMobile,
+            posYMobile: bannerUiState.posYMobile,
+            fit: bannerUiState.fit,
+            scale: bannerUiState.scale,
+            updatedAt: Date.now()
+        };
+        writeBannerPreviewCache(cache);
+    }
+
+    function getBannerBackgroundSize(fit, scale, isMobile) {
+        if (fit === 'fill') {
+            return '100% 100%';
+        }
+        if (fit === 'none') {
+            const safeScale = Number.isFinite(scale) ? scale : 100;
+            return `${safeScale}% auto`;
+        }
+        if (isMobile && fit === 'cover') {
+            return '100% 100%';
+        }
+        return fit || 'cover';
+    }
 
     function isValidBannerUrl(url) {
         if (typeof url !== 'string') return false;
@@ -115,17 +172,72 @@
         if (posYDisplay) posYDisplay.textContent = `${Math.round(currentPosY)}%`;
     }
 
+    function updateBannerPreviewSynced() {
+        const preview = document.getElementById('bannerLivePreview');
+        if (!preview) return;
+
+        if (!bannerUiState.currentImage) {
+            preview.innerHTML = `
+                <div class="flex items-center justify-center h-full text-gray-500 text-center">
+                    <div>
+                        <i class="fa-solid fa-image text-3xl mb-2 opacity-30"></i>
+                        <p class="text-[13px]">Select or upload a banner to preview</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        if (!isValidBannerUrl(bannerUiState.currentImage)) {
+            preview.innerHTML = `
+                <div class="flex items-center justify-center h-full text-gray-500 text-center">
+                    <div>
+                        <i class="fa-solid fa-image text-3xl mb-2 opacity-30"></i>
+                        <p class="text-[13px]">Banner image missing or invalid</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        const isMobile = bannerUiState.previewMode === 'mobile';
+        const currentPosX = isMobile ? bannerUiState.posXMobile : bannerUiState.posX;
+        const currentPosY = isMobile ? bannerUiState.posYMobile : bannerUiState.posY;
+        const backgroundSize = getBannerBackgroundSize(bannerUiState.fit, bannerUiState.scale, isMobile);
+
+        preview.innerHTML = `
+            <div class="absolute inset-0" style="background-image: url('${bannerUiState.currentImage}'); background-size: ${backgroundSize}; background-position: ${currentPosX}% ${currentPosY}%; background-repeat: no-repeat;"></div>
+            <div class="absolute inset-0 bg-gradient-to-r from-black via-transparent to-transparent opacity-60"></div>
+            <div class="banner-position-overlay">
+                <div class="banner-position-indicator">
+                    ${Math.round(currentPosX)}% x ${Math.round(currentPosY)}%${bannerUiState.fit === 'none' ? ` - scale ${bannerUiState.scale}%` : ''}
+                </div>
+            </div>
+        `;
+
+        const posXDisplay = document.getElementById('posXDisplay');
+        const posYDisplay = document.getElementById('posYDisplay');
+        if (posXDisplay) posXDisplay.textContent = `${Math.round(currentPosX)}%`;
+        if (posYDisplay) posYDisplay.textContent = `${Math.round(currentPosY)}%`;
+    }
+
+    updateBannerPreview = updateBannerPreviewSynced;
+
     function selectBanner(id, imageUrl, posX, posY, fit, scale, posXMobile, posYMobile) {
-        bannerUiState.currentImage = isValidBannerUrl(imageUrl) ? imageUrl : null;
-        bannerUiState.posX = Number.isFinite(posX) ? posX : 50;
-        bannerUiState.posY = Number.isFinite(posY) ? posY : 50;
-        bannerUiState.posXMobile = Number.isFinite(posXMobile) ? posXMobile : 50;
-        bannerUiState.posYMobile = Number.isFinite(posYMobile) ? posYMobile : 50;
-        bannerUiState.fit = fit || 'cover';
-        bannerUiState.scale = Number.isFinite(scale) ? scale : 100;
+        bannerUiState.currentBannerId = id;
+        const cached = getCachedBannerState(id);
+        const selectedImage = isValidBannerUrl(imageUrl) ? imageUrl : null;
+        const cachedImage = cached && isValidBannerUrl(cached.imageUrl) ? cached.imageUrl : null;
+        bannerUiState.currentImage = cachedImage || selectedImage;
+        bannerUiState.posX = Number.isFinite(cached?.posX) ? cached.posX : (Number.isFinite(posX) ? posX : 50);
+        bannerUiState.posY = Number.isFinite(cached?.posY) ? cached.posY : (Number.isFinite(posY) ? posY : 50);
+        bannerUiState.posXMobile = Number.isFinite(cached?.posXMobile) ? cached.posXMobile : (Number.isFinite(posXMobile) ? posXMobile : 50);
+        bannerUiState.posYMobile = Number.isFinite(cached?.posYMobile) ? cached.posYMobile : (Number.isFinite(posYMobile) ? posYMobile : 50);
+        bannerUiState.fit = cached?.fit || fit || 'cover';
+        bannerUiState.scale = Number.isFinite(cached?.scale) ? cached.scale : (Number.isFinite(scale) ? scale : 100);
 
         localStorage.setItem('lastSelectedBannerId', id);
         updateBannerPreview();
+        persistBannerPreview();
 
         const statusEl = document.getElementById('bannerStatus');
         if (statusEl) {
@@ -158,6 +270,7 @@
         });
         if (buttonEl) buttonEl.classList.add('active');
         updateBannerPreview();
+        persistBannerPreview();
     }
 
     function adjustBannerPosition(direction) {
@@ -179,6 +292,7 @@
         }
 
         updateBannerPreview();
+        persistBannerPreview();
     }
 
     function switchPreviewMode(mode) {
@@ -190,6 +304,7 @@
         if (desktopModeBtn) desktopModeBtn.classList.toggle('active', bannerUiState.previewMode === 'desktop');
         if (mobileModeBtn) mobileModeBtn.classList.toggle('active', bannerUiState.previewMode === 'mobile');
         updateBannerPreview();
+        persistBannerPreview();
     }
 
     function setImageFit(fit) {
@@ -204,6 +319,7 @@
             scaleControls.style.display = bannerUiState.fit === 'none' ? 'block' : 'none';
         }
         updateBannerPreview();
+        persistBannerPreview();
     }
 
     function updateImageScale(value) {
@@ -238,11 +354,13 @@
                     ]
                 }
             });
+            window.__marketDescriptionEditor = editor;
 
             editor.on('text-change', () => {
                 if (hiddenInput) {
                     hiddenInput.value = editor.root.innerHTML;
                 }
+                updateMarketPreview();
             });
 
             if (hiddenInput) {
@@ -253,6 +371,284 @@
         }
 
         editorEl.dataset.quillReady = 'true';
+    }
+
+    function formatJmd(amount) {
+        if (!Number.isFinite(amount)) return '--';
+        const rounded = Math.max(0, Math.round(amount));
+        return `J$${rounded.toLocaleString('en-US')}`;
+    }
+
+    function formatOdds(probability) {
+        if (!Number.isFinite(probability) || probability <= 0) return '--';
+        return `${(1 / probability).toFixed(2)}x`;
+    }
+
+    function getGuidanceYesRate(guidance) {
+        if (!guidance) return 0.5;
+        const raw =
+            guidance.yesRate ??
+            guidance.yes_rate ??
+            guidance.yes_probability ??
+            guidance.global_prior ??
+            guidance.prior_yes ??
+            0.5;
+        const value = Number(raw);
+        if (!Number.isFinite(value)) return 0.5;
+        return Math.min(0.95, Math.max(0.05, value));
+    }
+
+    function getConfidenceLabel(sampleSize) {
+        if (!Number.isFinite(sampleSize) || sampleSize <= 0) return 'low';
+        if (sampleSize >= 50) return 'high';
+        if (sampleSize >= 20) return 'medium';
+        return 'low';
+    }
+
+    function computeSuggestedLiquidity(guidance) {
+        const sampleSize = Number.isFinite(guidance?.sampleSize) ? guidance.sampleSize : 0;
+        const source = guidance?.source || '';
+        let base = 500;
+        if (sampleSize >= 50) base = 2000;
+        else if (sampleSize >= 20) base = 1500;
+        else if (sampleSize >= 5) base = 1000;
+        if (source.toLowerCase().includes('manual')) {
+            base = Math.max(base, 2000);
+        }
+        return base;
+    }
+
+    function updateLiquidityGuidanceState({ suggestion, note, enabled }) {
+        const container = document.getElementById('liquidity-guidance');
+        const suggestionEl = document.getElementById('liquidity-suggestion');
+        const noteEl = document.getElementById('liquidity-suggestion-note');
+        const useBtn = document.getElementById('useLiquiditySuggestionBtn');
+
+        if (!container || !suggestionEl || !noteEl || !useBtn) return;
+
+        container.classList.remove('hidden');
+
+        suggestionEl.textContent = suggestion || '--';
+        noteEl.textContent = note || 'Select a category to get a suggestion.';
+        useBtn.disabled = !enabled || suggestion === '--';
+        useBtn.classList.toggle('opacity-60', useBtn.disabled);
+        useBtn.classList.toggle('cursor-not-allowed', useBtn.disabled);
+    }
+
+    let lastGuidance = null;
+
+    function parseOpeningOddsValue(value) {
+        const parsed = Number.parseFloat(value);
+        if (!Number.isFinite(parsed) || parsed <= 1) return null;
+        return parsed;
+    }
+
+    function getOpeningOddsInputs() {
+        const yesInput = document.getElementById('openingOddsYes');
+        const noInput = document.getElementById('openingOddsNo');
+        return {
+            yes: parseOpeningOddsValue(yesInput?.value),
+            no: parseOpeningOddsValue(noInput?.value)
+        };
+    }
+
+    function updateMarketOddsSuggestion(guidance) {
+        const sourceEl = document.getElementById('market-odds-source');
+        const yesEl = document.getElementById('market-odds-yes');
+        const noEl = document.getElementById('market-odds-no');
+        const analysisEl = document.getElementById('market-odds-analysis');
+        const previewYesEl = document.getElementById('previewSuggestedOddsYes');
+        const previewNoEl = document.getElementById('previewSuggestedOddsNo');
+        const useBtn = document.getElementById('useSuggestedOddsBtn');
+
+        if (!sourceEl && !yesEl && !noEl && !analysisEl && !previewYesEl && !previewNoEl) return;
+
+        const yesRate = getGuidanceYesRate(guidance);
+        const noRate = Math.max(0.05, Math.min(0.95, 1 - yesRate));
+        const yesOdds = formatOdds(yesRate);
+        const noOdds = formatOdds(noRate);
+        const yesOddsValue = yesRate > 0 ? (1 / yesRate) : null;
+        const noOddsValue = noRate > 0 ? (1 / noRate) : null;
+
+        const sampleSize = Number.isFinite(guidance?.sampleSize) ? guidance.sampleSize : null;
+        const confidence = getConfidenceLabel(sampleSize);
+        const source = guidance?.source || 'default';
+        const sourceLine = guidance
+            ? `Based on ${source} (${confidence} confidence).`
+            : 'Default 50/50 (no guidance yet).';
+        const analysisLine = guidance
+            ? `This is a starting point using ${sampleSize || 0} signals. Adjust if you expect a skewed outcome.`
+            : 'Add a category to pull guidance from recent market signals.';
+
+        if (sourceEl) sourceEl.textContent = sourceLine;
+        if (yesEl) yesEl.textContent = yesOdds;
+        if (noEl) noEl.textContent = noOdds;
+        if (analysisEl) analysisEl.textContent = analysisLine;
+        if (previewYesEl) previewYesEl.textContent = yesOdds;
+        if (previewNoEl) previewNoEl.textContent = noOdds;
+
+        if (useBtn) {
+            const canUse = !!(guidance && yesOddsValue && noOddsValue);
+            useBtn.disabled = !canUse;
+            useBtn.classList.toggle('opacity-60', !canUse);
+            useBtn.classList.toggle('cursor-not-allowed', !canUse);
+
+            if (!useBtn.dataset.boundSuggestedOdds) {
+                useBtn.dataset.boundSuggestedOdds = 'true';
+                useBtn.addEventListener('click', () => {
+                    if (!yesOddsValue || !noOddsValue) return;
+                    const yesInput = document.getElementById('openingOddsYes');
+                    const noInput = document.getElementById('openingOddsNo');
+                    if (yesInput) {
+                        yesInput.value = yesOddsValue.toFixed(2);
+                        yesInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    if (noInput) {
+                        noInput.value = noOddsValue.toFixed(2);
+                        noInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    updateMarketPreview();
+                });
+            }
+        }
+    }
+
+    function updateMarketPreview() {
+        const titleInput = document.getElementById('marketTitle');
+        const previewTitle = document.getElementById('previewTitle');
+        if (previewTitle) {
+            previewTitle.textContent = titleInput?.value?.trim() || 'Market Title';
+        }
+
+        const categorySelect = document.getElementById('marketCategory');
+        const previewCategory = document.getElementById('previewCategory');
+        if (previewCategory) {
+            const value = categorySelect?.value?.trim() || 'Category';
+            previewCategory.textContent = value.toUpperCase();
+        }
+
+        const previewDesc = document.getElementById('previewDescription');
+        const editor = window.__marketDescriptionEditor;
+        if (previewDesc && editor && typeof editor.getText === 'function') {
+            const text = editor.getText().trim();
+            if (text) {
+                previewDesc.innerHTML = editor.root.innerHTML;
+            } else {
+                previewDesc.textContent = 'Market description will appear here...';
+            }
+        } else if (previewDesc) {
+            previewDesc.textContent = 'Market description will appear here...';
+        }
+
+        const optionInputs = document.querySelectorAll('.market-option-input');
+        const previewOptions = document.getElementById('previewOptions');
+        if (previewOptions) {
+            const rawOptions = Array.from(optionInputs)
+                .map((input) => input.value.trim())
+                .filter(Boolean);
+            const options = rawOptions.length ? rawOptions : ['YES', 'NO'];
+            const { yes: openingYes, no: openingNo } = getOpeningOddsInputs();
+            const useOpeningOdds = options.length === 2 && openingYes && openingNo;
+            const evenOdds = (100 / options.length).toFixed(0);
+            const oddsLabels = useOpeningOdds
+                ? [`${openingYes.toFixed(2)}x`, `${openingNo.toFixed(2)}x`]
+                : options.map(() => `${evenOdds}%`);
+
+            previewOptions.innerHTML = options
+                .map(
+                    (option, index) => `
+                        <div class="preview-option">
+                            <div class="preview-option-label">${option}</div>
+                            <div class="preview-option-odds">${oddsLabels[index] || `${evenOdds}%`}</div>
+                        </div>
+                    `
+                )
+                .join('');
+        }
+
+        updateMarketOddsSuggestion(lastGuidance);
+    }
+
+    async function refreshLiquidityGuidance(category) {
+        if (!category) {
+            updateLiquidityGuidanceState({ suggestion: '--', note: 'Select a category to get a suggestion.', enabled: false });
+            lastGuidance = null;
+            updateMarketOddsSuggestion(null);
+            return;
+        }
+
+        updateLiquidityGuidanceState({ suggestion: '--', note: 'Loading suggestion...', enabled: true });
+
+        try {
+            const guidance = await window.adminPanel?.getGuidanceForCategory?.(category);
+            lastGuidance = guidance;
+            if (!guidance || guidance.enabled === false) {
+                updateLiquidityGuidanceState({ suggestion: '--', note: 'Odds guidance is disabled in settings.', enabled: true });
+                updateMarketOddsSuggestion(null);
+                return;
+            }
+
+            const suggestionValue = computeSuggestedLiquidity(guidance);
+            const confidence = getConfidenceLabel(guidance.sampleSize);
+            const source = guidance.source || 'guidance';
+            const note = `Based on ${source} (${confidence} confidence).`;
+
+            updateLiquidityGuidanceState({
+                suggestion: `${formatJmd(suggestionValue)} suggested`,
+                note,
+                enabled: true
+            });
+
+            const useBtn = document.getElementById('useLiquiditySuggestionBtn');
+            if (useBtn && !useBtn.dataset.boundLiquiditySuggestion) {
+                useBtn.dataset.boundLiquiditySuggestion = 'true';
+                useBtn.addEventListener('click', () => {
+                    const liquidityInput = document.getElementById('marketLiquidity');
+                    if (liquidityInput) {
+                        liquidityInput.value = suggestionValue;
+                        liquidityInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                });
+            }
+            updateMarketOddsSuggestion(guidance);
+        } catch (error) {
+            updateLiquidityGuidanceState({ suggestion: '--', note: 'Unable to load odds guidance.', enabled: true });
+            updateMarketOddsSuggestion(null);
+        }
+    }
+
+    function bindMarketPreview() {
+        if (window.__marketPreviewBound) {
+            updateMarketPreview();
+            return;
+        }
+        window.__marketPreviewBound = true;
+
+        document.addEventListener('input', (event) => {
+            if (event.target?.matches?.('#marketTitle, .market-option-input, #openingOddsYes, #openingOddsNo')) {
+                updateMarketPreview();
+            }
+        });
+
+        document.addEventListener('change', (event) => {
+            if (event.target?.matches?.('#marketCategory')) {
+                updateMarketPreview();
+            }
+        });
+
+        updateMarketPreview();
+    }
+
+    function bindLiquidityGuidance() {
+        const categorySelect = document.getElementById('marketCategory');
+        if (!categorySelect) return;
+        if (!categorySelect.dataset.boundLiquidityGuidance) {
+            categorySelect.dataset.boundLiquidityGuidance = 'true';
+            categorySelect.addEventListener('change', () => {
+                refreshLiquidityGuidance(categorySelect.value);
+            });
+        }
+        refreshLiquidityGuidance(categorySelect.value);
     }
 
     function loadAllMarketsFromTab(retryCount) {
@@ -325,6 +721,8 @@
         }
         if (view === 'markets') {
             initMarketDescriptionEditor();
+            bindLiquidityGuidance();
+            bindMarketPreview();
         }
     }
 
@@ -407,6 +805,8 @@
         });
 
         initMarketDescriptionEditor();
+        bindLiquidityGuidance();
+        bindMarketPreview();
     }
 
     document.addEventListener('DOMContentLoaded', bindAdminUi);
@@ -416,6 +816,7 @@
     window.switchView = window.switchView || switchView;
     window.switchMarketTab = window.switchMarketTab || switchMarketTab;
     window.loadAllMarketsFromTab = window.loadAllMarketsFromTab || loadAllMarketsFromTab;
+    window.updatePreview = window.updatePreview || updateMarketPreview;
     window.selectBanner = window.selectBanner || selectBanner;
     window.setBannerPosition = window.setBannerPosition || setBannerPosition;
     window.adjustBannerPosition = window.adjustBannerPosition || adjustBannerPosition;

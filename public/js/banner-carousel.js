@@ -111,11 +111,18 @@ class BannerCarousel {
         const isMobile = window.innerWidth <= 768;
         const imageUrl = this.isValidImageUrl(banner.image_url) ? banner.image_url : '';
 
-        let imageFit = banner.image_fit || 'cover';
+        const imageFit = banner.image_fit || 'cover';
+        const imageScale = Number.isFinite(banner.image_scale) ? banner.image_scale : 100;
+        let backgroundSize = imageFit;
 
-        // Optimize image fit for mobile's thinner banner
-        if (isMobile && imageFit === 'cover') {
-            imageFit = '100% 100%'; // Stretch to fill on mobile for better visibility
+        if (imageFit === 'fill') {
+            backgroundSize = '100% 100%';
+        } else if (imageFit === 'none') {
+            backgroundSize = `${imageScale}% auto`;
+        } else if (imageFit === 'cover') {
+            backgroundSize = isMobile ? '100% 100%' : 'cover';
+        } else if (imageFit === 'contain') {
+            backgroundSize = 'contain';
         }
 
         // Use mobile or desktop position values based on screen size
@@ -138,7 +145,7 @@ class BannerCarousel {
         return `
             <div class="banner-slide absolute inset-0 transition-opacity duration-500 ${isActive ? 'opacity-100' : 'opacity-0'}" data-index="${index}">
                 <!-- Background Image -->
-                <div class="absolute inset-0" style="background-image: url('${imageUrl}'); background-size: ${imageFit}; background-position: ${cssPosition}; filter: brightness(0.85);"></div>
+                <div class="absolute inset-0" style="background-image: url('${imageUrl}'); background-size: ${backgroundSize}; background-position: ${cssPosition}; background-repeat: no-repeat; filter: brightness(0.85);"></div>
 
                 <!-- Gradient Overlay -->
                 <div class="absolute inset-0 bg-gradient-to-r from-black via-transparent to-transparent opacity-40"></div>

@@ -2099,14 +2099,29 @@ class AdminPanel {
                     ? window.DOMPurify.sanitize(rawDescription)
                     : rawDescription;
 
+                let yesPrice = 0.5;
+                let noPrice = 0.5;
+                const openingYesOdds = Number.parseFloat(data.opening_odds_yes);
+                const openingNoOdds = Number.parseFloat(data.opening_odds_no);
+
+                if (Number.isFinite(openingYesOdds) && Number.isFinite(openingNoOdds) && openingYesOdds > 1 && openingNoOdds > 1) {
+                    const yesProb = 1 / openingYesOdds;
+                    const noProb = 1 / openingNoOdds;
+                    const total = yesProb + noProb;
+                    if (total > 0) {
+                        yesPrice = yesProb / total;
+                        noPrice = 1 - yesPrice;
+                    }
+                }
+
                 await this.api.createMarket({
                     title: data.title,
                     description: safeDescription,
                     category: data.category,
                     image_url: imageUrl,
                     end_date: new Date(data.end_date).toISOString(),
-                    yes_price: 0.5,
-                    no_price: 0.5
+                    yes_price: yesPrice,
+                    no_price: noPrice
                 });
 
                 modal.remove();

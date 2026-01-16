@@ -174,7 +174,7 @@ class GoatMouthAPI {
             }
         }
 
-        // Count unique traders/bettors
+        // Count unique traders/bettors when RLS allows it; otherwise keep existing count.
         try {
             const { data: bets, error: betsError } = await this.db
                 .from('bets')
@@ -182,13 +182,14 @@ class GoatMouthAPI {
                 .eq('market_id', id);
 
             if (!betsError && bets) {
-                // Count unique user IDs
                 const uniqueTraders = new Set(bets.map(bet => bet.user_id));
                 data.bettor_count = uniqueTraders.size;
-            } else {
-                data.bettor_count = 0;
             }
         } catch (err) {
+            // Keep existing bettor_count when bets are not readable.
+        }
+
+        if (data.bettor_count == null) {
             data.bettor_count = 0;
         }
 
