@@ -1149,7 +1149,7 @@ class GoatMouth {
                     <div class="text-center py-12">
                         <p class="text-gray-400 mb-4">No active markets${categoryText}</p>
                         ${this.currentCategory !== 'all' ? '<button class="px-4 py-2 rounded-lg text-white transition" style="background-color: #631BDD;" onmouseover="this.style.backgroundColor=\'#7a2ef0\'" onmouseout="this.style.backgroundColor=\'#631BDD\'" onclick="app.filterByCategory(\'all\')">View All Markets</button>' : ''}
-                        ${this.currentProfile && this.currentProfile.role === 'admin' ? '<button class="px-4 py-2 rounded-lg text-white transition ml-2" style="background-color: #027A40;" onmouseover="this.style.backgroundColor=\'#00e5af\'" onmouseout="this.style.backgroundColor=\'#00CB97\'" onclick="app.showCreateMarketModal()">Create Market</button>' : ''}
+                        ${this.currentProfile && this.currentProfile.role === 'admin' ? '' : ''}
                     </div>
                 `;
                 return;
@@ -1165,11 +1165,7 @@ class GoatMouth {
             const currentPage = Math.floor(startIndex / this.marketsPerPage) + 1;
 
             container.innerHTML = `
-                ${this.currentProfile && this.currentProfile.role === 'admin' ? `
-                    <div class="mb-6 flex justify-end">
-                        <button class="px-4 py-2 rounded-lg text-white transition" style="background-color: #027A40;" onmouseover="this.style.backgroundColor='#00e5af'" onmouseout="this.style.backgroundColor='#00CB97'" onclick="app.showCreateMarketModal()">Create Market</button>
-                    </div>
-                ` : ''}
+                ${this.currentProfile && this.currentProfile.role === 'admin' ? '' : ''}
 
                 <!-- Floating View Toggle - Mobile Only -->
                 ${this.isMobile ? `

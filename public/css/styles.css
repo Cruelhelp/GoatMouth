@@ -2542,7 +2542,7 @@ video, iframe {
     gap: 12px;
     flex: 1;
     min-width: 0;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .logo-container {
@@ -2553,6 +2553,7 @@ video, iframe {
     transition: all 0.3s ease;
     flex-shrink: 1;
     min-width: 0;
+    transform-origin: left center;
 }
 
 .logo-container:hover {

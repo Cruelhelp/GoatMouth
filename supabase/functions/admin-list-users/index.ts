@@ -3,53 +3,71 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.3";
 
 const allowedOrigins = new Set([
     "https://goatmouth.com",
+    "https://www.goatmouth.com",
+    "https://goatmouth-git-main-cruelhelps-projects.vercel.app",
+    "https://goatmouth-8gb1vi5ix-cruelhelps-projects.vercel.app",
+    "https://goatmouth-8iqwwpc0k-cruelhelps-projects.vercel.app",
+    "https://goatmouth-qbhs0cfmw-cruelhelps-projects.vercel.app",
     "http://127.0.0.1:5500",
     "http://localhost:5500"
 ]);
 
-function buildCorsHeaders(origin: string | null) {
-    const resolvedOrigin = origin && allowedOrigins.has(origin)
-        ? origin
-        : "https://goatmouth.com";
-    return {
-        "Access-Control-Allow-Origin": resolvedOrigin,
-        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+function getCorsHeaders(req: Request) {
+    const origin = req.headers.get("origin");
+    const allowOrigin = origin && allowedOrigins.has(origin) ? origin : null;
+    const requestedHeaders = req.headers.get("access-control-request-headers");
+
+    const headers: Record<string, string> = {
         "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": requestedHeaders || "authorization, x-client-info, apikey, content-type",
+        "Access-Control-Max-Age": "86400",
         "Vary": "Origin"
     };
+
+    if (allowOrigin) {
+        headers["Access-Control-Allow-Origin"] = allowOrigin;
+        headers["Access-Control-Allow-Credentials"] = "true";
+    }
+
+    return { headers, allowOrigin };
 }
 
-function jsonResponse(body, status = 200, origin: string | null = null) {
+function jsonResponse(req: Request, body: unknown, status = 200) {
+    const { headers } = getCorsHeaders(req);
     return new Response(JSON.stringify(body), {
         status,
         headers: {
             "Content-Type": "application/json",
-            ...buildCorsHeaders(origin)
+            ...headers
         }
     });
 }
 
 serve(async (req) => {
     if (req.method === "OPTIONS") {
-        return new Response("ok", { headers: buildCorsHeaders(req.headers.get("origin")) });
+        const { headers, allowOrigin } = getCorsHeaders(req);
+        if (!allowOrigin) {
+            return new Response("Origin not allowed", { status: 403, headers });
+        }
+        return new Response(null, { status: 204, headers });
     }
 
     if (req.method !== "POST") {
-        return jsonResponse({ error: "Method not allowed" }, 405, req.headers.get("origin"));
+        return jsonResponse(req, { error: "Method not allowed" }, 405);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
     if (!supabaseUrl || !serviceRoleKey) {
-        return jsonResponse({ error: "Missing Supabase environment variables" }, 500, req.headers.get("origin"));
+        return jsonResponse(req, { error: "Missing Supabase environment variables" }, 500);
     }
 
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
     if (!token) {
-        return jsonResponse({ error: "Missing authorization token" }, 401, req.headers.get("origin"));
+        return jsonResponse(req, { error: "Missing authorization token" }, 401);
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
@@ -58,7 +76,7 @@ serve(async (req) => {
 
     const { data: authData, error: authError } = await adminClient.auth.getUser(token);
     if (authError || !authData?.user) {
-        return jsonResponse({ error: "Unauthorized" }, 401, req.headers.get("origin"));
+        return jsonResponse(req, { error: "Unauthorized" }, 401);
     }
 
     const { data: callerProfile, error: profileError } = await adminClient
@@ -68,11 +86,11 @@ serve(async (req) => {
         .maybeSingle();
 
     if (profileError) {
-        return jsonResponse({ error: "Failed to validate profile" }, 500, req.headers.get("origin"));
+        return jsonResponse(req, { error: "Failed to validate profile" }, 500);
     }
 
     if (!callerProfile || callerProfile.role !== "admin") {
-        return jsonResponse({ error: "Forbidden" }, 403, req.headers.get("origin"));
+        return jsonResponse(req, { error: "Forbidden" }, 403);
     }
 
     let roleFilter = null;
@@ -90,7 +108,7 @@ serve(async (req) => {
     while (true) {
         const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage });
         if (error) {
-            return jsonResponse({ error: "Failed to list users" }, 500, req.headers.get("origin"));
+            return jsonResponse(req, { error: "Failed to list users" }, 500);
         }
 
         users.push(...(data?.users || []));
@@ -112,7 +130,7 @@ serve(async (req) => {
             .in("id", userIds);
 
         if (profilesError) {
-            return jsonResponse({ error: "Failed to load profiles" }, 500, req.headers.get("origin"));
+            return jsonResponse(req, { error: "Failed to load profiles" }, 500);
         }
 
         (profiles || []).forEach((profile) => {
@@ -145,5 +163,5 @@ serve(async (req) => {
         ? mergedUsers.filter((user) => user.role === roleFilter)
         : mergedUsers;
 
-    return jsonResponse({ users: filteredUsers, total: filteredUsers.length }, 200, req.headers.get("origin"));
+    return jsonResponse(req, { users: filteredUsers, total: filteredUsers.length }, 200);
 });
