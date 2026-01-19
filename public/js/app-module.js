@@ -68,16 +68,22 @@ class GoatMouth {
         // Handle email verification callback from URL
         await this.handleAuthCallback();
 
+        if (typeof bindAuthStateListener === 'function') {
+            bindAuthStateListener();
+        }
+
         // Check auth state
         await this.checkAuth();
-
-        // Set up auth listener
-        window.supabaseClient.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN') {
-                this.onSignIn(session.user);
-            } else if (event === 'SIGNED_OUT') {
-                this.onSignOut();
+        window.addEventListener('authStateChanged', (event) => {
+            const detail = event.detail || {};
+            if (detail.user) {
+                this.currentUser = detail.user;
+                this.currentProfile = detail.profile;
+            } else {
+                this.currentUser = null;
+                this.currentProfile = null;
             }
+            this.render();
         });
 
         // Check for hash navigation

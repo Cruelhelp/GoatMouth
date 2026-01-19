@@ -17,9 +17,9 @@
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
 
-    <link rel="stylesheet" href="css/output.css?v=4.5">
-    <link rel="stylesheet" href="css/styles.css?v=4.5">
-    <link rel="stylesheet" href="css/mobile.css?v=4.5">
+    <link rel="stylesheet" href="css/output.css?v=4.6">
+    <link rel="stylesheet" href="css/styles.css?v=4.6">
+    <link rel="stylesheet" href="css/mobile.css?v=4.6">
     <script>
         if (window.location.pathname.endsWith('earn.html')) {
             window.location.replace('index.html#earn');
@@ -233,18 +233,20 @@
     <div id="footer-container"></div>
 
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase-client.js"></script>
-    <script src="js/toast.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/shared-components.js"></script>
-    <script src="js/header-component.js"></script>
-    <script src="js/footer-component.js"></script>
-    <script src="js/sidebar-component.js"></script>
-    <script src="js/twitter-feed.js"></script>
-    <script src="js/mobile-search.js"></script>
-    <script src="js/mobile-nav-component.js"></script>
-    <script src="js/banner-carousel.js?v=4.5"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="js/supabase-client.js"></script>
+    <script defer src="js/toast.js"></script>
+    <script defer src="js/api.js"></script>
+    <script type="module" src="js/utils-loader.js"></script>
+
+    <script defer src="js/shared-components.js"></script>
+    <script defer src="js/header-component.js"></script>
+    <script defer src="js/footer-component.js"></script>
+    <script defer src="js/sidebar-component.js"></script>
+    <script defer src="js/twitter-feed.js"></script>
+    <script defer src="js/mobile-search.js"></script>
+    <script defer src="js/mobile-nav-component.js"></script>
+    <script defer src="js/banner-carousel.js?v=4.6"></script>
 
     <script>
         // Initialize earn page
@@ -256,18 +258,11 @@
 
             const api = new GoatMouthAPI(window.supabaseClient);
 
-            // Check auth and update UI
-            try {
-                const user = await api.getCurrentUser();
-                let profile = null;
-                if (user) {
-                    profile = await api.getProfile(user.id);
-                }
-                updateHeaderUI(user, profile); // Using shared function
-            } catch (error) {
-                console.error('Auth check error:', error);
-                updateHeaderUI(null, null);
+            if (typeof setAuthPending === 'function') {
+                setAuthPending(true);
             }
+
+            await (typeof resolveAuthState === 'function' ? resolveAuthState() : Promise.resolve());
 
             // Initialize banner carousel
             if (window.BannerCarousel) {
@@ -302,3 +297,4 @@
     <div id="mobile-nav-container" data-page="earn"></div>
 </body>
 </html>
+

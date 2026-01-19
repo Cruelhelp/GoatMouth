@@ -25,6 +25,7 @@ function renderHeader(options = {}) {
     const isMarketsPage = currentPage === 'markets';
     const isMarketDetailPage = currentPage === 'market';
     const isMarketsContext = isMarketsPage || isMarketDetailPage;
+    const isOnIndexPage = window.location.pathname.endsWith('index.html') || window.location.pathname === '/' || window.location.pathname === '';
 
     const navItems = [
         {
@@ -78,7 +79,7 @@ function renderHeader(options = {}) {
                 <i class="fa-solid ${item.icon}"></i> ${item.label}
             </button>`;
         } else {
-            return `<a href="${item.href}" class="${classes}">
+            return `<a href="${item.href}" class="${classes}" data-nav="${item.id}">
                 <i class="fa-solid ${item.icon}"></i> ${item.label}
             </a>`;
         }
@@ -107,9 +108,10 @@ function renderHeader(options = {}) {
         </a>` : '';
 
     // Category onclick handler - use app function on index.html, simple link elsewhere
-    const categoryOnclick = isMarketsPage
+    const categoryOnclick = (isMarketsPage && isOnIndexPage)
         ? `onclick="selectCategory(event, '{{CATEGORY}}')"`
-        : '';
+        : `onclick="navigateToCategory(event, '{{CATEGORY}}')"`;
+    const categoryHref = (category) => (isOnIndexPage ? '#' : 'index.html#markets');
 
     return `
     <!-- Logo Header -->
@@ -124,7 +126,7 @@ function renderHeader(options = {}) {
         <!-- Search Bar in Header -->
         <div class="header-search-container">
           <i class="fa-solid fa-search search-icon"></i>
-          <input type="text" id="marketSearch" class="search-input" placeholder="Search GoatMouth Markets">
+          <input type="text" id="marketSearch" class="search-input" placeholder="Search GoatMouth Markets" autocomplete="search">
         </div>
       </div>
       <div class="user-info">
@@ -247,25 +249,25 @@ function renderHeader(options = {}) {
       <!-- Category Navigation (Desktop Only) -->
       <div class="category-section desktop-only">
         <span class="category-divider">|</span>
-        <a href="${currentPage === 'markets' ? '#' : 'index.html#all'}" class="category-chip active" data-category="all" ${categoryOnclick.replace('{{CATEGORY}}', 'all')}>
+        <a href="${categoryHref('all')}" class="category-chip active" data-category="all" ${categoryOnclick.replace('{{CATEGORY}}', 'all')}>
           <i class="fa-solid fa-chart-line"></i> All
         </a>
-        <a href="${currentPage === 'markets' ? '#' : 'index.html#Politics'}" class="category-chip" data-category="Politics" ${categoryOnclick.replace('{{CATEGORY}}', 'Politics')}>
+        <a href="${categoryHref('Politics')}" class="category-chip" data-category="Politics" ${categoryOnclick.replace('{{CATEGORY}}', 'Politics')}>
           <i class="fa-solid fa-landmark"></i> Politics
         </a>
-        <a href="${currentPage === 'markets' ? '#' : 'index.html#Sports'}" class="category-chip" data-category="Sports" ${categoryOnclick.replace('{{CATEGORY}}', 'Sports')}>
+        <a href="${categoryHref('Sports')}" class="category-chip" data-category="Sports" ${categoryOnclick.replace('{{CATEGORY}}', 'Sports')}>
           <i class="fa-solid fa-futbol"></i> Sports
         </a>
-        <a href="${currentPage === 'markets' ? '#' : 'index.html#Finance'}" class="category-chip" data-category="Finance" ${categoryOnclick.replace('{{CATEGORY}}', 'Finance')}>
+        <a href="${categoryHref('Finance')}" class="category-chip" data-category="Finance" ${categoryOnclick.replace('{{CATEGORY}}', 'Finance')}>
           <i class="fa-solid fa-dollar-sign"></i> Finance
         </a>
-        <a href="${currentPage === 'markets' ? '#' : 'index.html#Crypto'}" class="category-chip" data-category="Crypto" ${categoryOnclick.replace('{{CATEGORY}}', 'Crypto')}>
+        <a href="${categoryHref('Crypto')}" class="category-chip" data-category="Crypto" ${categoryOnclick.replace('{{CATEGORY}}', 'Crypto')}>
           <i class="fa-brands fa-bitcoin"></i> Crypto
         </a>
-        <a href="${currentPage === 'markets' ? '#' : 'index.html#Technology'}" class="category-chip" data-category="Technology" ${categoryOnclick.replace('{{CATEGORY}}', 'Technology')}>
+        <a href="${categoryHref('Technology')}" class="category-chip" data-category="Technology" ${categoryOnclick.replace('{{CATEGORY}}', 'Technology')}>
           <i class="fa-solid fa-microchip"></i> Tech
         </a>
-        <a href="${currentPage === 'markets' ? '#' : 'index.html#Science'}" class="category-chip" data-category="Science" ${categoryOnclick.replace('{{CATEGORY}}', 'Science')}>
+        <a href="${categoryHref('Science')}" class="category-chip" data-category="Science" ${categoryOnclick.replace('{{CATEGORY}}', 'Science')}>
           <i class="fa-solid fa-flask"></i> Science
         </a>
         ${viewModeToggleHtml}
@@ -285,31 +287,31 @@ function renderHeader(options = {}) {
             </button>
         </div>
         <div class="mobile-sidebar-content">
-            <a href="${currentPage === 'markets' ? '#' : 'index.html#all'}" class="sidebar-category-link" data-category="all" ${categoryOnclick.replace('{{CATEGORY}}', 'all')}>
+            <a href="${categoryHref('all')}" class="sidebar-category-link" data-category="all" ${categoryOnclick.replace('{{CATEGORY}}', 'all')}>
                 <i class="fa-solid fa-chart-line"></i>
                 All Markets
             </a>
-            <a href="${currentPage === 'markets' ? '#' : 'index.html#Politics'}" class="sidebar-category-link" data-category="Politics" ${categoryOnclick.replace('{{CATEGORY}}', 'Politics')}>
+            <a href="${categoryHref('Politics')}" class="sidebar-category-link" data-category="Politics" ${categoryOnclick.replace('{{CATEGORY}}', 'Politics')}>
                 <i class="fa-solid fa-landmark"></i>
                 Politics
             </a>
-            <a href="${currentPage === 'markets' ? '#' : 'index.html#Sports'}" class="sidebar-category-link" data-category="Sports" ${categoryOnclick.replace('{{CATEGORY}}', 'Sports')}>
+            <a href="${categoryHref('Sports')}" class="sidebar-category-link" data-category="Sports" ${categoryOnclick.replace('{{CATEGORY}}', 'Sports')}>
                 <i class="fa-solid fa-futbol"></i>
                 Sports
             </a>
-            <a href="${currentPage === 'markets' ? '#' : 'index.html#Finance'}" class="sidebar-category-link" data-category="Finance" ${categoryOnclick.replace('{{CATEGORY}}', 'Finance')}>
+            <a href="${categoryHref('Finance')}" class="sidebar-category-link" data-category="Finance" ${categoryOnclick.replace('{{CATEGORY}}', 'Finance')}>
                 <i class="fa-solid fa-dollar-sign"></i>
                 Finance
             </a>
-            <a href="${currentPage === 'markets' ? '#' : 'index.html#Crypto'}" class="sidebar-category-link" data-category="Crypto" ${categoryOnclick.replace('{{CATEGORY}}', 'Crypto')}>
+            <a href="${categoryHref('Crypto')}" class="sidebar-category-link" data-category="Crypto" ${categoryOnclick.replace('{{CATEGORY}}', 'Crypto')}>
                 <i class="fa-brands fa-bitcoin"></i>
                 Crypto
             </a>
-            <a href="${currentPage === 'markets' ? '#' : 'index.html#Technology'}" class="sidebar-category-link" data-category="Technology" ${categoryOnclick.replace('{{CATEGORY}}', 'Technology')}>
+            <a href="${categoryHref('Technology')}" class="sidebar-category-link" data-category="Technology" ${categoryOnclick.replace('{{CATEGORY}}', 'Technology')}>
                 <i class="fa-solid fa-microchip"></i>
                 Technology
             </a>
-            <a href="${currentPage === 'markets' ? '#' : 'index.html#Science'}" class="sidebar-category-link" data-category="Science" ${categoryOnclick.replace('{{CATEGORY}}', 'Science')}>
+            <a href="${categoryHref('Science')}" class="sidebar-category-link" data-category="Science" ${categoryOnclick.replace('{{CATEGORY}}', 'Science')}>
                 <i class="fa-solid fa-flask"></i>
                 Science
             </a>
@@ -357,6 +359,11 @@ if (document.readyState === 'loading') {
                 logoIsLink: logoLink,
                 showAdminButton: showAdmin
             });
+            applyActiveNavState();
+            if (typeof updateHeaderUI === 'function' && typeof getAuthState === 'function') {
+                const state = getAuthState();
+                updateHeaderUI(state?.user || null, state?.profile || null);
+            }
         }
     });
 } else {
@@ -373,7 +380,44 @@ if (document.readyState === 'loading') {
             logoIsLink: logoLink,
             showAdminButton: showAdmin
         });
+        applyActiveNavState();
+        if (typeof updateHeaderUI === 'function' && typeof getAuthState === 'function') {
+            const state = getAuthState();
+            updateHeaderUI(state?.user || null, state?.profile || null);
+        }
     }
 }
 
 console.log('✓ Header component loaded');
+function applyActiveNavState() {
+    const hash = window.location.hash.replace('#', '');
+    const path = window.location.pathname;
+    let activeView = null;
+
+    if (['portfolio', 'markets', 'voting', 'leaderboard', 'activity', 'earn'].includes(hash)) {
+        activeView = hash;
+    } else if (path.includes('voting.html')) {
+        activeView = 'voting';
+    } else if (path.includes('earn.html')) {
+        activeView = 'earn';
+    } else if (path.includes('market.html')) {
+        activeView = 'markets';
+    } else if (path.includes('index.html') || path === '/' || path === '') {
+        activeView = 'markets';
+    }
+
+    if (!activeView) return;
+
+    document.querySelectorAll('.menubar .nav-btn').forEach((btn) => {
+        btn.classList.remove('active');
+    });
+
+    const target = document.querySelector(`.menubar .nav-btn[data-nav="${activeView}"]`);
+    if (target) {
+        target.classList.add('active');
+    }
+}
+
+window.addEventListener('hashchange', () => {
+    applyActiveNavState();
+});

@@ -96,16 +96,6 @@ function closeProfileDropdown() {
     }
 }
 
-// Add hover functionality for profile dropdown
-document.addEventListener('DOMContentLoaded', function() {
-    const profileDropdown = document.getElementById('userProfileDropdown');
-
-    if (profileDropdown) {
-        profileDropdown.addEventListener('mouseenter', openProfileDropdown);
-        profileDropdown.addEventListener('mouseleave', closeProfileDropdown);
-    }
-});
-
 // Close dropdowns when clicking outside
 document.addEventListener('click', function(event) {
     const profileDropdown = document.getElementById('userProfileDropdown');
@@ -130,6 +120,12 @@ document.addEventListener('click', function(event) {
 let notificationsCache = [];
 let runtimeNotifications = [];
 let notificationsPollInterval = null;
+let notificationsPollingEnabled = false;
+let notificationsVisibilityBound = false;
+let notificationsLastFetch = 0;
+let notificationsInFlight = false;
+let notificationsAbortController = null;
+const NOTIFICATIONS_CACHE_TTL_MS = 15000;
 const RUNTIME_NOTIFICATION_STORAGE_KEY = 'runtimeNotifications';
 const MAX_RUNTIME_NOTIFICATIONS = 50;
 const RUNTIME_DEDUP_WINDOW_MS = 30000;
@@ -142,7 +138,7 @@ function toggleNotifications() {
 
         // Load notifications when opening
         if (!isActive) {
-            loadNotifications();
+            loadNotifications(true);
         }
     }
 }
@@ -299,7 +295,19 @@ window.addEventListener('toast:created', (event) => {
     });
 });
 
-async function loadNotifications() {
+async function loadNotifications(force = false) {
+    if (!force && notificationsInFlight) return;
+
+    if (!force && notificationsCache.length > 0) {
+        const age = Date.now() - notificationsLastFetch;
+        if (age < NOTIFICATIONS_CACHE_TTL_MS) {
+            renderNotifications(notificationsCache);
+            updateNotificationBadge();
+            return;
+        }
+    }
+
+    notificationsInFlight = true;
     try {
         if (!window.supabaseClient) {
             notificationsCache = mergeNotifications([]);
@@ -331,6 +339,14 @@ async function loadNotifications() {
             .order('created_at', { ascending: false })
             .limit(20);
 
+        if (notificationsAbortController) {
+            notificationsAbortController.abort();
+        }
+        notificationsAbortController = new AbortController();
+        if (typeof query.abortSignal === 'function') {
+            query = query.abortSignal(notificationsAbortController.signal);
+        }
+
         const { data: notifications, error } = await query;
 
         if (error) {
@@ -339,11 +355,17 @@ async function loadNotifications() {
         }
 
         notificationsCache = mergeNotifications(notifications || []);
+        notificationsLastFetch = Date.now();
         renderNotifications(notificationsCache);
         updateNotificationBadge();
 
     } catch (error) {
+        if (error && error.name === 'AbortError') {
+            return;
+        }
         console.error('Error in loadNotifications:', error);
+    } finally {
+        notificationsInFlight = false;
     }
 }
 
@@ -527,13 +549,30 @@ function viewAllNotifications() {
 
 // Start polling for notifications when user is logged in
 function startNotificationsPolling() {
-    if (notificationsPollInterval) {
-        clearInterval(notificationsPollInterval);
+    notificationsPollingEnabled = true;
+
+    if (!notificationsVisibilityBound) {
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                pauseNotificationsPolling();
+            } else if (notificationsPollingEnabled) {
+                startNotificationsPolling();
+            }
+        });
+        notificationsVisibilityBound = true;
     }
 
-    // Poll every 30 seconds
+    if (document.hidden) {
+        return;
+    }
+
+    pauseNotificationsPolling();
+
+    // Poll every 30 seconds (skip when hidden)
     notificationsPollInterval = setInterval(() => {
-        loadNotifications();
+        if (!document.hidden) {
+            loadNotifications();
+        }
     }, 30000);
 
     // Load immediately
@@ -541,6 +580,11 @@ function startNotificationsPolling() {
 }
 
 function stopNotificationsPolling() {
+    notificationsPollingEnabled = false;
+    pauseNotificationsPolling();
+}
+
+function pauseNotificationsPolling() {
     if (notificationsPollInterval) {
         clearInterval(notificationsPollInterval);
         notificationsPollInterval = null;
@@ -548,36 +592,40 @@ function stopNotificationsPolling() {
 }
 
 // ============ Auth Functions ============
-async function handleLogout() {
+async function performSignOut(options = {}) {
+    if (window.authUtils?.performSignOut) {
+        return window.authUtils.performSignOut(options);
+    }
+
     try {
-        // Sign out from Supabase
         if (window.supabaseClient) {
             await window.supabaseClient.auth.signOut();
         }
-
-        // Clear all stored data
-        localStorage.clear();
-        sessionStorage.clear();
-
-        // Clear all cookies
-        document.cookie.split(";").forEach(function(c) {
-            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-        });
-
-        // Clear app state if exists (for index.html)
-        if (window.app) {
-            window.app.currentUser = null;
-            window.app.currentProfile = null;
-        }
-
-        // Redirect using replace to prevent back button
-        window.location.replace(window.location.origin + '/index.html');
     } catch (error) {
-        console.error('Logout error:', error);
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.replace(window.location.origin + '/index.html');
+        console.error('Sign out error:', error);
     }
+
+    localStorage.clear();
+    sessionStorage.clear();
+    document.cookie.split(";").forEach(function(c) {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+    });
+
+    updateHeaderUI(null, null);
+    stopNotificationsPolling();
+
+    if (options?.redirect) {
+        window.location.replace(options.redirectUrl || 'index.html');
+    }
+}
+
+window.performSignOut = performSignOut;
+
+async function handleLogout() {
+    await performSignOut({
+        redirect: true,
+        redirectUrl: window.location.origin + '/index.html'
+    });
 }
 
 function showUserProfile() {
@@ -753,18 +801,86 @@ async function initSharedBanner() {
     }
 }
 
+// ============ Auth State Manager ============
+function resolveAuthState(options = {}) {
+    if (window.authUtils?.resolveAuthState) {
+        return window.authUtils.resolveAuthState(options);
+    }
+    return Promise.resolve({ user: null, profile: null });
+}
+
+function bindAuthStateListener() {
+    if (window.authUtils?.bindAuthStateListener) {
+        window.authUtils.bindAuthStateListener();
+    }
+}
+
+function getAuthState() {
+    if (window.authUtils?.getAuthState) {
+        return window.authUtils.getAuthState();
+    }
+    return null;
+}
+
+window.resolveAuthState = resolveAuthState;
+window.bindAuthStateListener = bindAuthStateListener;
+window.getAuthState = getAuthState;
+
 // ============ Header UI Update ============
+function setAuthPending(isPending) {
+    window.__authPending = !!isPending;
+
+    const authLoading = document.getElementById('authLoading');
+    const authButtons = document.getElementById('authButtons');
+    const userProfileDropdown = document.getElementById('userProfileDropdown');
+    const notificationsContainer = document.getElementById('notificationsContainer');
+    const balanceCounter = document.getElementById('balanceCounter');
+    const depositBtn = document.getElementById('depositBtn');
+    const profileSeparator = document.getElementById('profileSeparator');
+
+    if (authLoading) authLoading.style.display = isPending ? 'flex' : 'none';
+
+    if (isPending) {
+        if (authButtons) authButtons.style.display = 'none';
+        if (userProfileDropdown) userProfileDropdown.style.display = 'none';
+        if (notificationsContainer) notificationsContainer.style.display = 'none';
+        if (balanceCounter) balanceCounter.style.display = 'none';
+        if (depositBtn) depositBtn.style.display = 'none';
+        if (profileSeparator) profileSeparator.style.display = 'none';
+        stopNotificationsPolling();
+    }
+}
+
+window.setAuthPending = setAuthPending;
+
 function updateHeaderUI(user = null, profile = null) {
     const authLoading = document.getElementById('authLoading');
     const authButtons = document.getElementById('authButtons');
     const userProfileDropdown = document.getElementById('userProfileDropdown');
     const notificationsContainer = document.getElementById('notificationsContainer');
     const dropdownAdminBtn = document.getElementById('dropdownAdminBtn');
+    const balanceCounter = document.getElementById('balanceCounter');
+    const depositBtn = document.getElementById('depositBtn');
+    const profileSeparator = document.getElementById('profileSeparator');
+
+    const isPending = window.__authPending === true;
 
     // Mark user-info as ready to prevent flash
     const userInfo = document.querySelector('.user-info');
     if (userInfo) {
         userInfo.classList.add('auth-ready');
+    }
+
+    if (!user && isPending) {
+        if (authLoading) authLoading.style.display = 'flex';
+        if (authButtons) authButtons.style.display = 'none';
+        if (userProfileDropdown) userProfileDropdown.style.display = 'none';
+        if (notificationsContainer) notificationsContainer.style.display = 'none';
+        if (balanceCounter) balanceCounter.style.display = 'none';
+        if (depositBtn) depositBtn.style.display = 'none';
+        if (profileSeparator) profileSeparator.style.display = 'none';
+        stopNotificationsPolling();
+        return;
     }
 
     if (authLoading) authLoading.style.display = 'none';
@@ -776,7 +892,6 @@ function updateHeaderUI(user = null, profile = null) {
         if (notificationsContainer) notificationsContainer.style.display = 'block';
 
         // Show balance counter and update amount (desktop only)
-        const balanceCounter = document.getElementById('balanceCounter');
         const headerBalanceText = document.getElementById('headerBalanceText');
         const headerBalanceSpinner = document.getElementById('headerBalanceSpinner');
 
@@ -801,8 +916,6 @@ function updateHeaderUI(user = null, profile = null) {
         }
 
         // Show deposit button and separator (desktop only)
-        const depositBtn = document.getElementById('depositBtn');
-        const profileSeparator = document.getElementById('profileSeparator');
         if (depositBtn) depositBtn.style.display = 'flex';
         if (profileSeparator) profileSeparator.style.display = 'block';
 
@@ -850,9 +963,6 @@ function updateHeaderUI(user = null, profile = null) {
         if (notificationsContainer) notificationsContainer.style.display = 'none';
 
         // Hide balance counter, deposit button and separator
-        const balanceCounter = document.getElementById('balanceCounter');
-        const depositBtn = document.getElementById('depositBtn');
-        const profileSeparator = document.getElementById('profileSeparator');
         if (balanceCounter) balanceCounter.style.display = 'none';
         if (depositBtn) depositBtn.style.display = 'none';
         if (profileSeparator) profileSeparator.style.display = 'none';
@@ -860,6 +970,48 @@ function updateHeaderUI(user = null, profile = null) {
         // Stop notifications polling
         stopNotificationsPolling();
     }
+}
+
+// Auto-init auth listener for pages that don't bootstrap it.
+function ensureAuthInitialized() {
+    window.__authInitTries = (window.__authInitTries || 0) + 1;
+    if (!window.authUtils?.resolveAuthState || !window.authUtils?.bindAuthStateListener) {
+        if (window.__authInitTries < 60) {
+            setTimeout(ensureAuthInitialized, 50);
+            return;
+        }
+        if (typeof setAuthPending === 'function') {
+            setAuthPending(false);
+        } else {
+            window.__authPending = false;
+        }
+        return;
+    }
+
+    bindAuthStateListener();
+    resolveAuthState()
+        .then(() => {
+            if (typeof updateHeaderUI === 'function' && typeof getAuthState === 'function') {
+                const state = getAuthState();
+                updateHeaderUI(state?.user || null, state?.profile || null);
+            }
+        })
+        .catch(() => {
+            if (typeof setAuthPending === 'function') {
+                setAuthPending(false);
+            } else {
+                window.__authPending = false;
+            }
+            if (typeof updateHeaderUI === 'function') {
+                updateHeaderUI(null, null);
+            }
+        });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', ensureAuthInitialized);
+} else {
+    ensureAuthInitialized();
 }
 
 // ============ Navigation Helper ============
@@ -871,6 +1023,26 @@ function navigateAndSetActive(view) {
         // Otherwise, redirect to index.html with hash
         window.location.href = `index.html#${view}`;
     }
+}
+
+function navigateToCategory(event, category) {
+    if (event && typeof event.preventDefault === 'function') {
+        event.preventDefault();
+    }
+    if (!category) return;
+
+    if (window.app && window.app.filterByCategory && window.app.currentView === 'markets') {
+        window.app.filterByCategory(category);
+        return;
+    }
+
+    sessionStorage.setItem('pendingCategory', category);
+    const isOnIndexPage = window.location.pathname.endsWith('index.html') || window.location.pathname === '/' || window.location.pathname === '';
+    if (isOnIndexPage) {
+        window.location.hash = 'markets';
+        return;
+    }
+    window.location.href = 'index.html#markets';
 }
 
 // ============ Bookmarks Helper ============

@@ -247,23 +247,18 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         if (typeof window.supabaseClient !== 'undefined') {
             try {
-                const { data: { session } } = await window.supabaseClient.auth.getSession();
-                if (session) {
+                if (typeof setAuthPending === 'function') {
+                    setAuthPending(true);
+                }
+                if (typeof resolveAuthState === 'function') {
+                    await resolveAuthState();
+                }
+
+                const state = typeof getAuthState === 'function' ? getAuthState() : null;
+                if (state?.user) {
                     isAuth = true;
-
-                    // Check if admin and get balance
-                    const { data: profile } = await window.supabaseClient
-                        .from('profiles')
-                        .select('role, balance')
-                        .eq('id', session.user.id)
-                        .single();
-
-                    if (profile) {
-                        if (profile.role === 'admin') {
-                            isAdmin = true;
-                        }
-                        balance = profile.balance || 0;
-                    }
+                    isAdmin = state.profile?.role === 'admin';
+                    balance = state.profile?.balance || 0;
                 }
             } catch (error) {
                 console.log('Auth check error:', error);

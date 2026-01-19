@@ -15,6 +15,21 @@ class GoatMouth {
         this.marketsPerPage = 25; // 5x5 grid
         this.viewMode = (window.getLocal && window.getLocal('marketViewMode')) || localStorage.getItem('marketViewMode') || 'grid'; // 'grid' or 'list'
         this.bookmarksCache = []; // Cache bookmarked market IDs
+        this.markets = [];
+        this.marketsAllLoaded = false;
+        this.marketRequestId = 0;
+        this.marketPageCache = new Map();
+        this.marketCacheTtlMs = 30000;
+        this.marketAbortController = null;
+        this.leaderboardCache = { data: null, fetchedAt: 0, inFlight: false, promise: null, userId: null };
+        this.leaderboardCacheTtlMs = 60000;
+        this.leaderboardRequestId = 0;
+        this.leaderboardAbortController = null;
+        this.activityPoller = null;
+        this.activityPollIntervalMs = 30000;
+        this.activitySubscription = null;
+        this.activityLastUpdated = null;
+        this.authListenerBound = false;
         this.init();
     }
 
@@ -60,6 +75,12 @@ class GoatMouth {
         // Initialize mobile search
         this.mobileSearch = new MobileSearch(this);
 
+        if (typeof setAuthPending === 'function') {
+            setAuthPending(true);
+        } else {
+            window.__authPending = true;
+        }
+
         // Render header IMMEDIATELY (before auth check) for instant display
         this.renderNav();
         this.attachEventListeners();
@@ -67,21 +88,37 @@ class GoatMouth {
         // Handle email verification callback from URL
         await this.handleAuthCallback();
 
+        if (typeof bindAuthStateListener === 'function') {
+            bindAuthStateListener();
+        }
+
+        this.bindAuthStateChangeHandler();
+
         // Check auth state
         await this.checkAuth();
 
-        // Set up auth listener
-        window.supabaseClient.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN') {
-                this.onSignIn(session.user);
-            } else if (event === 'SIGNED_OUT') {
-                this.onSignOut();
-            }
-        });
+        const viewHashes = ['portfolio', 'markets', 'voting', 'leaderboard', 'activity', 'earn'];
+        const categoryHashes = ['all', 'Politics', 'Sports', 'Finance', 'Crypto', 'Technology', 'Science', 'Culture'];
+        const normalizeCategoryHash = (value) => {
+            if (!value) return null;
+            const decoded = decodeURIComponent(value);
+            const matched = categoryHashes.find(cat => cat.toLowerCase() === decoded.toLowerCase());
+            return matched || null;
+        };
+        const consumePendingCategory = () => {
+            const pending = sessionStorage.getItem('pendingCategory');
+            if (!pending) return false;
+            sessionStorage.removeItem('pendingCategory');
+            this.filterByCategory(pending);
+            return true;
+        };
 
-        // Check for hash navigation (e.g., #portfolio, #voting, #activity)
+        // Check for hash navigation (views or categories)
         const hash = window.location.hash.substring(1);
-        if (hash && ['portfolio', 'markets', 'voting', 'leaderboard', 'activity', 'earn'].includes(hash)) {
+        const normalizedCategory = normalizeCategoryHash(hash);
+        if (consumePendingCategory()) {
+            // handled
+        } else if (hash && viewHashes.includes(hash)) {
             this.currentView = hash;
 
             // Update active state on navigation buttons
@@ -96,14 +133,22 @@ class GoatMouth {
             }, 100);
 
             // Keep hash to preserve current view on reloads
+        } else if (normalizedCategory) {
+            this.filterByCategory(normalizedCategory);
         }
 
         // Respond to hash navigation (e.g., Earn link)
         window.addEventListener('hashchange', () => {
             const newHash = window.location.hash.substring(1);
-            if (['portfolio', 'markets', 'voting', 'leaderboard', 'activity', 'earn'].includes(newHash)) {
+            const newCategory = normalizeCategoryHash(newHash);
+            if (consumePendingCategory()) {
+                return;
+            }
+            if (viewHashes.includes(newHash)) {
                 this.currentView = newHash;
                 this.render();
+            } else if (newCategory) {
+                this.filterByCategory(newCategory);
             }
         });
 
@@ -243,55 +288,66 @@ class GoatMouth {
     }
 
     async checkAuth() {
-        try {
-            this.currentUser = await this.api.getCurrentUser();
-            if (this.currentUser) {
-                this.currentProfile = await this.api.getProfile(this.currentUser.id);
+        const auth = typeof resolveAuthState === 'function'
+            ? await resolveAuthState()
+            : null;
 
-                // Load user's bookmarks
-                await this.loadBookmarks();
+        const state = typeof getAuthState === 'function' ? getAuthState() : auth;
+        this.currentUser = state?.user || null;
+        this.currentProfile = state?.profile || null;
 
-                // Redirect admin to admin panel
-                if (this.currentProfile.role === 'admin' && !window.location.pathname.includes('admin.html')) {
-                    // Optional: comment this out if you want admins to access main app too
-                    // window.location.href = 'admin.html';
-                }
+        if (this.currentUser) {
+            await this.loadBookmarks();
 
-                // Update header with user info
-                this.updateUserInfo();
-
-                // Ensure mobile nav balance is updated
-                setTimeout(() => {
-                    const mobileWalletBalance = document.getElementById('mobileWalletBalance');
-                    if (mobileWalletBalance && this.currentProfile) {
-                        const balance = this.currentProfile.balance || 0;
-                        mobileWalletBalance.textContent = `J$${balance.toFixed(2)}`;
-                    }
-                }, 200);
-
-                if (typeof checkOddsApiHealthForAdmin === 'function') {
-                    checkOddsApiHealthForAdmin(this.currentProfile);
-                }
+            if (this.currentProfile?.role === 'admin' && !window.location.pathname.includes('admin.html')) {
+                // Optional: comment this out if you want admins to access main app too
+                // window.location.href = 'admin.html';
             }
-        } catch (error) {
-            console.log('No user logged in');
+
+            this.updateUserInfo();
+
+            setTimeout(() => {
+                const mobileWalletBalance = document.getElementById('mobileWalletBalance');
+                if (mobileWalletBalance && this.currentProfile) {
+                    const balance = this.currentProfile.balance || 0;
+                    mobileWalletBalance.textContent = `J$${balance.toFixed(2)}`;
+                }
+            }, 200);
+
+            if (typeof checkOddsApiHealthForAdmin === 'function') {
+                checkOddsApiHealthForAdmin(this.currentProfile);
+            }
         }
     }
 
-    async onSignIn(user) {
-        this.currentUser = user;
-        this.currentProfile = await this.api.getProfile(user.id);
+    bindAuthStateChangeHandler() {
+        if (this.authListenerBound) return;
+        this.authListenerBound = true;
 
-        // Load user's bookmarks
-        await this.loadBookmarks();
+        window.addEventListener('authStateChanged', async (event) => {
+            const detail = event.detail || {};
+            const previousUserId = this.currentUser?.id || null;
+            this.currentUser = detail.user || null;
+            this.currentProfile = detail.profile || null;
+            const nextUserId = this.currentUser?.id || null;
+            if (previousUserId !== nextUserId) {
+                this.leaderboardCache = { data: null, fetchedAt: 0, inFlight: false, promise: null, userId: nextUserId };
+            }
 
-        // Redirect admin to admin panel on login
-        if (this.currentProfile.role === 'admin') {
-            window.location.href = 'admin.html';
-            return;
-        }
+            if (this.currentUser) {
+                await this.loadBookmarks();
+                this.updateUserInfo();
 
-        this.render();
+                if (this.currentProfile?.role === 'admin') {
+                    // Optional: redirect admins to admin panel on login
+                    // window.location.href = 'admin.html';
+                }
+            } else {
+                this.currentView = 'markets';
+            }
+
+            this.render();
+        });
     }
 
     updateUserInfo() {
@@ -389,7 +445,30 @@ class GoatMouth {
             if (e.target.matches('[data-category]') || e.target.closest('[data-category]')) {
                 e.preventDefault();
                 const categoryEl = e.target.matches('[data-category]') ? e.target : e.target.closest('[data-category]');
+                const isOnIndexPage = window.location.pathname.endsWith('index.html') || window.location.pathname === '/' || window.location.pathname === '';
+                if (!isOnIndexPage || !document.getElementById('app') || this.currentView !== 'markets') {
+                    sessionStorage.setItem('pendingCategory', categoryEl.dataset.category);
+                    if (isOnIndexPage) {
+                        window.location.hash = 'markets';
+                    } else {
+                        window.location.href = 'index.html#markets';
+                    }
+                    return;
+                }
                 this.filterByCategory(categoryEl.dataset.category);
+            }
+
+            // Activity details toggle
+            const activityToggle = e.target.closest('[data-action="toggle-activity-details"]');
+            if (activityToggle) {
+                e.preventDefault();
+                const targetId = activityToggle.getAttribute('data-target');
+                const panel = targetId ? document.getElementById(targetId) : null;
+                if (panel) {
+                    const isHidden = panel.classList.contains('hidden');
+                    panel.classList.toggle('hidden', !isHidden);
+                    activityToggle.textContent = isHidden ? 'Hide details' : 'View details';
+                }
             }
 
             // Auth buttons
@@ -464,6 +543,10 @@ class GoatMouth {
 
         this.renderNav();
 
+        if (this.currentView !== 'activity') {
+            this.teardownActivityUpdates();
+        }
+
         // Only render content if #app div exists (on index.html)
         const app = document.getElementById('app');
         if (app) {
@@ -482,19 +565,43 @@ class GoatMouth {
 
         const isAuth = !!this.currentUser;
         const isOnIndexPage = window.location.pathname.endsWith('index.html') || window.location.pathname === '/' || window.location.pathname === '';
+        const updateMobileNavActive = () => {
+            const bottomNav = document.querySelector('.mobile-bottom-nav');
+            if (!bottomNav) return;
+
+            const isVotingPage = window.location.pathname.includes('voting.html');
+            const isVotingView = isVotingPage || this.currentView === 'voting';
+            const isHomeView = isOnIndexPage && !isVotingView;
+
+            bottomNav.querySelectorAll('.mobile-nav-item').forEach((item) => {
+                let isActive = false;
+                if (item.dataset.nav === 'markets') {
+                    isActive = isHomeView;
+                } else if (item.getAttribute('href')?.includes('voting.html')) {
+                    isActive = isVotingView;
+                } else if (item.getAttribute('href')?.includes('deposit.html')) {
+                    isActive = window.location.pathname.includes('deposit.html');
+                }
+                item.classList.toggle('active', isActive);
+            });
+
+            document.querySelectorAll('.mobile-menu [data-nav]').forEach((item) => {
+                const isActive = item.dataset.nav === this.currentView;
+                item.classList.toggle('bg-gray-800', isActive);
+            });
+        };
 
         // Mobile Navigation
         if (this.isMobile) {
             // Check if mobile nav already exists to prevent re-rendering
             const existingMobileNav = document.querySelector('.mobile-bottom-nav');
             if (existingMobileNav) {
-                console.log('[App.js] Mobile nav already exists, skipping re-render');
+                updateMobileNavActive();
                 // Just update the balance if profile is loaded
                 if (this.currentProfile) {
                     const mobileNavWalletApp = document.getElementById('mobileNavWalletApp');
                     if (mobileNavWalletApp) {
                         const balance = this.currentProfile.balance || 0;
-                        console.log('[App.js] Updating existing mobile nav balance to:', balance);
 
                         const spinner = mobileNavWalletApp.querySelector('.mobile-balance-spinner');
                         const balanceTextEl = mobileNavWalletApp.querySelector('.mobile-balance-text');
@@ -680,6 +787,7 @@ class GoatMouth {
             document.body.appendChild(bottomNav.firstElementChild);
 
             console.log('[App.js Mobile Nav] Appended to body');
+            updateMobileNavActive();
 
             // Update balance if profile is already loaded
             setTimeout(() => {
@@ -1127,8 +1235,17 @@ class GoatMouth {
     }
 
     async renderMarkets(container) {
-        container.innerHTML = window.SkeletonLoaders.marketGrid(6);
+        const existingLayout = container.querySelector('[data-markets-layout="true"]');
+        if (existingLayout) {
+            const listEl = existingLayout.querySelector('[data-markets-list]');
+            if (listEl) {
+                listEl.innerHTML = window.SkeletonLoaders.marketGrid(6);
+            }
+        } else {
+            container.innerHTML = window.SkeletonLoaders.marketGrid(6);
+        }
 
+        let requestId = 0;
         try {
             let filters = { status: 'active' };
 
@@ -1137,11 +1254,41 @@ class GoatMouth {
                 filters.category = this.currentCategory;
             }
 
-            const allMarkets = await this.api.getMarkets(filters);
-            const markets = allMarkets;
+            requestId = ++this.marketRequestId;
+            const cacheKey = JSON.stringify({
+                status: filters.status || '',
+                category: filters.category || '',
+                offset: this.marketOffset,
+                limit: this.marketsPerPage
+            });
 
-            // Store all markets for bookmarks modal
-            this.markets = allMarkets;
+            let markets;
+            let total;
+            const cacheEntry = this.marketPageCache.get(cacheKey);
+            if (cacheEntry && (Date.now() - cacheEntry.fetchedAt) < this.marketCacheTtlMs) {
+                ({ markets, total } = cacheEntry);
+            } else {
+                if (this.marketAbortController) {
+                    this.marketAbortController.abort();
+                }
+                this.marketAbortController = new AbortController();
+
+                ({ markets, total } = await this.api.getMarketsPage(filters, {
+                    limit: this.marketsPerPage,
+                    offset: this.marketOffset,
+                    signal: this.marketAbortController.signal
+                }));
+
+                if (requestId !== this.marketRequestId) {
+                    return;
+                }
+
+                this.marketPageCache.set(cacheKey, { markets, total, fetchedAt: Date.now() });
+            }
+
+            // Store current page markets for quick bet lookups
+            this.markets = markets;
+            this.marketsAllLoaded = false;
 
             if (markets.length === 0) {
                 const categoryText = this.currentCategory === 'all' ? '' : ` in ${this.currentCategory}`;
@@ -1157,70 +1304,128 @@ class GoatMouth {
 
             // Pagination: Display markets in 5x5 grid (25 per page)
             const startIndex = this.marketOffset;
-            const endIndex = startIndex + this.marketsPerPage;
-            const displayedMarkets = markets.slice(startIndex, endIndex);
-            const hasMore = markets.length > endIndex;
+            const endIndex = startIndex + markets.length;
+            const hasMore = total > endIndex;
             const hasPrevious = startIndex > 0;
-            const totalPages = Math.ceil(markets.length / this.marketsPerPage);
+            const totalPages = Math.max(1, Math.ceil(total / this.marketsPerPage));
             const currentPage = Math.floor(startIndex / this.marketsPerPage) + 1;
 
-            container.innerHTML = `
-                ${this.currentProfile && this.currentProfile.role === 'admin' ? '' : ''}
+            const { listEl, paginationEl, toggleEl } = this.ensureMarketsLayout(container);
+            if (toggleEl) {
+                toggleEl.title = this.viewMode === 'grid' ? 'Switch to List View' : 'Switch to Grid View';
+                toggleEl.setAttribute('data-view-mode', this.viewMode);
+            }
 
-                <!-- Floating View Toggle - Mobile Only -->
-                ${this.isMobile ? `
-                    <button onclick="app.toggleViewMode()"
-                            class="mobile-only"
-                            style="position: fixed; bottom: 80px; right: 16px; background: transparent; border: none; padding: 8px; display: flex; align-items: center; justify-content: center; z-index: 40; transition: all 0.2s ease; cursor: pointer;"
-                            onmouseover="this.style.transform='scale(1.1)'; this.style.opacity='0.8';"
-                            onmouseout="this.style.transform='scale(1)'; this.style.opacity='1';"
-                            ontouchstart="this.style.transform='scale(0.9)'; this.style.opacity='0.8';"
-                            ontouchend="this.style.transform='scale(1)'; this.style.opacity='1';"
-                            title="${this.viewMode === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}">
-                        ${this.viewMode === 'grid' ? `
-                            <!-- List Icon (3 horizontal lines) -->
-                            <svg style="width: 36px; height: 36px; color: #027A40; filter: drop-shadow(0 2px 8px rgba(2, 122, 64, 0.5));" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16"/>
-                            </svg>
-                        ` : `
-                            <!-- Grid Icon (4 squares) -->
-                            <svg style="width: 36px; height: 36px; color: #027A40; filter: drop-shadow(0 2px 8px rgba(2, 122, 64, 0.5));" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
-                            </svg>
-                        `}
-                    </button>
-                ` : ''}
-
-                <!-- Markets Container -->
-                <div class="${this.viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5' : 'flex flex-col gap-3'} mb-6">
-                    ${displayedMarkets.map(market => this.viewMode === 'list' ? this.renderMarketListItem(market) : this.renderMarketCard(market)).join('')}
-                </div>
-
-                <!-- Pagination Controls -->
-                ${(hasPrevious || hasMore) ? `
-                    <div class="flex items-center justify-center gap-4">
-                        ${hasPrevious ? `
-                            <button class="px-6 py-3 rounded-lg font-bold text-white transition border border-gray-600 hover:bg-gray-700"
-                                    onclick="app.previousPage()">
-                                ← Previous
-                            </button>
-                        ` : ''}
-                        <span class="text-gray-400 font-medium">Page ${currentPage} of ${totalPages}</span>
-                        ${hasMore ? `
-                            <button class="px-6 py-3 rounded-lg font-bold text-white transition"
-                                    style="background-color: #027A40;"
-                                    onmouseover="this.style.backgroundColor='#00e5af'"
-                                    onmouseout="this.style.backgroundColor='#00CB97'"
-                                    onclick="app.nextPage()">
-                                Next →
-                            </button>
-                        ` : ''}
-                    </div>
-                ` : ''}
-            `;
+            this.updateMarketsList(listEl, markets);
+            this.updateMarketsPagination(paginationEl, { hasPrevious, hasMore, currentPage, totalPages });
         } catch (error) {
+            if (error && error.name === 'AbortError') {
+                return;
+            }
+            if (requestId !== this.marketRequestId) {
+                return;
+            }
             container.innerHTML = `<div class="text-red-500">Error loading markets: ${error.message}</div>`;
         }
+    }
+
+    ensureMarketsLayout(container) {
+        let layout = container.querySelector('[data-markets-layout="true"]');
+        if (!layout) {
+            container.innerHTML = `
+                <div data-markets-layout="true">
+                    ${this.isMobile ? `
+                        <button data-markets-toggle
+                                onclick="app.toggleViewMode()"
+                                class="mobile-only"
+                                style="position: fixed; bottom: 80px; right: 16px; background: transparent; border: none; padding: 8px; display: flex; align-items: center; justify-content: center; z-index: 40; transition: all 0.2s ease; cursor: pointer;"
+                                onmouseover="this.style.transform='scale(1.1)'; this.style.opacity='0.8';"
+                                onmouseout="this.style.transform='scale(1)'; this.style.opacity='1';"
+                                ontouchstart="this.style.transform='scale(0.9)'; this.style.opacity='0.8';"
+                                ontouchend="this.style.transform='scale(1)'; this.style.opacity='1';">
+                            <svg data-markets-toggle-icon style="width: 36px; height: 36px; color: #027A40; filter: drop-shadow(0 2px 8px rgba(2, 122, 64, 0.5));" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
+                        </button>
+                    ` : ''}
+
+                    <div data-markets-list class="mb-6"></div>
+                    <div data-markets-pagination></div>
+                </div>
+            `;
+            layout = container.querySelector('[data-markets-layout="true"]');
+        }
+
+        const listEl = layout.querySelector('[data-markets-list]');
+        const paginationEl = layout.querySelector('[data-markets-pagination]');
+        const toggleEl = layout.querySelector('[data-markets-toggle]');
+
+        if (toggleEl) {
+            const icon = toggleEl.querySelector('[data-markets-toggle-icon]');
+            if (icon) {
+                icon.innerHTML = this.viewMode === 'grid'
+                    ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16"/>'
+                    : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>';
+            }
+        }
+
+        return { listEl, paginationEl, toggleEl };
+    }
+
+    updateMarketsList(listEl, markets) {
+        if (!listEl) return;
+        listEl.className = `${this.viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5' : 'flex flex-col gap-3'} mb-6`;
+        if (this.viewMode === 'grid') {
+            listEl.style.alignItems = 'start';
+            listEl.style.alignContent = 'start';
+        } else {
+            listEl.style.alignItems = '';
+            listEl.style.alignContent = '';
+        }
+
+        const fragment = document.createDocumentFragment();
+        markets.forEach((market) => {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = this.viewMode === 'list'
+                ? this.renderMarketListItem(market)
+                : this.renderMarketCard(market);
+            if (wrapper.firstElementChild) {
+                if (this.viewMode === 'grid') {
+                    wrapper.firstElementChild.style.alignSelf = 'start';
+                }
+                fragment.appendChild(wrapper.firstElementChild);
+            }
+        });
+
+        listEl.replaceChildren(fragment);
+    }
+
+    updateMarketsPagination(paginationEl, { hasPrevious, hasMore, currentPage, totalPages }) {
+        if (!paginationEl) return;
+
+        if (!hasPrevious && !hasMore) {
+            paginationEl.replaceChildren();
+            return;
+        }
+
+        paginationEl.innerHTML = `
+            <div class="flex items-center justify-center gap-4">
+                ${hasPrevious ? `
+                    <button class="px-6 py-3 rounded-lg font-bold text-white transition border border-gray-600 hover:bg-gray-700"
+                            onclick="app.previousPage()">
+                        ← Previous
+                    </button>
+                ` : ''}
+                <span class="text-gray-400 font-medium">Page ${currentPage} of ${totalPages}</span>
+                ${hasMore ? `
+                    <button class="px-6 py-3 rounded-lg font-bold text-white transition"
+                            style="background-color: #027A40;"
+                            onmouseover="this.style.backgroundColor='#00e5af'"
+                            onmouseout="this.style.backgroundColor='#00CB97'"
+                            onclick="app.nextPage()">
+                        Next →
+                    </button>
+                ` : ''}
+            </div>
+        `;
     }
 
     renderMarketCard(market) {
@@ -1238,7 +1443,8 @@ class GoatMouth {
             // Mobile card - Polymarket style
             return `
                 <div class="mobile-card bg-gray-800 rounded-xl overflow-hidden border border-gray-700"
-                     style="box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: all 0.2s;">
+                     data-market-id="${market.id}"
+                     style="box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: all 0.2s; position: relative;">
 
                     <!-- Image Section -->
                     <div onclick="window.location.href='market.html?id=${market.id}'" style="cursor: pointer; position: relative;">
@@ -1298,7 +1504,7 @@ class GoatMouth {
                             <h3 class="text-base font-bold mb-3 leading-tight line-clamp-2" style="color: #ffffff; min-height: 40px;">${escapeHtml(market.title)}</h3>
 
                             <!-- Bet Buttons - Polymarket Style -->
-                            <div class="grid grid-cols-2 gap-2 mb-3">
+                            <div class="quick-bet-actions grid grid-cols-2 gap-2 mb-3" data-quick-bet-actions>
                                 <button onclick="event.stopPropagation(); app.quickBet('${market.id}', 'yes', ${market.yes_price});"
                                         class="flex items-center justify-between px-3 py-2.5 rounded-lg transition"
                                         style="background: rgba(5, 150, 105, 0.12);"
@@ -1341,7 +1547,8 @@ class GoatMouth {
             // Desktop card - Polymarket style
             return `
                 <div class="bg-gray-800 rounded-lg overflow-hidden border border-gray-700"
-                     style="box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);"
+                     data-market-id="${market.id}"
+                     style="box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative;"
                      onmouseover="this.style.boxShadow='0 6px 20px rgba(2, 122, 64, 0.12), 0 3px 10px rgba(0,0,0,0.3)'; this.style.transform='translateY(-2px)'; this.style.borderColor='rgba(2, 122, 64, 0.3)';"
                      onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.2)'; this.style.transform='translateY(0)'; this.style.borderColor='rgb(55, 65, 81)';">
 
@@ -1403,7 +1610,7 @@ class GoatMouth {
                             <h3 class="text-sm font-bold mb-3 leading-tight line-clamp-2" style="color: #ffffff; min-height: 36px;">${escapeHtml(market.title)}</h3>
 
                             <!-- Bet Buttons - Polymarket Style -->
-                            <div class="grid grid-cols-2 gap-2 mb-3">
+                            <div class="quick-bet-actions grid grid-cols-2 gap-2 mb-3" data-quick-bet-actions>
                                 <button onclick="event.stopPropagation(); app.quickBet('${market.id}', 'yes', ${market.yes_price});"
                                         class="flex items-center justify-between px-2.5 py-2 rounded-lg transition"
                                         style="background: rgba(5, 150, 105, 0.12);"
@@ -1583,39 +1790,8 @@ class GoatMouth {
         try {
             const positions = await this.api.getUserPositions(this.currentUser.id);
 
-            container.innerHTML = `
-                <h1 class="text-3xl font-bold mb-6">Your Portfolio</h1>
-                ${positions.length === 0 ? '<p class="text-gray-400">No positions yet</p>' : `
-                    <div class="space-y-4">
-                        ${positions.map(pos => `
-                            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-                                <div class="flex justify-between items-start mb-2">
-                                    <h3 class="font-semibold">${escapeHtml(pos.markets.title)}</h3>
-                                    <span class="text-sm ${pos.outcome === 'yes' ? 'text-green-400' : 'text-red-400'}">${pos.outcome.toUpperCase()}</span>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4 text-sm">
-                                    <div>
-                                        <p class="text-gray-400">Shares</p>
-                                        <p class="font-semibold">${parseFloat(pos.shares).toFixed(2)}</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-gray-400">Avg Price</p>
-                                        <p class="font-semibold">${(parseFloat(pos.avg_price) * 100).toFixed(1)}¢</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-gray-400">Invested</p>
-                                        <p class="font-semibold">J$${parseFloat(pos.total_invested).toFixed(2)}</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-gray-400">Current Value</p>
-                                        <p class="font-semibold">J$${parseFloat(pos.current_value).toFixed(2)}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `}
-            `;
+            const { listEl } = this.ensurePortfolioLayout(container);
+            this.updatePortfolioList(listEl, positions);
         } catch (error) {
             container.innerHTML = `<div class="text-red-500">Error loading portfolio: ${error.message}</div>`;
         }
@@ -1632,115 +1808,360 @@ class GoatMouth {
         try {
             const bets = await this.api.getUserBets(this.currentUser.id);
 
-            container.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
-                    <h1 class="text-3xl font-bold">Your Activity</h1>
-                    <div class="text-sm text-gray-400" style="overflow: hidden;">
-                        <span class="font-semibold text-white">${bets.length}</span> total bets
-                    </div>
-                </div>
-                ${bets.length === 0 ? `
-                    <div class="text-center py-12 bg-gray-800 rounded-xl border border-gray-700">
-                        <i class="ri-history-line text-6xl text-gray-600 mb-4"></i>
-                        <p class="text-gray-400 text-lg">No bets yet</p>
-                        <p class="text-gray-500 text-sm mt-2">Start betting on markets to see your activity here</p>
-                    </div>
-                ` : `
-                    <div class="space-y-3">
-                        ${bets.map(bet => {
-                            const outcomeColor = bet.outcome === 'yes' ? '#00CB97' : '#ef4444';
-                            const outcomeBg = bet.outcome === 'yes' ? 'rgba(0, 203, 151, 0.1)' : 'rgba(239, 68, 68, 0.1)';
-                            const price = parseFloat(bet.price);
-                            const amount = parseFloat(bet.amount);
-                            // Calculate shares from amount and price
-                            const shares = bet.outcome === 'yes'
-                                ? (amount / price).toFixed(2)
-                                : (amount / (1 - price)).toFixed(2);
-                            const priceDisplay = (price * 100).toFixed(1);
-                            const amountDisplay = amount.toFixed(2);
-                            const potentialReturn = parseFloat(bet.potential_return || shares).toFixed(2);
-
-                            return `
-                            <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 hover:border-gray-600 transition-all duration-200 hover:transform hover:scale-[1.01]">
-                                <div class="flex justify-between items-start gap-4">
-                                    <div class="flex-1 min-w-0">
-                                        <a href="market.html?id=${bet.market_id}" class="block group">
-                                            <h3 class="font-semibold mb-2 text-white group-hover:text-green-400 transition-colors">${bet.markets.title}</h3>
-                                        </a>
-                                        <div class="flex items-center gap-3 text-sm text-gray-400 mb-3 flex-wrap">
-                                            <span class="whitespace-nowrap"><i class="ri-time-line"></i> ${new Date(bet.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                                        </div>
-                                        <div class="flex items-center gap-4 text-sm flex-wrap">
-                                            <div class="flex items-center gap-2 whitespace-nowrap">
-                                                <span class="text-gray-400">Shares:</span>
-                                                <span class="font-semibold text-white">${shares}</span>
-                                            </div>
-                                            <div class="flex items-center gap-2 whitespace-nowrap">
-                                                <span class="text-gray-400">Price:</span>
-                                                <span class="font-semibold text-white">${priceDisplay}¢</span>
-                                            </div>
-                                            <div class="flex items-center gap-2 whitespace-nowrap">
-                                                <span class="text-gray-400">Total:</span>
-                                                <span class="font-semibold text-white">J$${amountDisplay}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="flex flex-col items-end gap-2 flex-shrink-0">
-                                        <div class="px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap" style="background: ${outcomeBg}; color: ${outcomeColor};">
-                                            ${bet.outcome.toUpperCase()}
-                                        </div>
-                                        <div class="text-right whitespace-nowrap">
-                                            <div class="text-xs text-gray-400">Potential</div>
-                                            <div class="text-sm font-semibold" style="color: ${outcomeColor};">J$${potentialReturn}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        `}).join('')}
-                    </div>
-                `}
-            `;
+            const { listEl, countEl } = this.ensureActivityLayout(container);
+            if (countEl) {
+                countEl.textContent = String(bets.length);
+            }
+            this.activityLastUpdated = new Date();
+            this.updateActivityMeta(container);
+            this.updateActivityList(listEl, bets);
+            this.setupActivityLiveUpdates();
         } catch (error) {
             container.innerHTML = `<div class="text-red-500">Error loading activity: ${error.message}</div>`;
+        }
+    }
+
+    ensurePortfolioLayout(container) {
+        let layout = container.querySelector('[data-portfolio-layout="true"]');
+        if (!layout) {
+            container.innerHTML = `
+                <div data-portfolio-layout="true">
+                    <h1 class="text-3xl font-bold mb-6">Your Portfolio</h1>
+                    <div data-portfolio-list></div>
+                </div>
+            `;
+            layout = container.querySelector('[data-portfolio-layout="true"]');
+        }
+
+        const listEl = layout.querySelector('[data-portfolio-list]');
+        return { listEl };
+    }
+
+    updatePortfolioList(listEl, positions) {
+        if (!listEl) return;
+
+        if (!positions || positions.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'text-gray-400';
+            empty.textContent = 'No positions yet';
+            listEl.replaceChildren(empty);
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        positions.forEach((pos) => {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = `
+                <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-semibold">${escapeHtml(pos.markets.title)}</h3>
+                        <span class="text-sm ${pos.outcome === 'yes' ? 'text-green-400' : 'text-red-400'}">${pos.outcome.toUpperCase()}</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <p class="text-gray-400">Shares</p>
+                            <p class="font-semibold">${parseFloat(pos.shares).toFixed(2)}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400">Avg Price</p>
+                            <p class="font-semibold">${(parseFloat(pos.avg_price) * 100).toFixed(1)}¢</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400">Invested</p>
+                            <p class="font-semibold">J$${parseFloat(pos.total_invested).toFixed(2)}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400">Current Value</p>
+                            <p class="font-semibold">J$${parseFloat(pos.current_value).toFixed(2)}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            if (wrapper.firstElementChild) {
+                fragment.appendChild(wrapper.firstElementChild);
+            }
+        });
+
+        listEl.replaceChildren(fragment);
+    }
+
+    ensureActivityLayout(container) {
+        let layout = container.querySelector('[data-activity-layout="true"]');
+        if (!layout) {
+            container.innerHTML = `
+                <div data-activity-layout="true">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+                        <h1 class="text-3xl font-bold">Your Activity</h1>
+                        <div class="text-sm text-gray-400" style="overflow: hidden; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <span><span class="font-semibold text-white" data-activity-count>0</span> total bets</span>
+                            <span class="text-xs text-gray-500" data-activity-updated>Live updates</span>
+                        </div>
+                    </div>
+                    <div data-activity-list></div>
+                </div>
+            `;
+            layout = container.querySelector('[data-activity-layout="true"]');
+        }
+
+        const listEl = layout.querySelector('[data-activity-list]');
+        const countEl = layout.querySelector('[data-activity-count]');
+        return { listEl, countEl };
+    }
+
+    updateActivityMeta(container) {
+        const layout = container.querySelector('[data-activity-layout="true"]');
+        if (!layout || !this.activityLastUpdated) return;
+        const updatedEl = layout.querySelector('[data-activity-updated]');
+        if (updatedEl) {
+            const timeText = this.activityLastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            updatedEl.textContent = `Updated ${timeText}`;
+        }
+    }
+
+    updateActivityList(listEl, bets) {
+        if (!listEl) return;
+
+        if (!bets || bets.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'text-center py-12 bg-gray-800 rounded-xl border border-gray-700';
+            empty.innerHTML = `
+                <i class="ri-history-line text-6xl text-gray-600 mb-4"></i>
+                <p class="text-gray-400 text-lg">No bets yet</p>
+                <p class="text-gray-500 text-sm mt-2">Start betting on markets to see your activity here</p>
+            `;
+            listEl.replaceChildren(empty);
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        bets.forEach((bet) => {
+            const outcomeColor = bet.outcome === 'yes' ? '#00CB97' : '#ef4444';
+            const outcomeBg = bet.outcome === 'yes' ? 'rgba(0, 203, 151, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+            const price = parseFloat(bet.price);
+            const amount = parseFloat(bet.amount);
+            const shares = bet.outcome === 'yes'
+                ? (amount / price).toFixed(2)
+                : (amount / (1 - price)).toFixed(2);
+            const priceDisplay = (price * 100).toFixed(1);
+            const amountDisplay = amount.toFixed(2);
+            const potentialReturn = parseFloat(bet.potential_return || shares).toFixed(2);
+            const createdAt = new Date(bet.created_at);
+            const market = bet.markets || {};
+            const marketStatus = market.status || 'open';
+            const marketResolution = market.resolution_date ? new Date(market.resolution_date).toLocaleDateString() : '-';
+            const marketOutcome = market.resolved_outcome || '-';
+            const marketFee = market.market_fee ?? market.fee ?? null;
+            const feeDisplay = marketFee !== null && marketFee !== undefined ? `${parseFloat(marketFee).toFixed(2)}%` : '-';
+            const liquidityDisplay = market.liquidity_constant ? `J$${parseFloat(market.liquidity_constant).toFixed(2)}` : '-';
+            const detailId = `activity-details-${bet.id}`;
+
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = `
+                <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 hover:border-gray-600 transition-all duration-200 hover:transform hover:scale-[1.01]">
+                    <div class="flex justify-between items-start gap-4">
+                        <div class="flex-1 min-w-0">
+                            <a href="market.html?id=${bet.market_id}" class="block group">
+                                <h3 class="font-semibold mb-2 text-white group-hover:text-green-400 transition-colors">${bet.markets.title}</h3>
+                            </a>
+                            <div class="flex items-center gap-3 text-sm text-gray-400 mb-3 flex-wrap">
+                                <span class="whitespace-nowrap"><i class="ri-time-line"></i> ${new Date(bet.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <div class="flex items-center gap-4 text-sm flex-wrap">
+                                <div class="flex items-center gap-2 whitespace-nowrap">
+                                    <span class="text-gray-400">Shares:</span>
+                                    <span class="font-semibold text-white">${shares}</span>
+                                </div>
+                                <div class="flex items-center gap-2 whitespace-nowrap">
+                                    <span class="text-gray-400">Price:</span>
+                                    <span class="font-semibold text-white">${priceDisplay}¢</span>
+                                </div>
+                                <div class="flex items-center gap-2 whitespace-nowrap">
+                                    <span class="text-gray-400">Total:</span>
+                                    <span class="font-semibold text-white">J$${amountDisplay}</span>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button class="text-xs text-gray-300 hover:text-white transition"
+                                        data-action="toggle-activity-details"
+                                        data-target="${detailId}">
+                                    View details
+                                </button>
+                            </div>
+                            <div id="${detailId}" class="hidden mt-3 rounded-lg border border-gray-700 bg-gray-900/70 p-3 text-xs text-gray-300">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div><span class="text-gray-500">Bet ID:</span> ${bet.id}</div>
+                                    <div><span class="text-gray-500">Market ID:</span> ${bet.market_id}</div>
+                                    <div><span class="text-gray-500">Placed:</span> ${createdAt.toLocaleString()}</div>
+                                    <div><span class="text-gray-500">Bet status:</span> ${bet.status || 'open'}</div>
+                                    <div><span class="text-gray-500">Odds:</span> ${(1 / price).toFixed(2)}x</div>
+                                    <div><span class="text-gray-500">Potential:</span> J$${potentialReturn}</div>
+                                    <div><span class="text-gray-500">Market status:</span> ${marketStatus}</div>
+                                    <div><span class="text-gray-500">Resolution:</span> ${marketResolution}</div>
+                                    <div><span class="text-gray-500">Resolved outcome:</span> ${marketOutcome}</div>
+                                    <div><span class="text-gray-500">Market fee:</span> ${feeDisplay}</div>
+                                    <div><span class="text-gray-500">Liquidity:</span> ${liquidityDisplay}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end gap-2 flex-shrink-0">
+                            <div class="px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap" style="background: ${outcomeBg}; color: ${outcomeColor};">
+                                ${bet.outcome.toUpperCase()}
+                            </div>
+                            <div class="text-right whitespace-nowrap">
+                                <div class="text-xs text-gray-400">Potential</div>
+                                <div class="text-sm font-semibold" style="color: ${outcomeColor};">J$${potentialReturn}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            if (wrapper.firstElementChild) {
+                fragment.appendChild(wrapper.firstElementChild);
+            }
+        });
+
+        listEl.replaceChildren(fragment);
+    }
+
+    setupActivityLiveUpdates() {
+        if (!this.currentUser) return;
+        const app = document.getElementById('app');
+        if (!app) return;
+
+        if (!this.activityPoller) {
+            this.activityPoller = setInterval(() => {
+                if (this.currentView !== 'activity') return;
+                this.renderActivity(app);
+            }, this.activityPollIntervalMs);
+        }
+
+        if (!this.activitySubscription && this.api?.subscribeToUserBets) {
+            this.activitySubscription = this.api.subscribeToUserBets(this.currentUser.id, () => {
+                if (this.currentView !== 'activity') return;
+                this.renderActivity(app);
+            });
+        }
+    }
+
+    teardownActivityUpdates() {
+        if (this.activityPoller) {
+            clearInterval(this.activityPoller);
+            this.activityPoller = null;
+        }
+        if (this.activitySubscription?.unsubscribe) {
+            this.activitySubscription.unsubscribe();
+            this.activitySubscription = null;
         }
     }
 
     async renderLeaderboard(container) {
         container.innerHTML = window.SkeletonLoaders.list(10);
 
+        let requestId = 0;
         try {
+            requestId = ++this.leaderboardRequestId;
             // Fetch top users by balance or total bets
-            const leaderboard = await this.api.getLeaderboard();
+            let leaderboard = null;
+            const cacheAge = Date.now() - this.leaderboardCache.fetchedAt;
+            const currentUserId = this.currentUser?.id || null;
+            const cacheMatchesUser = this.leaderboardCache.userId === currentUserId;
+            if (this.leaderboardCache.data && cacheAge < this.leaderboardCacheTtlMs && cacheMatchesUser) {
+                leaderboard = this.leaderboardCache.data;
+            } else if (!this.leaderboardCache.inFlight) {
+                this.leaderboardCache.inFlight = true;
+                if (this.leaderboardAbortController) {
+                    this.leaderboardAbortController.abort();
+                }
+                this.leaderboardAbortController = new AbortController();
+                const fetchPromise = this.api.getLeaderboard(10, {
+                    signal: this.leaderboardAbortController.signal
+                }).then((data) => {
+                    const nextCache = {
+                        data,
+                        fetchedAt: Date.now(),
+                        inFlight: false,
+                        promise: null,
+                        userId: currentUserId
+                    };
+                    if (requestId !== this.leaderboardRequestId && this.leaderboardCache?.data) {
+                        this.leaderboardCache.inFlight = false;
+                        this.leaderboardCache.promise = null;
+                        return data;
+                    }
+                    this.leaderboardCache = nextCache;
+                    return data;
+                }).catch((error) => {
+                    this.leaderboardCache.inFlight = false;
+                    this.leaderboardCache.promise = null;
+                    throw error;
+                });
+                this.leaderboardCache.promise = fetchPromise;
+                leaderboard = await fetchPromise;
+            } else if (this.leaderboardCache.promise) {
+                leaderboard = await this.leaderboardCache.promise;
+            } else {
+                leaderboard = this.leaderboardCache.data || [];
+            }
+
+            if (requestId !== this.leaderboardRequestId) {
+                return;
+            }
+            if (leaderboard === null) {
+                return;
+            }
 
             container.innerHTML = `
-                <h1 class="text-3xl font-bold mb-6">Leaderboard</h1>
-                <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                    ${leaderboard && leaderboard.length > 0 ? `
-                        <div class="space-y-4">
-                            ${leaderboard.map((user, index) => `
-                                <div class="flex items-center justify-between p-4 bg-gray-900 rounded-lg border border-gray-700">
-                                    <div class="flex items-center gap-4">
-                                        <div class="text-2xl font-bold ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-orange-400' : 'text-gray-500'}">
-                                            #${index + 1}
-                                        </div>
-                                        <div>
-                                            <div class="font-semibold">${user.username || 'Anonymous'}</div>
-                                            <div class="text-sm text-gray-400" style="overflow: hidden;">${user.total_bets || 0} bets placed</div>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="text-xl font-bold" style="color: #027A40;">$${(user.balance || 0).toFixed(2)}</div>
-                                        <div class="text-sm text-gray-400" style="overflow: hidden;">Balance</div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : `
-                        <p class="text-center text-gray-400 py-8">No leaderboard data available yet</p>
-                    `}
+                <div data-leaderboard-layout="true">
+                    <h1 class="text-3xl font-bold mb-6">Leaderboard</h1>
+                    <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                        <div data-leaderboard-list></div>
+                    </div>
                 </div>
             `;
+
+            const listEl = container.querySelector('[data-leaderboard-list]');
+            if (!listEl) return;
+
+            if (!leaderboard || leaderboard.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = 'text-center text-gray-400 py-8';
+                empty.textContent = 'No leaderboard data available yet';
+                listEl.replaceChildren(empty);
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+            leaderboard.forEach((user, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = `
+                    <div class="flex items-center justify-between p-4 bg-gray-900 rounded-lg border border-gray-700">
+                        <div class="flex items-center gap-4">
+                            <div class="text-2xl font-bold ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-orange-400' : 'text-gray-500'}">
+                                #${index + 1}
+                            </div>
+                            <div>
+                                <div class="font-semibold">${user.username || 'Anonymous'}</div>
+                                <div class="text-sm text-gray-400" style="overflow: hidden;">${user.total_bets || 0} bets placed</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xl font-bold" style="color: #027A40;">$${(user.balance || 0).toFixed(2)}</div>
+                            <div class="text-sm text-gray-400" style="overflow: hidden;">Balance</div>
+                        </div>
+                    </div>
+                `;
+                if (wrapper.firstElementChild) {
+                    fragment.appendChild(wrapper.firstElementChild);
+                }
+            });
+            listEl.replaceChildren(fragment);
         } catch (error) {
+            if (error && error.name === 'AbortError') {
+                return;
+            }
+            if (requestId !== this.leaderboardRequestId) {
+                return;
+            }
             container.innerHTML = `<div class="text-red-500">Error loading leaderboard: ${error.message}</div>`;
         }
     }
@@ -1751,16 +2172,86 @@ class GoatMouth {
         `;
     }
 
+    ensureProfileLayout(container) {
+        let layout = container.querySelector('[data-profile-layout]');
+        if (layout) return layout;
+
+        layout = document.createElement('div');
+        layout.setAttribute('data-profile-layout', 'true');
+        layout.innerHTML = `
+            <div data-profile-header></div>
+            <div class="mb-6" data-profile-positions-section>
+                <h2 class="text-2xl font-bold mb-4">Active Positions</h2>
+                <div class="grid gap-4" data-profile-positions-list></div>
+            </div>
+            <div data-profile-transactions-section>
+                <h2 class="text-2xl font-bold mb-4">Recent Activity</h2>
+                <div data-profile-transactions-body></div>
+            </div>
+        `;
+        container.replaceChildren(layout);
+        return layout;
+    }
+
+    setProfileLoading(container) {
+        const layout = this.ensureProfileLayout(container);
+        const header = layout.querySelector('[data-profile-header]');
+        const positionsList = layout.querySelector('[data-profile-positions-list]');
+        const transactionsBody = layout.querySelector('[data-profile-transactions-body]');
+
+        header.innerHTML = `
+            ${window.SkeletonLoaders.profile()}
+            ${window.SkeletonLoaders.stats(4)}
+        `;
+        positionsList.innerHTML = window.SkeletonLoaders.list(3);
+        transactionsBody.innerHTML = window.SkeletonLoaders.list(3);
+    }
+
+    setProfileError(container, message) {
+        const layout = this.ensureProfileLayout(container);
+        const header = layout.querySelector('[data-profile-header]');
+        const positionsList = layout.querySelector('[data-profile-positions-list]');
+        const transactionsBody = layout.querySelector('[data-profile-transactions-body]');
+
+        header.innerHTML = `<div class="text-red-500">Error loading profile: ${message}</div>`;
+        positionsList.replaceChildren();
+        transactionsBody.replaceChildren();
+    }
+
+    ensureProfileTransactionsTable(transactionsBody) {
+        let table = transactionsBody.querySelector('[data-profile-transactions-table]');
+        if (table) {
+            return table.querySelector('tbody');
+        }
+
+        table = document.createElement('table');
+        table.className = 'w-full';
+        table.setAttribute('data-profile-transactions-table', 'true');
+        table.innerHTML = `
+            <thead class="bg-gray-900">
+                <tr>
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-400">Type</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-400">Amount</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-400">Balance</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-400">Date</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        `;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'bg-gray-800 rounded-lg overflow-hidden border border-gray-700';
+        wrapper.appendChild(table);
+        transactionsBody.replaceChildren(wrapper);
+        return table.querySelector('tbody');
+    }
+
     async renderProfile(container) {
         if (!this.currentUser) {
             container.innerHTML = '<p class="text-center py-8">Please sign in to view profile</p>';
             return;
         }
 
-        container.innerHTML = `
-            ${window.SkeletonLoaders.profile()}
-            ${window.SkeletonLoaders.stats(4)}
-        `;
+        this.setProfileLoading(container);
 
         try {
             const [positions, bets, transactions] = await Promise.all([
@@ -1773,8 +2264,12 @@ class GoatMouth {
             const currentValue = positions.reduce((sum, p) => sum + parseFloat(p.current_value || 0), 0);
             const profitLoss = currentValue - totalInvested;
 
-            container.innerHTML = `
-                <!-- Profile Header -->
+            const layout = this.ensureProfileLayout(container);
+            const header = layout.querySelector('[data-profile-header]');
+            const positionsList = layout.querySelector('[data-profile-positions-list]');
+            const transactionsBody = layout.querySelector('[data-profile-transactions-body]');
+
+            header.innerHTML = `
                 <div class="bg-gray-800 rounded-xl p-8 mb-6 border border-gray-700">
                     <div class="flex items-center gap-6">
                         <div class="bg-gradient-to-br from-teal-500 to-purple-600 rounded-full p-1">
@@ -1788,7 +2283,6 @@ class GoatMouth {
                             <h1 class="text-3xl font-bold mb-2">${this.currentProfile.username}</h1>
                             <p class="text-gray-400">${this.currentUser.email}</p>
                             <div class="flex gap-4 mt-4">
-                                <!-- Balance Card -->
                                 <div class="group relative px-5 py-3 rounded-xl border-2 transition-all duration-300 hover:scale-105"
                                      style="background: linear-gradient(135deg, rgba(2, 122, 64, 0.1) 0%, rgba(2, 122, 64, 0.05) 100%);
                                             border-color: rgba(2, 122, 64, 0.3);">
@@ -1801,7 +2295,6 @@ class GoatMouth {
                                     <p class="text-2xl font-bold" style="color: #027A40;">J$${parseFloat(this.currentProfile.balance).toFixed(2)}</p>
                                 </div>
 
-                                <!-- Total Bets Card -->
                                 <div class="group relative px-5 py-3 rounded-xl border-2 transition-all duration-300 hover:scale-105"
                                      style="background: linear-gradient(135deg, rgba(99, 27, 221, 0.1) 0%, rgba(99, 27, 221, 0.05) 100%);
                                             border-color: rgba(99, 27, 221, 0.3);">
@@ -1814,7 +2307,6 @@ class GoatMouth {
                                     <p class="text-2xl font-bold" style="color: #631BDD;">${bets.length}</p>
                                 </div>
 
-                                <!-- P/L Card -->
                                 <div class="group relative px-5 py-3 rounded-xl border-2 transition-all duration-300 hover:scale-105"
                                      style="background: linear-gradient(135deg, rgba(${profitLoss >= 0 ? '16, 185, 129' : '239, 68, 68'}, 0.1) 0%, rgba(${profitLoss >= 0 ? '16, 185, 129' : '239, 68, 68'}, 0.05) 100%);
                                             border-color: rgba(${profitLoss >= 0 ? '16, 185, 129' : '239, 68, 68'}, 0.3);">
@@ -1835,71 +2327,78 @@ class GoatMouth {
                         </button>
                     </div>
                 </div>
-
-                <!-- Active Positions -->
-                <div class="mb-6">
-                    <h2 class="text-2xl font-bold mb-4">Active Positions</h2>
-                    ${positions.length === 0 ? '<p class="text-gray-400">No active positions</p>' : `
-                        <div class="grid gap-4">
-                            ${positions.map(pos => `
-                                <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                                    <div class="flex justify-between items-start">
-                                        <div class="flex-1">
-                                            <h3 class="font-semibold mb-1">${pos.markets.title}</h3>
-                                            <p class="text-sm ${pos.outcome === 'yes' ? 'text-green-400' : 'text-red-400'} font-semibold">${pos.outcome.toUpperCase()}</p>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="text-sm text-gray-400" style="overflow: hidden;">Shares: ${parseFloat(pos.shares).toFixed(2)}</p>
-                                            <p class="text-sm text-gray-400" style="overflow: hidden;">Avg: ${(parseFloat(pos.avg_price) * 100).toFixed(1)}¢</p>
-                                            <p class="text-sm font-semibold">Value: J$${parseFloat(pos.current_value).toFixed(2)}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `}
-                </div>
-
-                <!-- Recent Activity -->
-                <div>
-                    <h2 class="text-2xl font-bold mb-4">Recent Activity</h2>
-                    ${transactions.slice(0, 10).length === 0 ? '<p class="text-gray-400">No recent activity</p>' : `
-                        <div class="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
-                            <table class="w-full">
-                                <thead class="bg-gray-900">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-400">Type</th>
-                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-400">Amount</th>
-                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-400">Balance</th>
-                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-400">Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${transactions.slice(0, 10).map(tx => `
-                                        <tr class="border-t border-gray-700">
-                                            <td class="px-4 py-3">
-                                                <span class="badge badge-${tx.type}">${tx.type}</span>
-                                            </td>
-                                            <td class="px-4 py-3 font-semibold">${tx.type === 'bet' ? '-' : '+'}J$${parseFloat(tx.amount).toFixed(2)}</td>
-                                            <td class="px-4 py-3 text-gray-400">J$${parseFloat(tx.balance_after).toFixed(2)}</td>
-                                            <td class="px-4 py-3 text-sm text-gray-400">${new Date(tx.created_at).toLocaleDateString()}</td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    `}
-                </div>
             `;
+
+            if (positions.length == 0) {
+                const empty = document.createElement('p');
+                empty.className = 'text-gray-400';
+                empty.textContent = 'No active positions';
+                positionsList.replaceChildren(empty);
+            } else {
+                const fragment = document.createDocumentFragment();
+                positions.forEach(pos => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-gray-800 rounded-lg p-4 border border-gray-700';
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <h3 class="font-semibold mb-1">${pos.markets.title}</h3>
+                                <p class="text-sm ${pos.outcome === 'yes' ? 'text-green-400' : 'text-red-400'} font-semibold">${pos.outcome.toUpperCase()}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-gray-400" style="overflow: hidden;">Shares: ${parseFloat(pos.shares).toFixed(2)}</p>
+                                <p class="text-sm text-gray-400" style="overflow: hidden;">Avg: ${(parseFloat(pos.avg_price) * 100).toFixed(1)}A?</p>
+                                <p class="text-sm font-semibold">Value: J$${parseFloat(pos.current_value).toFixed(2)}</p>
+                            </div>
+                        </div>
+                    `;
+                    fragment.appendChild(card);
+                });
+                positionsList.replaceChildren(fragment);
+            }
+
+            const recentTransactions = transactions.slice(0, 10);
+            if (recentTransactions.length == 0) {
+                const empty = document.createElement('p');
+                empty.className = 'text-gray-400';
+                empty.textContent = 'No recent activity';
+                transactionsBody.replaceChildren(empty);
+            } else {
+                const tbody = this.ensureProfileTransactionsTable(transactionsBody);
+                const rows = document.createDocumentFragment();
+                recentTransactions.forEach(tx => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-t border-gray-700';
+                    row.innerHTML = `
+                        <td class="px-4 py-3">
+                            <span class="badge badge-${tx.type}">${tx.type}</span>
+                        </td>
+                        <td class="px-4 py-3 font-semibold">${tx.type === 'bet' ? '-' : '+'}J$${parseFloat(tx.amount).toFixed(2)}</td>
+                        <td class="px-4 py-3 text-gray-400">J$${parseFloat(tx.balance_after).toFixed(2)}</td>
+                        <td class="px-4 py-3 text-sm text-gray-400">${new Date(tx.created_at).toLocaleDateString()}</td>
+                    `;
+                    rows.appendChild(row);
+                });
+                tbody.replaceChildren(rows);
+            }
         } catch (error) {
-            container.innerHTML = `<div class="text-red-500">Error loading profile: ${error.message}</div>`;
+            this.setProfileError(container, error.message);
         }
     }
 
-    async renderVoting(container) {
-        container.innerHTML = `
-            <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
-            <style>
+    ensureVotingAssets() {
+        if (!document.getElementById('voting-remixicon')) {
+            const link = document.createElement('link');
+            link.id = 'voting-remixicon';
+            link.rel = 'stylesheet';
+            link.href = 'https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css';
+            document.head.appendChild(link);
+        }
+
+        if (!document.getElementById('voting-inline-style')) {
+            const style = document.createElement('style');
+            style.id = 'voting-inline-style';
+            style.textContent = `
                 .voting-content {
                     padding: 28px 34px;
                     padding-bottom: 100px;
@@ -2019,13 +2518,21 @@ class GoatMouth {
                         display: grid;
                     }
                 }
-            </style>
+            `;
+            document.head.appendChild(style);
+        }
+    }
 
+    ensureVotingLayout(container) {
+        let layout = container.querySelector('[data-voting-layout]');
+        if (layout) return layout;
+
+        layout = document.createElement('div');
+        layout.setAttribute('data-voting-layout', 'true');
+        layout.innerHTML = `
             <div class="voting-content">
                 <div class="voting-grid">
-                    <!-- Left Column -->
                     <div>
-                        <!-- Top Action Bar -->
                         <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
                             <div>
                                 <h1 class="text-2xl font-bold text-white mb-1">Voting</h1>
@@ -2034,7 +2541,6 @@ class GoatMouth {
                             <div id="suggest-market-btn"></div>
                         </div>
 
-                        <!-- Tabs -->
                         <div class="flex gap-3 mb-6 flex-wrap">
                             <button class="vote-tab active" data-tab="active">
                                 <div class="w-2 h-2 rounded-full bg-current"></div>
@@ -2050,15 +2556,11 @@ class GoatMouth {
                             </button>
                         </div>
 
-                        <!-- Proposals -->
                         <section class="panel">
                             <div class="panel-title">Market Proposals</div>
-                            <div id="proposals-container">
-                                ${window.SkeletonLoaders.proposalList(3)}
-                            </div>
+                            <div id="proposals-container"></div>
                         </section>
 
-                        <!-- Admin Panel -->
                         <section class="panel" id="admin-panel" style="display: none;">
                             <div class="panel-title">Admin Poll Management</div>
                             <div class="admin-grid">
@@ -2082,7 +2584,6 @@ class GoatMouth {
                         </section>
                     </div>
 
-                    <!-- Right Column - Stats -->
                     <aside class="stats-column">
                         <div class="stat-card stat-green">
                             <div class="stat-icon"><i class="ri-survey-line"></i></div>
@@ -2120,12 +2621,18 @@ class GoatMouth {
             </div>
         `;
 
-        // Initialize VotingSystem
-        if (window.VotingSystem) {
-            new window.VotingSystem();
-        }
+        container.replaceChildren(layout);
+        return layout;
     }
 
+    async renderVoting(container) {
+        this.ensureVotingAssets();
+        const layout = this.ensureVotingLayout(container);
+        const proposals = layout.querySelector('#proposals-container');
+        if (proposals && proposals.innerHTML.trim() == '') {
+            proposals.innerHTML = window.SkeletonLoaders.proposalList(3);
+        }
+    }
     showAuthModal(activeTab = 'login') {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0';
@@ -2497,6 +3004,21 @@ class GoatMouth {
         }
     }
 
+    attachModalCloseHandlers(modal, onClose) {
+        const closeModal = () => {
+            if (typeof onClose === 'function') {
+                onClose();
+            }
+            modal.remove();
+        };
+
+        modal.querySelectorAll('[data-action="close-modal"]').forEach((btn) => {
+            btn.addEventListener('click', closeModal);
+        });
+
+        return closeModal;
+    }
+
     showEditProfileModal() {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
@@ -2506,7 +3028,7 @@ class GoatMouth {
                 <!-- Header -->
                 <div class="flex items-center justify-between mb-6">
                     <h2 class="text-2xl font-bold text-white">Edit Profile</h2>
-                    <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                    <button data-action="close-modal" class="text-gray-400 hover:text-white text-2xl">&times;</button>
                 </div>
 
                 <!-- Form -->
@@ -2550,6 +3072,7 @@ class GoatMouth {
         `;
 
         document.body.appendChild(modal);
+        const closeModal = this.attachModalCloseHandlers(modal);
 
         modal.querySelector('#edit-profile-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -2557,7 +3080,7 @@ class GoatMouth {
 
             if (newUsername === this.currentProfile.username) {
                 alert('No changes made');
-                modal.remove();
+                closeModal();
                 return;
             }
 
@@ -2569,7 +3092,7 @@ class GoatMouth {
                 this.currentProfile.username = newUsername;
                 this.updateUserInfo();
                 alert('Profile updated successfully!');
-                modal.remove();
+                closeModal();
             } catch (error) {
                 alert('Error updating profile: ' + error.message);
             }
@@ -2582,36 +3105,21 @@ class GoatMouth {
             if (this.mobileMenuOpen) {
                 this.toggleMobileMenu();
             }
-
-            // Sign out from Supabase
-            await this.api.signOut();
-
-            // Clear local state
-            this.currentUser = null;
-            this.currentProfile = null;
-            this.currentView = 'markets';
-
-            // Clear any stored data
-            localStorage.clear();
-            sessionStorage.clear();
-
-            // Clear all cookies
-            document.cookie.split(";").forEach(function(c) {
-                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-            });
-
-            // Redirect to home page
-            if (window.location.pathname.includes('admin.html')) {
-                window.location.href = '/';
+            if (typeof performSignOut === 'function') {
+                await performSignOut({ redirect: true, redirectUrl: 'index.html' });
             } else {
-                window.location.reload();
+                await this.api.signOut();
+                window.location.replace('index.html');
             }
         } catch (error) {
             console.error('Sign out error:', error);
-            // Force clear everything
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.reload();
+            if (typeof performSignOut === 'function') {
+                await performSignOut({ redirect: true, redirectUrl: 'index.html' });
+            } else {
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.replace('index.html');
+            }
         }
     }
 
@@ -2770,9 +3278,10 @@ class GoatMouth {
         await this.loadBookmarks();
 
         // Load all markets if not already loaded
-        if (!this.markets || this.markets.length === 0) {
+        if (!this.marketsAllLoaded) {
             console.log('Loading markets for bookmarks modal...');
             this.markets = await this.api.getMarkets({});
+            this.marketsAllLoaded = true;
         }
 
         console.log('=== BOOKMARKS DEBUG ===');
@@ -2825,7 +3334,7 @@ class GoatMouth {
                             </svg>
                             <h2 class="text-xl font-bold" style="color: #fff;">Bookmarked Markets</h2>
                         </div>
-                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white text-2xl transition" style="padding: 4px 8px;">
+                        <button data-action="close-modal" class="text-gray-400 hover:text-white text-2xl transition" style="padding: 4px 8px;">
                             &times;
                         </button>
                     </div>
@@ -2842,7 +3351,7 @@ class GoatMouth {
                             </svg>
                             <h3 class="text-xl font-bold text-gray-300 mb-2">No bookmarks yet</h3>
                             <p class="text-gray-400 mb-6">Start bookmarking markets to keep track of your favorites</p>
-                            <button onclick="this.closest('.fixed').remove()" class="px-6 py-3 rounded-lg font-semibold transition" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #fff;">
+                            <button data-action="close-modal" class="px-6 py-3 rounded-lg font-semibold transition" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #fff;">
                                 Browse Markets
                             </button>
                         </div>
@@ -2884,7 +3393,7 @@ class GoatMouth {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <button onclick="event.stopPropagation(); app.toggleBookmark('${market.id}'); setTimeout(() => { if(!app.isBookmarked('${market.id}')) { this.closest('.fixed').remove(); } }, 100);"
+                                            <button data-action="toggle-bookmark" data-market-id="${market.id}"
                                                     class="p-2 rounded-lg hover:bg-gray-600 transition flex-shrink-0">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#059669" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
@@ -2902,36 +3411,76 @@ class GoatMouth {
         `;
 
         document.body.appendChild(modal);
+        const closeModal = this.attachModalCloseHandlers(modal);
+
+        modal.querySelectorAll('[data-action="toggle-bookmark"]').forEach((btn) => {
+            btn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const marketId = btn.dataset.marketId;
+                this.toggleBookmark(marketId);
+                setTimeout(() => {
+                    if (!this.isBookmarked(marketId)) {
+                        closeModal();
+                    }
+                }, 100);
+            });
+        });
 
         // Close on backdrop click
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
-                modal.remove();
+                closeModal();
             }
         });
     }
 
     async quickBet(marketId, outcome, price) {
-        // Check if user is logged in
         if (!this.currentUser) {
             this.showAuthModal('login');
             return;
         }
 
-        // Get market data
         const market = this.markets.find(m => m.id === marketId);
         if (!market) {
             alert('Market not found');
             return;
         }
 
-        // Create quick bet modal
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center';
-        modal.style.backdropFilter = 'blur(8px)';
-        modal.style.zIndex = '10001';
-        modal.style.paddingTop = '60px';
-        modal.style.paddingBottom = '20px';
+        const card = document.querySelector(`[data-market-id="${marketId}"]`);
+        if (!card) {
+            alert('Market card not found');
+            return;
+        }
+
+        const actions = card.querySelector('[data-quick-bet-actions]');
+        if (!actions) {
+            alert('Quick bet actions not available');
+            return;
+        }
+
+        const closeExistingQuickBets = () => {
+            document.querySelectorAll('[data-quick-bet-open="true"]').forEach(openActions => {
+                const original = openActions.dataset.quickBetOriginal;
+                if (original) {
+                    openActions.innerHTML = original;
+                }
+                const originalClass = openActions.dataset.quickBetClass;
+                if (originalClass) {
+                    openActions.className = originalClass;
+                }
+                openActions.dataset.quickBetOpen = '';
+            });
+        };
+        closeExistingQuickBets();
+
+        if (!actions.dataset.quickBetOriginal) {
+            actions.dataset.quickBetOriginal = actions.innerHTML;
+        }
+        if (!actions.dataset.quickBetClass) {
+            actions.dataset.quickBetClass = actions.className;
+        }
+        actions.dataset.quickBetOpen = 'true';
+        actions.className = 'quick-bet-actions mb-3';
 
         const yesOdds = market.yes_price ? (1 / market.yes_price) : 0;
         const noOdds = market.no_price ? (1 / market.no_price) : 0;
@@ -2940,206 +3489,348 @@ class GoatMouth {
         const outcomeOdds = outcome === 'yes' ? yesOdds : noOdds;
         const outcomeOddsDisplay = outcomeOdds ? `${outcomeOdds.toFixed(2)}x` : '--';
 
-        modal.innerHTML = `
-            <div class="bg-gray-800 rounded-xl w-full mx-4 shadow-2xl border border-gray-700 overflow-y-auto"
-                 style="max-width: 440px; max-height: 90vh; animation: slideUp 0.3s ease-out;">
-                <style>
-                    @keyframes slideUp {
-                        from { transform: translateY(20px); opacity: 0; }
-                        to { transform: translateY(0); opacity: 1; }
-                    }
-                </style>
-
-                <!-- Header -->
-                <div class="p-4 border-b border-gray-700" style="background: linear-gradient(135deg, rgba(2, 122, 64, 0.1) 0%, rgba(0, 0, 0, 0.2) 100%);">
-                    <div class="flex items-center justify-between mb-2">
-                        <h3 class="text-lg font-bold" style="color: ${outcomeColor};">Quick Bet: ${outcomeText}</h3>
-                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+        actions.innerHTML = `
+            <div class="quick-bet-inline rounded-lg border border-gray-700 bg-gray-900/80 p-3"
+                 style="box-shadow: 0 8px 20px rgba(0,0,0,0.25);">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 rounded-md text-[11px] font-bold"
+                              style="color: ${outcomeColor}; background: rgba(0,0,0,0.35); border: 1px solid rgba(${outcome === 'yes' ? '0, 203, 151' : '239, 68, 68'}, 0.35);">
+                            ${outcomeText}
+                        </span>
+                        <span class="text-xs text-gray-300">@</span>
+                        <span class="text-sm font-bold" style="color: ${outcomeColor};" id="quick-summary-price">${outcomeOddsDisplay}</span>
                     </div>
-                    <p class="text-sm text-gray-300 line-clamp-2">${market.title}</p>
+                    <button data-action="close-quick-bet" class="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
                 </div>
 
-                <!-- Body -->
-                <div class="p-4">
-                    <!-- Outcome Display -->
-                    <div class="mb-4 p-3 rounded-lg text-center" style="background: linear-gradient(135deg, rgba(${outcome === 'yes' ? '2, 122, 64' : '220, 38, 38'}, 0.15) 0%, rgba(${outcome === 'yes' ? '2, 122, 64' : '220, 38, 38'}, 0.05) 100%); border: 2px solid rgba(${outcome === 'yes' ? '0, 203, 151' : '239, 68, 68'}, 0.3);">
-                        <div class="text-xs font-semibold mb-1" style="color: ${outcomeColor};">${outcomeText}</div>
-                        <div class="text-3xl font-black mb-1" style="color: ${outcomeColor};">${outcomeOddsDisplay}</div>
-                        <div class="text-xs text-gray-400">Odds multiplier</div>
+                <div data-step="amount" class="quick-bet-step">
+                    <label class="block text-[11px] font-semibold mb-1 text-gray-400">Amount</label>
+                    <div class="flex items-center gap-2 mb-1">
+                        <input type="number" id="quick-bet-amount" placeholder="0.00"
+                               class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-green-500 text-sm"
+                               style="font-size: 14px;" min="1" step="0.01">
+                        <button type="button" data-action="quick-bet-max"
+                                class="px-2.5 py-2 rounded-lg text-xs font-semibold border border-gray-600 text-gray-200 hover:border-green-500 hover:text-white transition">
+                            Max
+                        </button>
                     </div>
-
-                    <!-- Quick Amount Buttons -->
-                    <div class="mb-4">
-                        <label class="block text-sm font-semibold mb-2" style="color: #059669;">Bet Amount</label>
-                        <div class="grid grid-cols-4 gap-2 mb-3">
-                            <button class="quick-amount-btn px-2 py-2 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-700 transition text-sm font-semibold" data-amount="10">$10</button>
-                            <button class="quick-amount-btn px-2 py-2 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-700 transition text-sm font-semibold" data-amount="25">$25</button>
-                            <button class="quick-amount-btn px-2 py-2 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-700 transition text-sm font-semibold" data-amount="50">$50</button>
-                            <button class="quick-amount-btn px-2 py-2 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-700 transition text-sm font-semibold" data-amount="100">$100</button>
-                        </div>
-                        <input type="number" id="quick-bet-amount" placeholder="Or enter custom amount"
-                               class="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-green-500 text-sm"
-                               style="font-size: 16px;" min="1" step="0.01">
+                    <div class="mt-1 text-[11px] text-gray-500 flex items-center justify-between mb-2">
+                        <span>Est. shares: <span id="quick-summary-shares-inline">--</span></span>
+                        <span>Price: <span id="quick-summary-price-inline">${outcomeOddsDisplay}</span></span>
                     </div>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button class="quick-amount-btn px-2 py-1.5 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-800 transition text-xs font-semibold" data-amount="10">$10</button>
+                        <button class="quick-amount-btn px-2 py-1.5 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-800 transition text-xs font-semibold" data-amount="25">$25</button>
+                        <button class="quick-amount-btn px-2 py-1.5 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-800 transition text-xs font-semibold" data-amount="50">$50</button>
+                        <button class="quick-amount-btn px-2 py-1.5 rounded-lg border border-gray-600 hover:border-green-500 hover:bg-gray-800 transition text-xs font-semibold" data-amount="100">$100</button>
+                    </div>
+                    <button data-action="quick-bet-review" disabled
+                            class="w-full mt-2 px-3 py-2 rounded-lg font-bold text-white/70 border border-gray-700 transition disabled:cursor-not-allowed"
+                            style="background: rgba(5, 150, 105, 0.15);">
+                        Review Bet
+                    </button>
+                </div>
 
-                    <!-- Bet Summary -->
-                    <div id="quick-bet-summary" class="hidden mb-4 p-3 rounded-lg" style="background: linear-gradient(135deg, rgba(0, 203, 151, 0.1) 0%, rgba(99, 27, 221, 0.1) 100%); border: 2px solid rgba(0, 203, 151, 0.3);">
-                        <div class="flex justify-between text-sm mb-2">
-                            <span class="text-gray-400">Payout</span>
+                <div data-step="summary" class="quick-bet-step hidden mt-2">
+                    <div class="rounded-lg border border-gray-700 bg-gray-900/70 p-2 mb-2">
+                        <div class="flex items-center justify-between text-xs mb-1.5">
+                            <span class="text-gray-400">Est. shares</span>
                             <span class="font-semibold" id="quick-summary-shares">-</span>
                         </div>
-                        <div class="flex justify-between text-sm mb-2">
-                            <span class="text-gray-400">Odds</span>
-                            <span class="font-semibold" id="quick-summary-price">-</span>
+                        <div class="flex items-center justify-between text-xs mb-1.5">
+                            <span class="text-gray-400">Est. payout</span>
+                            <span class="font-semibold" id="quick-summary-payout">-</span>
                         </div>
-                        <div class="flex justify-between pt-2 border-t border-gray-600">
-                            <span class="font-semibold text-sm">Profit</span>
-                            <span class="font-bold text-green-400 text-sm" id="quick-summary-profit">-</span>
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-gray-400">Est. profit</span>
+                            <span class="font-bold text-green-400" id="quick-summary-profit">-</span>
                         </div>
                     </div>
-
-                    <!-- Place Bet Button -->
-                    <button id="quick-place-bet-btn" disabled
-                            class="w-full px-4 py-2.5 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed text-white transition"
+                    <button id="quick-place-bet-btn"
+                            class="w-full px-3 py-2 rounded-lg font-bold text-white transition"
                             style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
-                        Place Bet
+                        Buy ${outcomeText}
                     </button>
+                </div>
 
-                    <!-- Balance -->
-                    <div class="text-center text-xs text-gray-400 mt-3">
-                        Balance: <span class="font-semibold text-white">J$${parseFloat(this.currentProfile?.balance || 0).toFixed(2)}</span>
+                <div data-step="confirm" class="quick-bet-step hidden mt-2">
+                    <div class="rounded-lg border border-gray-700 bg-gray-900/70 p-2 mb-2 text-[11px] text-gray-300">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span>Outcome</span>
+                            <span class="font-semibold">${outcomeText}</span>
+                        </div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span>Odds</span>
+                            <span class="font-semibold" id="quick-confirm-odds">${outcomeOddsDisplay}</span>
+                        </div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span>Amount</span>
+                            <span class="font-semibold" id="quick-confirm-amount">J$0.00</span>
+                        </div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span>Est. shares</span>
+                            <span class="font-semibold" id="quick-confirm-shares">--</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span>Est. payout</span>
+                            <span class="font-semibold" id="quick-confirm-payout">--</span>
+                        </div>
                     </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="quick-confirm-cancel" class="px-2 py-1.5 rounded-lg text-xs font-semibold border border-gray-600 text-gray-200 hover:border-gray-500 hover:text-white transition">
+                            Back
+                        </button>
+                        <button id="quick-confirm-accept" class="px-2 py-1.5 rounded-lg text-xs font-semibold text-white"
+                                style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+                            Confirm Bet
+                        </button>
+                    </div>
+                </div>
+
+                <div data-step="success" class="quick-bet-step hidden mt-2">
+                    <div class="rounded-lg border border-green-500/40 bg-green-900/20 p-2 mb-2 text-[11px] text-green-200">
+                        Bet placed! Your order is live.
+                    </div>
+                    <div class="text-[11px] text-gray-300 mb-2">
+                        See your bet on the market details page.
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <a href="market.html?id=${marketId}" class="px-2 py-1.5 rounded-lg text-xs font-semibold border border-gray-600 text-gray-200 hover:border-gray-500 hover:text-white transition text-center">
+                            Market Details
+                        </a>
+                        <a href="index.html#activity" class="px-2 py-1.5 rounded-lg text-xs font-semibold border border-gray-600 text-gray-200 hover:border-gray-500 hover:text-white transition text-center">
+                            View Activity
+                        </a>
+                    </div>
+                    <button data-action="quick-bet-done"
+                            class="w-full px-3 py-2 rounded-lg font-bold text-white transition"
+                            style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+                        Done
+                    </button>
+                </div>
+
+                <div class="flex items-center justify-between text-[11px] text-gray-400 mt-2">
+                    <span>Balance</span>
+                    <span class="font-semibold text-white">J$${parseFloat(this.currentProfile?.balance || 0).toFixed(2)}</span>
                 </div>
             </div>
         `;
 
-        document.body.appendChild(modal);
+        const slip = actions.querySelector('.quick-bet-inline');
+        slip.addEventListener('click', (e) => e.stopPropagation());
 
-        // Attach event listeners
-        const amountInput = modal.querySelector('#quick-bet-amount');
-        const placeBetBtn = modal.querySelector('#quick-place-bet-btn');
-        const summary = modal.querySelector('#quick-bet-summary');
+        const steps = {
+            amount: slip.querySelector('[data-step="amount"]'),
+            summary: slip.querySelector('[data-step="summary"]'),
+            confirm: slip.querySelector('[data-step="confirm"]'),
+            success: slip.querySelector('[data-step="success"]')
+        };
+        const setStep = (name) => {
+            Object.entries(steps).forEach(([key, el]) => {
+                if (!el) return;
+                el.classList.toggle('hidden', key != name);
+            });
+        };
+        setStep('amount');
+
+        const amountInput = slip.querySelector('#quick-bet-amount');
+        const placeBetBtn = slip.querySelector('#quick-place-bet-btn');
+        const maxBtn = slip.querySelector('[data-action="quick-bet-max"]');
+        const reviewBtn = slip.querySelector('[data-action="quick-bet-review"]');
+        const confirmOdds = slip.querySelector('#quick-confirm-odds');
+        const confirmAmount = slip.querySelector('#quick-confirm-amount');
+        const confirmShares = slip.querySelector('#quick-confirm-shares');
+        const confirmPayout = slip.querySelector('#quick-confirm-payout');
+        const confirmAccept = slip.querySelector('#quick-confirm-accept');
+        const confirmCancel = slip.querySelector('#quick-confirm-cancel');
 
         let betAmount = 0;
         let quoteTimeout = null;
         let quoteRequestId = 0;
+        let quoteAbortController = null;
         let latestQuote = null;
 
-        const scheduleQuote = () => {
+        const cleanupQuickBet = () => {
             clearTimeout(quoteTimeout);
+            if (quoteAbortController) {
+                quoteAbortController.abort();
+                quoteAbortController = null;
+            }
+        };
 
-            const amount = parseFloat(betAmount);
+        const restoreActions = () => {
+            cleanupQuickBet();
+            if (actions.dataset.quickBetOriginal) {
+                actions.innerHTML = actions.dataset.quickBetOriginal;
+            }
+            if (actions.dataset.quickBetClass) {
+                actions.className = actions.dataset.quickBetClass;
+            }
+            actions.dataset.quickBetOpen = '';
+        };
+
+        slip.querySelectorAll('[data-action="close-quick-bet"]').forEach(btn => {
+            btn.addEventListener('click', restoreActions);
+        });
+        slip.querySelectorAll('[data-action="quick-bet-done"]').forEach(btn => {
+            btn.addEventListener('click', restoreActions);
+        });
+
+        const updateQuote = (amount) => {
+            clearTimeout(quoteTimeout);
             if (!amount || amount < 1) return;
 
             quoteTimeout = setTimeout(async () => {
                 const requestId = ++quoteRequestId;
+                if (quoteAbortController) {
+                    quoteAbortController.abort();
+                }
+                quoteAbortController = new AbortController();
 
                 try {
-                    const quote = await this.api.getBetQuoteWithOdds(marketId, outcome, amount);
+                    const quote = await this.api.getBetQuoteWithOdds(marketId, outcome, amount, {
+                        signal: quoteAbortController.signal
+                    });
                     if (requestId != quoteRequestId) return;
 
                     latestQuote = quote.data;
                     const payout = parseFloat(quote.data.potentialPayout || 0);
                     const profit = parseFloat(quote.data.potentialProfit || 0);
                     const oddsFormatted = quote.data.currentOddsFormatted || (quote.data.currentOdds ? `${quote.data.currentOdds.toFixed(2)}x` : '--');
+                    const shares = quote.data.shares || quote.data.sharesBought || (price ? (amount / price) : 0);
 
-                    summary.classList.remove('hidden');
-                    modal.querySelector('#quick-summary-shares').textContent = `J$${payout.toFixed(2)}`;
-                    modal.querySelector('#quick-summary-price').textContent = oddsFormatted;
-                    modal.querySelector('#quick-summary-profit').textContent = `+J$${profit.toFixed(2)}`;
-
-                    placeBetBtn.disabled = false;
-                    placeBetBtn.textContent = `Place Bet: J$${amount.toFixed(2)}`;
+                    slip.querySelector('#quick-summary-shares').textContent = shares ? `${parseFloat(shares).toFixed(2)}` : '--';
+                    slip.querySelector('#quick-summary-shares-inline').textContent = shares ? `${parseFloat(shares).toFixed(2)}` : '--';
+                    slip.querySelector('#quick-summary-payout').textContent = `J$${payout.toFixed(2)}`;
+                    slip.querySelector('#quick-summary-price').textContent = oddsFormatted;
+                    slip.querySelector('#quick-summary-price-inline').textContent = oddsFormatted;
+                    slip.querySelector('#quick-summary-profit').textContent = `+J$${profit.toFixed(2)}`;
+                    if (confirmOdds) confirmOdds.textContent = oddsFormatted;
                 } catch (error) {
+                    if (error?.name == 'AbortError') return;
                     if (requestId != quoteRequestId) return;
-                    latestQuote = null;
 
-                    const fallbackProbability = price;
-                    const fallbackOdds = fallbackProbability ? (1 / fallbackProbability) : 0;
+                    const fallbackOdds = price ? (1 / price) : 0;
                     const fallbackPayout = fallbackOdds ? amount * fallbackOdds : 0;
                     const fallbackProfit = fallbackPayout - amount;
+                    const fallbackShares = price ? (amount / price) : 0;
 
-                    summary.classList.remove('hidden');
-                    modal.querySelector('#quick-summary-shares').textContent = `J$${fallbackPayout.toFixed(2)}`;
-                    modal.querySelector('#quick-summary-price').textContent = fallbackOdds ? `${fallbackOdds.toFixed(2)}x` : '--';
-                    modal.querySelector('#quick-summary-profit').textContent = `+J$${fallbackProfit.toFixed(2)}`;
-
-                    placeBetBtn.disabled = false;
-                    placeBetBtn.textContent = `Place Bet: J$${amount.toFixed(2)}`;
+                    slip.querySelector('#quick-summary-shares').textContent = fallbackShares ? `${fallbackShares.toFixed(2)}` : '--';
+                    slip.querySelector('#quick-summary-shares-inline').textContent = fallbackShares ? `${fallbackShares.toFixed(2)}` : '--';
+                    slip.querySelector('#quick-summary-payout').textContent = `J$${fallbackPayout.toFixed(2)}`;
+                    slip.querySelector('#quick-summary-price').textContent = fallbackOdds ? `${fallbackOdds.toFixed(2)}x` : '--';
+                    slip.querySelector('#quick-summary-price-inline').textContent = fallbackOdds ? `${fallbackOdds.toFixed(2)}x` : '--';
+                    slip.querySelector('#quick-summary-profit').textContent = `+J$${fallbackProfit.toFixed(2)}`;
+                    if (confirmOdds) confirmOdds.textContent = fallbackOdds ? `${fallbackOdds.toFixed(2)}x` : '--';
                 }
             }, 250);
         };
 
-        const updateSummary = () => {
+        const handleAmountChange = (value) => {
+            betAmount = value;
             if (!betAmount || parseFloat(betAmount) < 1) {
-                summary.classList.add('hidden');
-                placeBetBtn.disabled = true;
-                placeBetBtn.textContent = 'Place Bet';
+                setStep('amount');
+                if (reviewBtn) {
+                    reviewBtn.disabled = true;
+                }
                 return;
             }
-
-            summary.classList.remove('hidden');
-            modal.querySelector('#quick-summary-shares').textContent = '...';
-            modal.querySelector('#quick-summary-price').textContent = '...';
-            modal.querySelector('#quick-summary-profit').textContent = '...';
-
-            placeBetBtn.disabled = true;
-            placeBetBtn.textContent = 'Calculating...';
-
-            scheduleQuote();
+            if (reviewBtn) {
+                reviewBtn.disabled = false;
+            }
+            updateQuote(parseFloat(betAmount));
         };
 
-        // Quick amount buttons
-        modal.querySelectorAll('.quick-amount-btn').forEach(btn => {
+        slip.querySelectorAll('.quick-amount-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 betAmount = btn.dataset.amount;
                 amountInput.value = betAmount;
-                updateSummary();
+                handleAmountChange(betAmount);
             });
         });
 
-        // Amount input
         amountInput.addEventListener('input', (e) => {
-            betAmount = e.target.value;
-            updateSummary();
+            handleAmountChange(e.target.value);
         });
 
-        // Place bet
-        placeBetBtn.addEventListener('click', async () => {
-            const amount = parseFloat(betAmount);
+        if (maxBtn) {
+            maxBtn.addEventListener('click', () => {
+                const maxBalance = parseFloat(this.currentProfile?.balance || 0);
+                if (!maxBalance) return;
+                betAmount = maxBalance.toFixed(2);
+                amountInput.value = betAmount;
+                handleAmountChange(betAmount);
+            });
+        }
 
-            const confirmOdds = latestQuote?.currentOddsFormatted || outcomeOddsDisplay;
+        if (placeBetBtn) {
+            placeBetBtn.addEventListener('click', () => {
+                const amount = parseFloat(betAmount);
+                const confirmOddsText = latestQuote?.currentOddsFormatted || outcomeOddsDisplay;
+                confirmOdds.textContent = confirmOddsText;
+                confirmAmount.textContent = `J$${amount.toFixed(2)}`;
+                if (confirmShares) {
+                    confirmShares.textContent = slip.querySelector('#quick-summary-shares')?.textContent || '--';
+                }
+                if (confirmPayout) {
+                    confirmPayout.textContent = slip.querySelector('#quick-summary-payout')?.textContent || '--';
+                }
+                setStep('confirm');
+            });
+        }
 
-            if (!confirm(`Confirm bet: J$${amount.toFixed(2)} on ${outcomeText} @ ${confirmOdds}?`)) {
-                return;
-            }
+        if (reviewBtn) {
+            reviewBtn.addEventListener('click', () => {
+                const amount = parseFloat(betAmount);
+                if (!amount || amount < 1) return;
 
-            try {
-                placeBetBtn.disabled = true;
-                placeBetBtn.textContent = 'Placing bet...';
+                if (!latestQuote) {
+                    const fallbackOdds = price ? (1 / price) : 0;
+                    const fallbackPayout = fallbackOdds ? amount * fallbackOdds : 0;
+                    const fallbackProfit = fallbackPayout - amount;
+                    const fallbackShares = price ? (amount / price) : 0;
+                    slip.querySelector('#quick-summary-shares').textContent = fallbackShares ? `${fallbackShares.toFixed(2)}` : '--';
+                    slip.querySelector('#quick-summary-shares-inline').textContent = fallbackShares ? `${fallbackShares.toFixed(2)}` : '--';
+                    slip.querySelector('#quick-summary-payout').textContent = `J$${fallbackPayout.toFixed(2)}`;
+                    slip.querySelector('#quick-summary-price').textContent = fallbackOdds ? `${fallbackOdds.toFixed(2)}x` : '--';
+                    slip.querySelector('#quick-summary-price-inline').textContent = fallbackOdds ? `${fallbackOdds.toFixed(2)}x` : '--';
+                    slip.querySelector('#quick-summary-profit').textContent = `+J$${fallbackProfit.toFixed(2)}`;
+                    if (confirmOdds) confirmOdds.textContent = fallbackOdds ? `${fallbackOdds.toFixed(2)}x` : '--';
+                }
 
-                await this.api.placeBetWithOdds(marketId, outcome, amount);
+                setStep('summary');
+            });
+        }
 
-                alert('Bet placed successfully!');
-                modal.remove();
+        if (confirmCancel) {
+            confirmCancel.addEventListener('click', () => setStep('summary'));
+        }
 
-                // Refresh markets
-                await this.loadMarkets();
-                this.render();
+        if (confirmAccept) {
+            confirmAccept.addEventListener('click', async () => {
+                const amount = parseFloat(betAmount);
+                if (!amount || amount < 1) return;
 
-            } catch (error) {
-                alert('Error placing bet: ' + error.message);
-                placeBetBtn.disabled = false;
-                placeBetBtn.textContent = 'Place Bet';
-            }
-        });
-
-        // Close on backdrop click
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.remove();
-            }
-        });
+                confirmAccept.disabled = true;
+                try {
+                    await this.api.placeBetWithOdds(marketId, outcome, amount);
+                    setStep('success');
+                    if (typeof window.pushNotification === 'function') {
+                        window.pushNotification({
+                            title: 'Bet placed',
+                            message: `${outcomeText} bet placed on ${market.title}`,
+                            type: 'success',
+                            actionUrl: `market.html?id=${marketId}`,
+                            source: 'quick-bet'
+                        });
+                    }
+                } catch (error) {
+                    confirmAccept.disabled = false;
+                    alert('Error placing bet: ' + error.message);
+                }
+            });
+        }
     }
 
     nextPage() {
@@ -3170,7 +3861,7 @@ class GoatMouth {
                 <div class="bg-gray-800 rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-2xl font-bold" style="color: #027A40;">Edit Market</h2>
-                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white transition">
+                        <button data-action="close-modal" class="text-gray-400 hover:text-white transition">
                             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
@@ -3250,7 +3941,7 @@ class GoatMouth {
                                     onmouseout="this.style.backgroundColor='#00CB97'">
                                 Update Market
                             </button>
-                            <button type="button" onclick="this.closest('.fixed').remove()"
+                            <button type="button" data-action="close-modal"
                                     class="px-6 py-3 rounded-lg font-bold text-gray-400 border border-gray-600 hover:bg-gray-700 transition">
                                 Cancel
                             </button>
@@ -3260,6 +3951,7 @@ class GoatMouth {
             `;
 
             document.body.appendChild(modal);
+            const closeModal = this.attachModalCloseHandlers(modal);
 
             // Handle image preview
             const imageInput = document.getElementById('editMarketImageInput');
@@ -3347,7 +4039,7 @@ class GoatMouth {
                     if (error) throw error;
 
                     alert('Market updated successfully!');
-                    modal.remove();
+                    closeModal();
                     this.render(); // Refresh the view
 
                     // Close the market detail modal if it's open
@@ -3371,7 +4063,7 @@ class GoatMouth {
             <div class="bg-gray-800 rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold" style="color: #027A40;">Create New Market</h2>
-                    <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white transition">
+                    <button data-action="close-modal" class="text-gray-400 hover:text-white transition">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
@@ -3450,7 +4142,7 @@ class GoatMouth {
                                 onmouseout="this.style.backgroundColor='#00CB97'">
                             Create Market
                         </button>
-                        <button type="button" onclick="this.closest('.fixed').remove()"
+                        <button type="button" data-action="close-modal"
                                 class="px-6 py-3 rounded-lg font-bold text-gray-400 border border-gray-600 hover:bg-gray-700 transition">
                             Cancel
                         </button>
@@ -3460,6 +4152,7 @@ class GoatMouth {
         `;
 
         document.body.appendChild(modal);
+        this.attachModalCloseHandlers(modal);
 
         // Handle image preview
         const imageInput = document.getElementById('marketImageInput');

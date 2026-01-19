@@ -18,7 +18,13 @@ class MarketPage {
         this.quoteRequestId = 0;
         this.latestQuote = null;
         this.oddsPoller = null;
+        this.oddsAbortController = null;
+        this.quoteAbortController = null;
         this.oddsApiCooldownMs = 5 * 60 * 1000;
+        this.visibilityHandlerBound = false;
+        this.teardownBound = false;
+        this.authListenerBound = false;
+        this.authSubscription = null;
 
         this.init();
     }
@@ -35,19 +41,22 @@ class MarketPage {
             }
 
             // Check authentication (non-blocking render)
-            this.currentUser = await this.api.getCurrentUser();
-            if (this.currentUser) {
-                this.currentProfile = await this.api.getProfile(this.currentUser.id);
+            if (typeof setAuthPending === 'function') {
+                setAuthPending(true);
             }
-
-            // Update header UI
-            updateHeaderUI(this.currentUser, this.currentProfile);
+            await (typeof resolveAuthState === 'function' ? resolveAuthState() : Promise.resolve());
+            const state = typeof getAuthState === 'function' ? getAuthState() : null;
+            this.currentUser = state?.user || null;
+            this.currentProfile = state?.profile || null;
 
             // Load market data (render ASAP)
             await this.loadMarket();
 
             // Setup event listeners
             this.setupEventListeners();
+            this.setupVisibilityHandlers();
+            this.setupTeardownHandlers();
+            this.bindAuthListener();
 
             // Update UI based on auth status
             this.updateAuthUI();
@@ -115,11 +124,20 @@ class MarketPage {
         }
 
         try {
-            const odds = await this.api.getMarketOddsMultiplier(this.marketId);
+            if (this.oddsAbortController) {
+                this.oddsAbortController.abort();
+            }
+            this.oddsAbortController = new AbortController();
+            const odds = await this.api.getMarketOddsMultiplier(this.marketId, {
+                signal: this.oddsAbortController.signal
+            });
             this.marketOdds = odds.data;
             this.cacheOdds(this.marketOdds);
             this.updateOddsDisplay();
         } catch (error) {
+            if (error?.name === 'AbortError') {
+                return;
+            }
             this.setOddsApiCooldown();
         }
     }
@@ -348,19 +366,35 @@ class MarketPage {
 
     startOddsPolling() {
         if (!this.marketId) return;
+        if (document.hidden) {
+            this.stopOddsPolling();
+            return;
+        }
 
         const pollOnce = async () => {
+            if (document.hidden) {
+                return;
+            }
             if (this.shouldSkipOddsFetch()) {
                 return;
             }
             try {
-                const odds = await this.api.getMarketOddsMultiplier(this.marketId);
+                if (this.oddsAbortController) {
+                    this.oddsAbortController.abort();
+                }
+                this.oddsAbortController = new AbortController();
+                const odds = await this.api.getMarketOddsMultiplier(this.marketId, {
+                    signal: this.oddsAbortController.signal
+                });
                 if (odds && odds.data) {
                     this.marketOdds = odds.data;
                     this.cacheOdds(this.marketOdds);
                     this.updateOddsDisplay();
                 }
             } catch (error) {
+                if (error?.name === 'AbortError') {
+                    return;
+                }
                 this.setOddsApiCooldown();
             }
         };
@@ -371,6 +405,79 @@ class MarketPage {
 
         pollOnce();
         this.oddsPoller = setInterval(pollOnce, 30000);
+    }
+
+    stopOddsPolling() {
+        if (this.oddsPoller) {
+            clearInterval(this.oddsPoller);
+            this.oddsPoller = null;
+        }
+        if (this.oddsAbortController) {
+            this.oddsAbortController.abort();
+            this.oddsAbortController = null;
+        }
+    }
+
+    setupVisibilityHandlers() {
+        if (this.visibilityHandlerBound) return;
+        this.visibilityHandlerBound = true;
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.stopOddsPolling();
+            } else if (this.marketId) {
+                this.startOddsPolling();
+            }
+        });
+    }
+
+    setupTeardownHandlers() {
+        if (this.teardownBound) return;
+        this.teardownBound = true;
+        window.addEventListener('pagehide', () => this.teardown());
+        window.addEventListener('beforeunload', () => this.teardown());
+    }
+
+    bindAuthListener() {
+        if (this.authListenerBound) return;
+        this.authListenerBound = true;
+
+        const authUtils = window.authUtils;
+        const onChange = async () => {
+            try {
+                await (authUtils?.resolveAuthState ? authUtils.resolveAuthState({ force: true }) : Promise.resolve());
+                const state = authUtils?.getAuthState ? authUtils.getAuthState() : null;
+                this.currentUser = state?.user || null;
+                this.currentProfile = state?.profile || null;
+                this.updateAuthUI();
+            } catch (error) {
+                console.warn('Auth state update failed:', error);
+            }
+        };
+
+        if (authUtils?.onAuthStateChange) {
+            const { data } = authUtils.onAuthStateChange(onChange);
+            this.authSubscription = data?.subscription || null;
+        } else if (window.supabaseClient?.auth?.onAuthStateChange) {
+            const { data } = window.supabaseClient.auth.onAuthStateChange(onChange);
+            this.authSubscription = data?.subscription || null;
+        }
+    }
+
+    teardown() {
+        this.stopOddsPolling();
+        if (this.quoteTimeout) {
+            clearTimeout(this.quoteTimeout);
+            this.quoteTimeout = null;
+        }
+        if (this.quoteAbortController) {
+            this.quoteAbortController.abort();
+            this.quoteAbortController = null;
+        }
+        if (this.authSubscription?.unsubscribe) {
+            this.authSubscription.unsubscribe();
+            this.authSubscription = null;
+        }
     }
 
     getOddsCacheKey() {
@@ -587,24 +694,32 @@ class MarketPage {
             if (error) throw error;
 
             if (!bets || bets.length === 0) {
-                activityFeed.innerHTML = `
-                    <div class="text-center py-8 text-gray-400">
-                        <i class="ri-history-line text-4xl mb-2"></i>
-                        <p>No recent activity</p>
-                    </div>
+                const emptyState = document.createElement('div');
+                emptyState.className = 'text-center py-8 text-gray-400';
+                emptyState.innerHTML = `
+                    <i class="ri-history-line text-4xl mb-2"></i>
+                    <p>No recent activity</p>
                 `;
+                activityFeed.replaceChildren(emptyState);
                 return;
             }
 
-            activityFeed.innerHTML = bets.map(bet => this.renderActivityItem(bet)).join('');
+            const fragment = document.createDocumentFragment();
+            bets.forEach((bet) => {
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = this.renderActivityItem(bet);
+                if (wrapper.firstElementChild) {
+                    fragment.appendChild(wrapper.firstElementChild);
+                }
+            });
+            activityFeed.replaceChildren(fragment);
 
         } catch (error) {
             console.error('Error loading activity:', error);
-            activityFeed.innerHTML = `
-                <div class="text-center py-8 text-red-400">
-                    <p>Error loading activity</p>
-                </div>
-            `;
+            const errorState = document.createElement('div');
+            errorState.className = 'text-center py-8 text-red-400';
+            errorState.innerHTML = '<p>Error loading activity</p>';
+            activityFeed.replaceChildren(errorState);
         }
     }
 
@@ -656,24 +771,32 @@ class MarketPage {
             const comments = await this.api.getMarketComments(this.marketId);
 
             if (!comments || comments.length === 0) {
-                commentsList.innerHTML = `
-                    <div class="text-center py-8 text-gray-400">
-                        <i class="ri-chat-3-line text-4xl mb-2"></i>
-                        <p>No comments yet. Be the first to share your thoughts!</p>
-                    </div>
+                const emptyState = document.createElement('div');
+                emptyState.className = 'text-center py-8 text-gray-400';
+                emptyState.innerHTML = `
+                    <i class="ri-chat-3-line text-4xl mb-2"></i>
+                    <p>No comments yet. Be the first to share your thoughts!</p>
                 `;
+                commentsList.replaceChildren(emptyState);
                 return;
             }
 
-            commentsList.innerHTML = comments.map(comment => this.renderComment(comment)).join('');
+            const fragment = document.createDocumentFragment();
+            comments.forEach((comment) => {
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = this.renderComment(comment);
+                if (wrapper.firstElementChild) {
+                    fragment.appendChild(wrapper.firstElementChild);
+                }
+            });
+            commentsList.replaceChildren(fragment);
 
         } catch (error) {
             console.error('Error loading comments:', error);
-            commentsList.innerHTML = `
-                <div class="text-center py-8 text-red-400">
-                    <p>Error loading comments</p>
-                </div>
-            `;
+            const errorState = document.createElement('div');
+            errorState.className = 'text-center py-8 text-red-400';
+            errorState.innerHTML = '<p>Error loading comments</p>';
+            commentsList.replaceChildren(errorState);
         }
     }
 
@@ -808,6 +931,9 @@ class MarketPage {
                     </button>
                 </div>
             `;
+            // Show login prompt and hide bet form
+            document.getElementById('bet-login-prompt')?.classList.remove('hidden');
+            document.getElementById('bet-form')?.classList.add('hidden');
         }
     }
 
@@ -886,14 +1012,23 @@ class MarketPage {
         const outcome = this.selectedOutcome;
         this.quoteTimeout = setTimeout(async () => {
             const requestId = ++this.quoteRequestId;
+            if (this.quoteAbortController) {
+                this.quoteAbortController.abort();
+            }
+            this.quoteAbortController = new AbortController();
 
             try {
-                const quote = await this.api.getBetQuoteWithOdds(this.marketId, outcome, amount);
+                const quote = await this.api.getBetQuoteWithOdds(this.marketId, outcome, amount, {
+                    signal: this.quoteAbortController.signal
+                });
                 if (requestId != this.quoteRequestId) return;
 
                 this.latestQuote = quote.data;
                 this.applyQuoteToSummary(quote.data, amount);
             } catch (error) {
+                if (error?.name === 'AbortError') {
+                    return;
+                }
                 if (requestId != this.quoteRequestId) return;
                 this.latestQuote = null;
                 this.applyFallbackSummary(amount);
@@ -969,6 +1104,15 @@ class MarketPage {
 
             // Success - reload market data
             alert('Bet placed successfully!');
+            if (typeof window.pushNotification === 'function') {
+                window.pushNotification({
+                    title: 'Bet placed',
+                    message: `${this.selectedOutcome.toUpperCase()} bet placed on ${this.market.title}`,
+                    type: 'success',
+                    actionUrl: `market.html?id=${this.marketId}`,
+                    source: 'market-bet'
+                });
+            }
             await this.loadMarket();
 
             // Reset form
@@ -1001,6 +1145,15 @@ class MarketPage {
             await this.api.createComment(this.marketId, content);
             input.value = '';
             await this.loadComments();
+            if (typeof window.pushNotification === 'function') {
+                window.pushNotification({
+                    title: 'Comment posted',
+                    message: `New comment on ${this.market?.title || 'market'}`,
+                    type: 'info',
+                    actionUrl: `market.html?id=${this.marketId}`,
+                    source: 'comment'
+                });
+            }
         } catch (error) {
             alert('Error posting comment: ' + error.message);
         }
@@ -1118,9 +1271,11 @@ let marketPage;
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         marketPage = new MarketPage();
+        window.marketPage = marketPage;
     });
 } else {
     marketPage = new MarketPage();
+    window.marketPage = marketPage;
 }
 
 console.log('✓ Market page loaded');

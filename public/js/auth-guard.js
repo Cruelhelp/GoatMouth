@@ -7,9 +7,12 @@ class AuthGuard {
      * @returns {Object|null} User object if authenticated, null otherwise
      */
     static async checkAuth() {
+        if (window.authUtils?.checkAuth) {
+            return window.authUtils.checkAuth();
+        }
         try {
-            const { data: { user } } = await window.supabaseClient.auth.getUser();
-            return user;
+            const { data: { session } } = await window.supabaseClient.auth.getSession();
+            return session?.user || null;
         } catch (error) {
             console.error('Auth check error:', error);
             return null;
@@ -22,6 +25,9 @@ class AuthGuard {
      * @returns {Object|null} Profile object or null
      */
     static async getProfile(userId) {
+        if (window.authUtils?.getUserProfile) {
+            return window.authUtils.getUserProfile(userId);
+        }
         try {
             const { data, error } = await window.supabaseClient
                 .from('profiles')
@@ -42,6 +48,10 @@ class AuthGuard {
      * @returns {Object|null} Auth object with user and profile, or null if redirected
      */
     static async requireAuth() {
+        if (window.authUtils?.requireAuth) {
+            return window.authUtils.requireAuth();
+        }
+
         const user = await this.checkAuth();
 
         if (!user) {
@@ -65,6 +75,10 @@ class AuthGuard {
      * @returns {Object|null} Auth object with user and profile, or null if redirected
      */
     static async requireAdmin() {
+        if (window.authUtils?.requireAdmin) {
+            return window.authUtils.requireAdmin();
+        }
+
         const auth = await this.requireAuth();
 
         if (!auth) return null;
@@ -83,6 +97,10 @@ class AuthGuard {
      * @returns {boolean} True if user is admin
      */
     static async isAdmin() {
+        if (window.authUtils?.isAdmin) {
+            return window.authUtils.isAdmin();
+        }
+
         const auth = await this.requireAuth();
         if (!auth) return false;
         return auth.profile.role === 'admin';
@@ -93,7 +111,8 @@ class AuthGuard {
      */
     static redirectToLogin() {
         if (window.location.pathname !== '/login.html') {
-            window.location.href = '/login.html';
+            const returnUrl = window.location.pathname + window.location.search + window.location.hash;
+            window.location.href = `/index.html?auth=login&return=${encodeURIComponent(returnUrl)}`;
         }
     }
 

@@ -8,6 +8,7 @@ DECLARE
     tbl text;
 BEGIN
     FOREACH tbl IN ARRAY ARRAY[
+        'profiles',
         'banners',
         'markets',
         'bets',

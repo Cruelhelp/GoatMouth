@@ -29,18 +29,14 @@ class VotingSystem {
     }
 
     async checkAuth() {
-        try {
-            this.currentUser = await this.api.getCurrentUser();
-            if (this.currentUser) {
-                this.currentProfile = await this.api.getProfile(this.currentUser.id);
-            }
-            // Update header UI with user info
-            updateHeaderUI(this.currentUser, this.currentProfile);
-        } catch (error) {
-            console.log('No user logged in');
-            // Update header UI for logged out state
-            updateHeaderUI(null, null);
+        if (typeof setAuthPending === 'function') {
+            setAuthPending(true);
         }
+
+        await (typeof resolveAuthState === 'function' ? resolveAuthState() : Promise.resolve());
+        const state = typeof getAuthState === 'function' ? getAuthState() : null;
+        this.currentUser = state?.user || null;
+        this.currentProfile = state?.profile || null;
     }
 
     attachEventListeners() {

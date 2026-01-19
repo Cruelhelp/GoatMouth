@@ -9,16 +9,24 @@ class MarketDetailModal {
         this.selectedOutcome = null;
         this.quoteTimeout = null;
         this.quoteRequestId = 0;
+        this.quoteAbortController = null;
         this.latestQuote = null;
+        this.oddsAbortController = null;
     }
 
     async show() {
         this.render({ isLoading: true });
 
         try {
+            if (this.oddsAbortController) {
+                this.oddsAbortController.abort();
+            }
+            this.oddsAbortController = new AbortController();
             const [market, odds] = await Promise.all([
                 this.app.api.getMarket(this.marketId),
-                this.app.api.getMarketOddsMultiplier(this.marketId).catch(() => null)
+                this.app.api.getMarketOddsMultiplier(this.marketId, {
+                    signal: this.oddsAbortController.signal
+                }).catch(() => null)
             ]);
             this.market = market;
             this.marketOdds = odds ? odds.data : null;
@@ -32,6 +40,7 @@ class MarketDetailModal {
         const { isLoading = false, errorMessage = '' } = options;
         const existingModal = document.querySelector('.modal-backdrop');
         if (existingModal) {
+            this.cleanup();
             existingModal.remove();
             document.body.style.overflow = '';
         }
@@ -81,9 +90,22 @@ class MarketDetailModal {
 
     closeModal(modal) {
         if (modal) {
+            this.cleanup();
             modal.remove();
         }
         document.body.style.overflow = '';
+    }
+
+    cleanup() {
+        clearTimeout(this.quoteTimeout);
+        if (this.quoteAbortController) {
+            this.quoteAbortController.abort();
+            this.quoteAbortController = null;
+        }
+        if (this.oddsAbortController) {
+            this.oddsAbortController.abort();
+            this.oddsAbortController = null;
+        }
     }
 
     attachCloseListener(modal) {
@@ -390,7 +412,7 @@ class MarketDetailModal {
                             <p class="text-lg font-semibold mb-2">Sign In to Place Bets</p>
                             <p class="text-sm text-gray-400">Create an account or sign in to start betting on this market</p>
                         </div>
-                        <button onclick="document.body.style.overflow=''; app.showAuthModal(); this.closest('.fixed').remove();" class="px-6 py-3 rounded-xl text-white font-bold transition touch-target text-base" style="background: linear-gradient(135deg, #027A40 0%, #03924d 100%); min-height: 50px; box-shadow: 0 4px 20px rgba(2, 122, 64, 0.3);" onmouseover="this.style.boxShadow='0 6px 30px rgba(2, 122, 64, 0.5)'" onmouseout="this.style.boxShadow='0 4px 20px rgba(2, 122, 64, 0.3)'">
+                        <button data-action="open-auth" class="px-6 py-3 rounded-xl text-white font-bold transition touch-target text-base" style="background: linear-gradient(135deg, #027A40 0%, #03924d 100%); min-height: 50px; box-shadow: 0 4px 20px rgba(2, 122, 64, 0.3);" onmouseover="this.style.boxShadow='0 6px 30px rgba(2, 122, 64, 0.5)'" onmouseout="this.style.boxShadow='0 4px 20px rgba(2, 122, 64, 0.3)'">
                             Sign In / Sign Up
                         </button>
                     </div>
@@ -444,7 +466,7 @@ class MarketDetailModal {
                                 <i class="fa-solid fa-user-plus mr-1"></i>
                                 Sign in to join the discussion
                             </p>
-                            <button onclick="document.body.style.overflow=''; app.showAuthModal(); this.closest('.fixed').remove();"
+                            <button data-action="open-auth"
                                     class="px-4 py-2 rounded-lg text-white transition touch-target text-sm font-semibold shadow-lg"
                                     style="background: linear-gradient(135deg, #027A40 0%, #025a30 100%); min-height: 36px;"
                                     onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(2, 122, 64, 0.3)'"
@@ -552,6 +574,15 @@ class MarketDetailModal {
             });
         }
 
+        modal.querySelectorAll('[data-action="open-auth"]').forEach((button) => {
+            button.addEventListener('click', () => {
+                this.closeModal(modal);
+                if (typeof app !== 'undefined' && typeof app.showAuthModal === 'function') {
+                    app.showAuthModal();
+                }
+            });
+        });
+
         if (!this.app.currentUser) return;
 
         // Outcome selection
@@ -641,14 +672,23 @@ class MarketDetailModal {
         const outcome = this.selectedOutcome;
         this.quoteTimeout = setTimeout(async () => {
             const requestId = ++this.quoteRequestId;
+            if (this.quoteAbortController) {
+                this.quoteAbortController.abort();
+            }
+            this.quoteAbortController = new AbortController();
 
             try {
-                const quote = await this.app.api.getBetQuoteWithOdds(this.marketId, outcome, amount);
+                const quote = await this.app.api.getBetQuoteWithOdds(this.marketId, outcome, amount, {
+                    signal: this.quoteAbortController.signal
+                });
                 if (requestId != this.quoteRequestId) return;
 
                 this.latestQuote = quote.data;
                 this.applyQuoteToSummary(modal, quote.data, amount);
             } catch (error) {
+                if (error?.name === 'AbortError') {
+                    return;
+                }
                 if (requestId != this.quoteRequestId) return;
                 this.latestQuote = null;
                 this.applyFallbackSummary(modal, amount);
@@ -705,7 +745,7 @@ class MarketDetailModal {
             await this.app.api.placeBetWithOdds(this.marketId, this.selectedOutcome, amount);
 
             alert('Bet placed successfully!');
-            modal.remove();
+            this.closeModal(modal);
 
             // Refresh views
             this.app.render();

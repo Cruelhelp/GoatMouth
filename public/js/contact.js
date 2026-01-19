@@ -17,9 +17,18 @@ class ContactFormHandler {
 
     async prefillUserData() {
         try {
-            const user = await this.api.getCurrentUser();
+            if (typeof resolveAuthState === 'function') {
+                await resolveAuthState();
+            }
+
+            const state = typeof getAuthState === 'function' ? getAuthState() : null;
+            const user = state?.user || null;
+            const profile = state?.profile || null;
+
             if (user) {
-                const profile = await this.api.getProfile(user.id);
+                if (!profile && this.api) {
+                    await this.api.getProfile(user.id);
+                }
 
                 // Prefill name and email if user is logged in
                 if (profile) {

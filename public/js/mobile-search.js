@@ -146,6 +146,10 @@ class MobileSearch {
         this.currentOverlay = overlay;
         this.currentBackdrop = backdrop;
         this.attachListeners(overlay);
+        this.updateHeaderState(overlay, this.searchQuery);
+        const content = overlay.querySelector('#search-content');
+        const initialNode = this.searchQuery ? await this.renderResults() : this.renderDefaultView();
+        this.setSearchContent(content, initialNode);
 
         // Mark search button as active and remove active from others
         const navItems = document.querySelectorAll('.mobile-nav-item');
@@ -195,18 +199,14 @@ class MobileSearch {
 
     async getHTML() {
         await this.ensureCategorySuggestions();
-        const initialContent = this.searchQuery ? await this.renderResults() : this.renderDefaultView();
-
         return `
             <div class="h-full flex flex-col" style="padding-top: 0; padding-bottom: 60px; background: linear-gradient(160deg, #0b1220 0%, #111827 55%, #0b1220 100%);">
                 <!-- Search Header -->
                 <div class="border-b p-4" style="background: rgba(17, 24, 39, 0.98); border-color: rgba(0, 203, 151, 0.18); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);">
                     <div class="relative">
-                        ${!this.searchQuery ? `
-                            <svg class="h-5 w-5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
-                        ` : ''}
+                        <svg class="h-5 w-5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" data-role="search-icon" style="color: #00CB97; ${this.searchQuery ? 'display: none;' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
                         <input
                             type="text"
                             id="mobile-search-input"
@@ -218,22 +218,93 @@ class MobileSearch {
                             onblur="this.style.borderColor='#1f2937'; this.style.boxShadow='none'"
                             autocomplete="off"
                         >
-                        ${this.searchQuery ? `
-                            <button class="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full touch-target transition" style="color: #9ca3af;" data-action="clear-search" onmouseover="this.style.color='#00CB97'" onmouseout="this.style.color='#9ca3af'">
-                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </button>
-                        ` : ''}
+                        <button class="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full touch-target transition" style="color: #9ca3af; ${this.searchQuery ? '' : 'display: none;'}" data-action="clear-search" onmouseover="this.style.color='#00CB97'" onmouseout="this.style.color='#9ca3af'">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
                 <!-- Search Content -->
                 <div class="flex-1 overflow-y-auto" id="search-content" style="background: #0b1220;">
-                    ${initialContent}
                 </div>
             </div>
         `;
+    }
+
+    updateHeaderState(overlay, query) {
+        const icon = overlay.querySelector('[data-role="search-icon"]');
+        const clearBtn = overlay.querySelector('[data-action="clear-search"]');
+        const hasQuery = !!query;
+
+        if (icon) {
+            icon.style.display = hasQuery ? 'none' : '';
+        }
+        if (clearBtn) {
+            clearBtn.style.display = hasQuery ? 'inline-flex' : 'none';
+        }
+    }
+
+    setSearchContent(content, node) {
+        if (!content) return;
+        content.replaceChildren(node);
+    }
+
+    ensureSpinnerStyles() {
+        if (document.getElementById('mobile-search-spinner-style')) return;
+        const style = document.createElement('style');
+        style.id = 'mobile-search-spinner-style';
+        style.textContent = `
+            @keyframes mobileSearchSpin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    buildLoadingState() {
+        this.ensureSpinnerStyles();
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex items-center justify-center py-12';
+        wrapper.innerHTML = `
+            <div class="flex flex-col items-center gap-3">
+                <div class="w-12 h-12 border-4 rounded-full" style="border-color: #00CB97; border-top-color: transparent; animation: mobileSearchSpin 1s linear infinite;"></div>
+                <p class="text-sm font-medium" style="color: #9ca3af;">Searching...</p>
+            </div>
+        `;
+        return wrapper;
+    }
+
+    buildEmptyResultsState() {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex flex-col items-center justify-center py-16 px-4 text-center';
+        wrapper.innerHTML = `
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mb-4" style="background: linear-gradient(135deg, rgba(0, 203, 151, 0.1) 0%, rgba(0, 203, 151, 0.05) 100%);">
+                <svg class="h-10 w-10" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </div>
+            <p class="text-white text-lg font-bold mb-2">No markets found</p>
+            <p class="text-gray-400 text-sm">Try different keywords or browse categories</p>
+        `;
+        return wrapper;
+    }
+
+    buildErrorResultsState() {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex flex-col items-center justify-center py-16 px-4 text-center';
+        wrapper.innerHTML = `
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mb-4" style="background: rgba(239, 68, 68, 0.1);">
+                <svg class="h-10 w-10 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <p class="text-red-400 font-bold">Error loading results</p>
+            <p class="text-gray-400 text-sm mt-2">Please try again</p>
+        `;
+        return wrapper;
     }
 
     renderDefaultView() {
@@ -241,49 +312,109 @@ class MobileSearch {
             ? this.categorySuggestions
             : this.getFallbackCategorySuggestions();
 
-        return `
-            <div class="p-4">
-                <!-- Recent Searches -->
-                ${this.recentSearches.length > 0 ? `
-                    <div class="mb-6">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-xs font-bold uppercase tracking-wider" style="color: #9ca3af;">Recent Searches</h3>
-                            <button class="text-xs font-semibold transition" style="color: #ef4444;" data-action="clear-recent" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#ef4444'">
-                                Clear All
-                            </button>
-                        </div>
-                        <div class="space-y-2">
-                            ${this.recentSearches.map(search => `
-                                <button class="w-full flex items-center gap-3 p-3.5 rounded-xl transition touch-target text-left" style="background: #1f2937; border: 1px solid #374151;" data-action="search-recent" data-query="${this.escapeHtml(search)}" onmouseover="this.style.borderColor='#00CB97'; this.style.background='#252f3f'" onmouseout="this.style.borderColor='#374151'; this.style.background='#1f2937'">
-                                    <svg class="h-5 w-5 flex-shrink-0" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                    </svg>
-                                    <span class="text-white font-medium flex-1">${this.escapeHtml(search)}</span>
-                                    <button class="p-1.5 rounded-lg transition" style="color: #6b7280;" data-action="remove-recent" data-query="${this.escapeHtml(search)}" onclick="event.stopPropagation()" onmouseover="this.style.color='#ef4444'; this.style.background='rgba(239, 68, 68, 0.1)'" onmouseout="this.style.color='#6b7280'; this.style.background='transparent'">
-                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                        </svg>
-                                    </button>
-                                </button>
-                            `).join('')}
-                        </div>
-                    </div>
-                ` : ''}
+        const wrapper = document.createElement('div');
+        wrapper.className = 'p-4';
 
-                <!-- Top Categories -->
-                <div class="mb-6">
-                    <h3 class="text-xs font-bold uppercase tracking-wider mb-3" style="color: #9ca3af;">Top Categories</h3>
-                    <div class="grid grid-cols-2 gap-2">
-                        ${categorySuggestions.map(category => `
-                            <button class="p-3 rounded-xl transition touch-target text-left" style="background: #111827; border: 1.5px solid rgba(0, 203, 151, 0.2);" data-action="search-category" data-category="${this.escapeHtml(category.name)}" onmouseover="this.style.borderColor='#00CB97'; this.style.boxShadow='0 6px 16px rgba(0, 203, 151, 0.12)'" onmouseout="this.style.borderColor='rgba(0, 203, 151, 0.2)'; this.style.boxShadow='none'">
-                                <div class="text-sm font-bold text-white mb-1">${this.escapeHtml(category.name)}</div>
-                                <div class="text-xs font-semibold" style="color: #9ca3af;">${this.formatCategoryCount(category.count)}</div>
-                            </button>
-                        `).join('')}
-                    </div>
-                </div>
-            </div>
-        `;
+        if (this.recentSearches.length > 0) {
+            const section = document.createElement('div');
+            section.className = 'mb-6';
+
+            const header = document.createElement('div');
+            header.className = 'flex items-center justify-between mb-3';
+
+            const title = document.createElement('h3');
+            title.className = 'text-xs font-bold uppercase tracking-wider';
+            title.style.color = '#9ca3af';
+            title.textContent = 'Recent Searches';
+
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'text-xs font-semibold transition';
+            clearBtn.dataset.action = 'clear-recent';
+            clearBtn.style.color = '#ef4444';
+            clearBtn.setAttribute('onmouseover', "this.style.color='#dc2626'");
+            clearBtn.setAttribute('onmouseout', "this.style.color='#ef4444'");
+            clearBtn.textContent = 'Clear All';
+
+            header.appendChild(title);
+            header.appendChild(clearBtn);
+
+            const list = document.createElement('div');
+            list.className = 'space-y-2';
+
+            this.recentSearches.forEach(search => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-2';
+
+                const searchBtn = document.createElement('button');
+                searchBtn.className = 'w-full flex items-center gap-3 p-3.5 rounded-xl transition touch-target text-left';
+                searchBtn.dataset.action = 'search-recent';
+                searchBtn.dataset.query = search;
+                searchBtn.style.background = '#1f2937';
+                searchBtn.style.border = '1px solid #374151';
+                searchBtn.setAttribute('onmouseover', "this.style.borderColor='#00CB97'; this.style.background='#252f3f'");
+                searchBtn.setAttribute('onmouseout', "this.style.borderColor='#374151'; this.style.background='#1f2937'");
+                searchBtn.innerHTML = `
+                    <svg class="h-5 w-5 flex-shrink-0" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span class="text-white font-medium flex-1">${this.escapeHtml(search)}</span>
+                `;
+
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'p-1.5 rounded-lg transition';
+                removeBtn.dataset.action = 'remove-recent';
+                removeBtn.dataset.query = search;
+                removeBtn.style.color = '#6b7280';
+                removeBtn.setAttribute('onmouseover', "this.style.color='#ef4444'; this.style.background='rgba(239, 68, 68, 0.1)'");
+                removeBtn.setAttribute('onmouseout', "this.style.color='#6b7280'; this.style.background='transparent'");
+                removeBtn.innerHTML = `
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                `;
+
+                row.appendChild(searchBtn);
+                row.appendChild(removeBtn);
+                list.appendChild(row);
+            });
+
+            section.appendChild(header);
+            section.appendChild(list);
+            wrapper.appendChild(section);
+        }
+
+        const categorySection = document.createElement('div');
+        categorySection.className = 'mb-6';
+
+        const categoryTitle = document.createElement('h3');
+        categoryTitle.className = 'text-xs font-bold uppercase tracking-wider mb-3';
+        categoryTitle.style.color = '#9ca3af';
+        categoryTitle.textContent = 'Top Categories';
+
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-2 gap-2';
+
+        categorySuggestions.forEach(category => {
+            const btn = document.createElement('button');
+            btn.className = 'p-3 rounded-xl transition touch-target text-left';
+            btn.dataset.action = 'search-category';
+            btn.dataset.category = category.name;
+            btn.style.background = '#111827';
+            btn.style.border = '1.5px solid rgba(0, 203, 151, 0.2)';
+            btn.setAttribute('onmouseover', "this.style.borderColor='#00CB97'; this.style.boxShadow='0 6px 16px rgba(0, 203, 151, 0.12)'");
+            btn.setAttribute('onmouseout', "this.style.borderColor='rgba(0, 203, 151, 0.2)'; this.style.boxShadow='none'");
+            btn.innerHTML = `
+                <div class="text-sm font-bold text-white mb-1">${this.escapeHtml(category.name)}</div>
+                <div class="text-xs font-semibold" style="color: #9ca3af;">${this.formatCategoryCount(category.count)}</div>
+            `;
+            grid.appendChild(btn);
+        });
+
+        categorySection.appendChild(categoryTitle);
+        categorySection.appendChild(grid);
+        wrapper.appendChild(categorySection);
+
+        return wrapper;
     }
 
     renderCategoryButtons() {
@@ -306,84 +437,82 @@ class MobileSearch {
 
     async renderResults() {
         try {
-            // Search markets
             const markets = await this.searchMarkets(this.searchQuery);
 
             if (markets.length === 0) {
-                return `
-                    <div class="flex flex-col items-center justify-center py-16 px-4 text-center">
-                        <div class="w-20 h-20 rounded-full flex items-center justify-center mb-4" style="background: linear-gradient(135deg, rgba(0, 203, 151, 0.1) 0%, rgba(0, 203, 151, 0.05) 100%);">
-                            <svg class="h-10 w-10" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
-                        </div>
-                        <p class="text-white text-lg font-bold mb-2">No markets found</p>
-                        <p class="text-gray-400 text-sm">Try different keywords or browse categories</p>
-                    </div>
-                `;
+                return this.buildEmptyResultsState();
             }
 
-            return `
-                <div class="p-4">
-                    <div class="flex items-center gap-2 mb-4 pb-3" style="border-bottom: 1px solid #374151;">
-                        <svg class="h-5 w-5" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                        </svg>
-                        <p class="text-sm font-bold" style="color: #00CB97;">${markets.length} Result${markets.length !== 1 ? 's' : ''}</p>
-                    </div>
-                    <div class="space-y-3">
-                        ${markets.map(market => this.renderMarketResult(market)).join('')}
-                    </div>
-                </div>
+            const wrapper = document.createElement('div');
+            wrapper.className = 'p-4';
+
+            const header = document.createElement('div');
+            header.className = 'flex items-center gap-2 mb-4 pb-3';
+            header.style.borderBottom = '1px solid #374151';
+            header.innerHTML = `
+                <svg class="h-5 w-5" style="color: #00CB97;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                <p class="text-sm font-bold" style="color: #00CB97;">${markets.length} Result${markets.length !== 1 ? 's' : ''}</p>
             `;
+
+            const list = document.createElement('div');
+            list.className = 'space-y-3';
+            const fragment = document.createDocumentFragment();
+            markets.forEach(market => {
+                fragment.appendChild(this.renderMarketResult(market));
+            });
+            list.appendChild(fragment);
+
+            wrapper.appendChild(header);
+            wrapper.appendChild(list);
+
+            return wrapper;
         } catch (error) {
             console.error('Search error:', error);
-            return `
-                <div class="flex flex-col items-center justify-center py-16 px-4 text-center">
-                    <div class="w-20 h-20 rounded-full flex items-center justify-center mb-4" style="background: rgba(239, 68, 68, 0.1);">
-                        <svg class="h-10 w-10 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                    </div>
-                    <p class="text-red-400 font-bold">Error loading results</p>
-                    <p class="text-gray-400 text-sm mt-2">Please try again</p>
-                </div>
-            `;
+            return this.buildErrorResultsState();
         }
     }
 
     renderMarketResult(market) {
         const yesPercent = (market.yes_price * 100).toFixed(0);
-
-        return `
-            <button class="w-full p-4 rounded-xl transition touch-target text-left" style="background: #1f2937; border: 1.5px solid #374151;" data-action="open-market" data-market-id="${market.id}" onmouseover="this.style.borderColor='#00CB97'; this.style.background='#252f3f'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0, 203, 151, 0.1)'" onmouseout="this.style.borderColor='#374151'; this.style.background='#1f2937'; this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-                <div class="flex items-start justify-between gap-3 mb-3">
-                    <div class="flex-1 min-w-0">
-                        ${market.category ? `<span class="text-xs px-2.5 py-1 rounded-full mb-2 inline-block font-bold" style="background: linear-gradient(135deg, rgba(0, 203, 151, 0.2) 0%, rgba(0, 203, 151, 0.1) 100%); color: #00CB97; border: 1px solid rgba(0, 203, 151, 0.3);">${market.category}</span>` : ''}
-                        <h4 class="font-bold text-white mb-1 line-clamp-2" style="font-size: 15px; line-height: 1.4;">${this.highlightQuery(market.title)}</h4>
-                    </div>
-                    <div class="text-right flex-shrink-0">
-                        <div class="text-xs font-semibold mb-1" style="color: #9ca3af;">YES</div>
-                        <div class="text-xl font-black" style="color: #00CB97;">${yesPercent}¢</div>
-                    </div>
+        const button = document.createElement('button');
+        button.className = 'w-full p-4 rounded-xl transition touch-target text-left';
+        button.dataset.action = 'open-market';
+        button.dataset.marketId = market.id;
+        button.style.background = '#1f2937';
+        button.style.border = '1.5px solid #374151';
+        button.setAttribute('onmouseover', "this.style.borderColor='#00CB97'; this.style.background='#252f3f'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0, 203, 151, 0.1)'");
+        button.setAttribute('onmouseout', "this.style.borderColor='#374151'; this.style.background='#1f2937'; this.style.transform='translateY(0)'; this.style.boxShadow='none'");
+        button.innerHTML = `
+            <div class="flex items-start justify-between gap-3 mb-3">
+                <div class="flex-1 min-w-0">
+                    ${market.category ? `<span class="text-xs px-2.5 py-1 rounded-full mb-2 inline-block font-bold" style="background: linear-gradient(135deg, rgba(0, 203, 151, 0.2) 0%, rgba(0, 203, 151, 0.1) 100%); color: #00CB97; border: 1px solid rgba(0, 203, 151, 0.3);">${market.category}</span>` : ''}
+                    <h4 class="font-bold text-white mb-1 line-clamp-2" style="font-size: 15px; line-height: 1.4;">${this.highlightQuery(market.title)}</h4>
                 </div>
-                <div class="flex items-center gap-3 text-xs font-medium" style="color: #6b7280;">
-                    <span class="flex items-center gap-1">
-                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                        </svg>
-                        $${parseFloat(market.total_volume).toFixed(0)}
-                    </span>
-                    <span>•</span>
-                    <span class="flex items-center gap-1">
-                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                        </svg>
-                        ${new Date(market.end_date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}
-                    </span>
+                <div class="text-right flex-shrink-0">
+                    <div class="text-xs font-semibold mb-1" style="color: #9ca3af;">YES</div>
+                    <div class="text-xl font-black" style="color: #00CB97;">${yesPercent}A?</div>
                 </div>
-            </button>
+            </div>
+            <div class="flex items-center gap-3 text-xs font-medium" style="color: #6b7280;">
+                <span class="flex items-center gap-1">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                    </svg>
+                    $${parseFloat(market.total_volume).toFixed(0)}
+                </span>
+                <span>???</span>
+                <span class="flex items-center gap-1">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    ${new Date(market.end_date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}
+                </span>
+            </div>
         `;
+
+        return button;
     }
 
     highlightQuery(text) {
@@ -415,53 +544,31 @@ class MobileSearch {
         const input = overlay.querySelector('#mobile-search-input');
         const content = overlay.querySelector('#search-content');
 
-        // Search input with optimized debouncing
         let searchTimeout;
         input.addEventListener('input', (e) => {
             clearTimeout(searchTimeout);
             const query = e.target.value.trim();
+            this.updateHeaderState(overlay, query);
 
-            // Immediate feedback for empty search
             if (!query) {
                 this.searchQuery = '';
-                content.innerHTML = this.renderDefaultView();
-                this.attachContentListeners(overlay);
+                this.setSearchContent(content, this.renderDefaultView());
                 return;
             }
 
-            // Show loading state
-            if (query.length > 0) {
-                content.innerHTML = `
-                    <div class="flex items-center justify-center py-12">
-                        <div class="flex flex-col items-center gap-3">
-                            <div class="w-12 h-12 border-4 rounded-full" style="border-color: #00CB97; border-top-color: transparent; animation: spin 1s linear infinite;"></div>
-                            <p class="text-sm font-medium" style="color: #9ca3af;">Searching...</p>
-                        </div>
-                    </div>
-                    <style>
-                        @keyframes spin {
-                            from { transform: rotate(0deg); }
-                            to { transform: rotate(360deg); }
-                        }
-                    </style>
-                `;
-            }
+            this.setSearchContent(content, this.buildLoadingState());
 
-            // Debounce actual search (200ms for faster response)
             searchTimeout = setTimeout(async () => {
                 this.searchQuery = query;
-                content.innerHTML = await this.renderResults();
-                this.attachContentListeners(overlay);
+                const results = await this.renderResults();
+                this.setSearchContent(content, results);
             }, 200);
         });
 
-        // Keyboard shortcuts
         input.addEventListener('keydown', (e) => {
-            // Escape to close overlay
             if (e.key === 'Escape') {
                 this.close();
             }
-            // Enter to search immediately (skip debounce)
             if (e.key === 'Enter') {
                 clearTimeout(searchTimeout);
                 const query = input.value.trim();
@@ -472,98 +579,74 @@ class MobileSearch {
             }
         });
 
+        overlay.addEventListener('click', (e) => {
+            const actionEl = e.target.closest('[data-action]');
+            if (!actionEl) return;
 
-        // Content listeners
-        this.attachContentListeners(overlay);
-    }
+            const action = actionEl.dataset.action;
 
-    attachContentListeners(overlay) {
-        const content = overlay.querySelector('#search-content');
-
-        // Clear search
-        const clearBtn = overlay.querySelector('[data-action="clear-search"]');
-        if (clearBtn) {
-            clearBtn.addEventListener('click', () => {
-                const input = overlay.querySelector('#mobile-search-input');
+            if (action === 'clear-search') {
+                e.preventDefault();
                 input.value = '';
                 input.focus();
                 this.searchQuery = '';
-                content.innerHTML = this.renderDefaultView();
-                this.attachContentListeners(overlay);
+                this.updateHeaderState(overlay, '');
+                this.setSearchContent(content, this.renderDefaultView());
+                return;
+            }
 
-                // Update the clear button visibility
-                clearBtn.style.display = 'none';
-            });
-        }
-
-        // Recent search click
-        content.querySelectorAll('[data-action="search-recent"]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const query = btn.dataset.query;
-                const input = overlay.querySelector('#mobile-search-input');
+            if (action === 'search-recent' || action === 'search-suggested') {
+                const query = actionEl.dataset.query;
+                if (!query) return;
                 input.value = query;
                 this.searchQuery = query;
+                this.updateHeaderState(overlay, query);
                 this.performSearch(overlay);
-            });
-        });
+                return;
+            }
 
-        // Remove recent search
-        content.querySelectorAll('[data-action="remove-recent"]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const query = btn.dataset.query;
+            if (action === 'remove-recent') {
+                e.stopPropagation();
+                const query = actionEl.dataset.query;
+                if (!query) return;
                 this.recentSearches = this.recentSearches.filter(s => s !== query);
                 localStorage.setItem('goatmouth_recent_searches', JSON.stringify(this.recentSearches));
-                content.innerHTML = this.renderDefaultView();
-                this.attachContentListeners(overlay);
-            });
-        });
+                this.setSearchContent(content, this.renderDefaultView());
+                return;
+            }
 
-        // Clear all recent
-        const clearAllBtn = content.querySelector('[data-action="clear-recent"]');
-        if (clearAllBtn) {
-            clearAllBtn.addEventListener('click', () => {
+            if (action === 'clear-recent') {
                 this.clearRecentSearches();
-                content.innerHTML = this.renderDefaultView();
-                this.attachContentListeners(overlay);
-            });
-        }
+                this.setSearchContent(content, this.renderDefaultView());
+                return;
+            }
 
-        // Suggested search
-        content.querySelectorAll('[data-action="search-suggested"]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const query = btn.dataset.query;
-                const input = overlay.querySelector('#mobile-search-input');
-                input.value = query;
-                this.searchQuery = query;
-                this.performSearch(overlay);
-            });
-        });
-
-        // Category browse
-        content.querySelectorAll('[data-action="search-category"]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const category = btn.dataset.category;
+            if (action === 'search-category') {
+                const category = actionEl.dataset.category;
+                if (!category) return;
                 this.saveRecentSearch(category);
                 this.close();
                 this.app.filterByCategory(category);
-            });
-        });
+                return;
+            }
 
-        // Open market
-        content.querySelectorAll('[data-action="open-market"]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const marketId = btn.dataset.marketId;
-                this.saveRecentSearch(this.searchQuery);
+            if (action === 'open-market') {
+                const marketId = actionEl.dataset.marketId;
+                if (!marketId) return;
+                if (this.searchQuery) {
+                    this.saveRecentSearch(this.searchQuery);
+                }
                 this.close();
                 this.app.showMarketDetail(marketId);
-            });
+            }
         });
     }
 
     async performSearch(overlay) {
         const content = overlay.querySelector('#search-content');
-        content.innerHTML = await this.renderResults();
-        this.attachContentListeners(overlay);
+        const results = await this.renderResults();
+        this.setSearchContent(content, results);
+        this.updateHeaderState(overlay, this.searchQuery);
     }
 
     escapeHtml(text) {

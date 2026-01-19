@@ -6,6 +6,7 @@ class BannerCarousel {
         this.currentIndex = 0;
         this.autoplayInterval = null;
         this.autoplayDelay = 5000; // 5 seconds
+        this.visibilityHandlerBound = false;
     }
 
     async loadBanners() {
@@ -286,6 +287,12 @@ class BannerCarousel {
         if (this.banners.length <= 1) return;
 
         this.stopAutoplay();
+        this.bindVisibilityHandlers();
+
+        if (document.hidden) {
+            return;
+        }
+
         this.autoplayInterval = setInterval(() => {
             this.nextSlide();
         }, this.autoplayDelay);
@@ -301,6 +308,19 @@ class BannerCarousel {
     resetAutoplay() {
         this.stopAutoplay();
         this.startAutoplay();
+    }
+
+    bindVisibilityHandlers() {
+        if (this.visibilityHandlerBound) return;
+        this.visibilityHandlerBound = true;
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.stopAutoplay();
+            } else {
+                this.startAutoplay();
+            }
+        });
     }
 
     destroy() {

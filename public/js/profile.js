@@ -31,22 +31,64 @@ class ProfileManager {
 
     async checkAuth() {
         try {
-            this.currentUser = await this.api.getCurrentUser();
+            if (typeof setAuthPending === 'function') {
+                setAuthPending(true);
+            }
 
-            if (!this.currentUser) {
+            await this.waitForAuthHelpers();
+            await (typeof resolveAuthState === 'function' ? resolveAuthState({ reason: 'profile:checkAuth' }) : Promise.resolve());
+            let state = typeof getAuthState === 'function' ? getAuthState() : null;
+            if (!state?.ready) {
+                await this.waitForAuthReady();
+                state = typeof getAuthState === 'function' ? getAuthState() : null;
+            }
+
+            if ((!state?.user || !state?.ready) && window.supabaseClient?.auth?.getSession) {
+                const { data: { session } } = await window.supabaseClient.auth.getSession();
+                if (session?.user) {
+                    state = { ...state, user: session.user, ready: true };
+                }
+            }
+
+            this.currentUser = state?.user || null;
+            this.currentProfile = state?.profile || null;
+
+            if (state?.ready && !this.currentUser) {
                 // Redirect to home if not authenticated
                 window.location.href = 'index.html';
                 return;
             }
-
-            this.currentProfile = await this.api.getProfile(this.currentUser.id);
-
-            // Update header UI
-            updateHeaderUI(this.currentUser, this.currentProfile);
         } catch (error) {
             console.error('Auth check error:', error);
             window.location.href = 'index.html';
+        } finally {
+            if (typeof setAuthPending === 'function') {
+                setAuthPending(false);
+            } else {
+                window.__authPending = false;
+            }
         }
+    }
+
+    async waitForAuthHelpers(maxTries = 60, delayMs = 50) {
+        for (let i = 0; i < maxTries; i++) {
+            if (typeof resolveAuthState === 'function' && typeof getAuthState === 'function') {
+                return true;
+            }
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+        return false;
+    }
+
+    async waitForAuthReady(maxTries = 60, delayMs = 50) {
+        for (let i = 0; i < maxTries; i++) {
+            const state = typeof getAuthState === 'function' ? getAuthState() : null;
+            if (state?.ready) {
+                return true;
+            }
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+        return false;
     }
 
     async loadProfileData() {
@@ -372,13 +414,20 @@ class ProfileManager {
             }
 
             // Verify current password by attempting to sign in
-            const { error: signInError } = await window.supabaseClient.auth.signInWithPassword({
-                email: this.currentUser.email,
-                password: currentPassword
-            });
+            if (window.authUtils?.signIn) {
+                const auth = await window.authUtils.signIn(this.currentUser.email, currentPassword);
+                if (!auth) {
+                    throw new Error('Current password is incorrect');
+                }
+            } else {
+                const { error: signInError } = await window.supabaseClient.auth.signInWithPassword({
+                    email: this.currentUser.email,
+                    password: currentPassword
+                });
 
-            if (signInError) {
-                throw new Error('Current password is incorrect');
+                if (signInError) {
+                    throw new Error('Current password is incorrect');
+                }
             }
 
             // Update password
@@ -493,8 +542,20 @@ class ProfileManager {
         }
 
         try {
-            await window.supabaseClient.auth.signOut({ scope: 'global' });
-            window.location.href = 'index.html';
+            if (window.authUtils?.performSignOut) {
+                await window.authUtils.performSignOut({
+                    redirect: true,
+                    redirectUrl: 'index.html',
+                    signOutOptions: { scope: 'global' }
+                });
+            } else {
+                await window.supabaseClient.auth.signOut({ scope: 'global' });
+                if (typeof performSignOut === 'function') {
+                    await performSignOut({ redirect: true, redirectUrl: 'index.html' });
+                } else {
+                    window.location.href = 'index.html';
+                }
+            }
         } catch (error) {
             console.error('Error logging out:', error);
             this.showToast('Failed to logout from all devices', 'error');

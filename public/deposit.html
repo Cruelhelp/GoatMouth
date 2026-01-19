@@ -12,12 +12,12 @@
     <!-- Remix Icons -->
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
 
-    <link rel="stylesheet" href="css/output.css?v=4.5">
-    <link rel="stylesheet" href="css/styles.css?v=4.5">
-    <link rel="stylesheet" href="css/mobile.css?v=4.5">
+    <link rel="stylesheet" href="css/output.css?v=4.6">
+    <link rel="stylesheet" href="css/styles.css?v=4.6">
+    <link rel="stylesheet" href="css/mobile.css?v=4.6">
 
     <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
     <style>
         :root {
@@ -611,7 +611,7 @@
                     <div class="table-controls">
                         <div class="search-container">
                             <i class="ri-search-line search-icon"></i>
-                            <input type="text" class="search-input" placeholder="Search transactions..." id="searchInput" />
+                            <input type="text" class="search-input" placeholder="Search transactions..." id="searchInput" autocomplete="off" aria-label="Search transactions" />
                         </div>
                         <button class="sort-btn">⇅ Date</button>
                     </div>
@@ -699,7 +699,7 @@
                 <div class="quick-amount" data-amount="25000">J$25,000</div>
             </div>
 
-            <input type="number" id="customAmount" placeholder="Or enter custom amount" class="w-full mb-4 px-4 py-2.5 bg-black/30 border border-gray-700 rounded-md text-white text-sm" />
+            <input type="number" id="customAmount" placeholder="Or enter custom amount" class="w-full mb-4 px-4 py-2.5 bg-black/30 border border-gray-700 rounded-md text-white text-sm" autocomplete="off" aria-label="Custom deposit amount" />
 
             <button class="action-btn primary w-full" id="processDepositBtn">
                 <i class="ri-secure-payment-line"></i> Proceed to Payment
@@ -711,14 +711,16 @@
     <div id="mobile-nav-container" data-page="deposit"></div>
 
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase-client.js"></script>
-    <script src="js/toast.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/shared-components.js"></script>
-    <script src="js/header-component.js"></script>
-    <script src="js/mobile-nav-component.js"></script>
-    <script src="js/deposit.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="js/supabase-client.js"></script>
+    <script defer src="js/toast.js"></script>
+    <script defer src="js/api.js"></script>
+    <script type="module" src="js/utils-loader.js"></script>
+
+    <script defer src="js/shared-components.js"></script>
+    <script defer src="js/header-component.js"></script>
+    <script defer src="js/mobile-nav-component.js"></script>
+    <script defer src="js/deposit.js"></script>
 
     <script>
         // Tab switching
@@ -990,3 +992,4 @@
     </script>
 </body>
 </html>
+

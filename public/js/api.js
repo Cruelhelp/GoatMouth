@@ -23,7 +23,8 @@ class GoatMouthAPI {
         const response = await fetch(url, {
             method: options.method || 'GET',
             headers,
-            body: options.body ? JSON.stringify(options.body) : undefined
+            body: options.body ? JSON.stringify(options.body) : undefined,
+            signal: options.signal
         });
 
         let payload = null;
@@ -43,6 +44,12 @@ class GoatMouthAPI {
 
     // ============ AUTH ============
     async signUp(email, password, username) {
+        if (window.authUtils?.signUp) {
+            const authData = await window.authUtils.signUp(email, password, { username });
+            if (!authData) throw new Error('Sign up failed');
+            return authData;
+        }
+
         // Sign up with username in metadata - trigger will create profile
         const { data: authData, error: authError } = await this.db.auth.signUp({
             email,
@@ -61,6 +68,12 @@ class GoatMouthAPI {
     }
 
     async signIn(email, password) {
+        if (window.authUtils?.signIn) {
+            const authData = await window.authUtils.signIn(email, password);
+            if (!authData) throw new Error('Sign in failed');
+            return authData;
+        }
+
         const { data, error } = await this.db.auth.signInWithPassword({
             email,
             password,
@@ -70,13 +83,28 @@ class GoatMouthAPI {
     }
 
     async signOut() {
+        if (window.authUtils?.signOut) {
+            const ok = await window.authUtils.signOut();
+            if (!ok) throw new Error('Sign out failed');
+            return;
+        }
+
         const { error } = await this.db.auth.signOut();
         if (error) throw error;
     }
 
     async getCurrentUser() {
-        const { data: { user } } = await this.db.auth.getUser();
-        return user;
+        if (window.authUtils?.getAuthState) {
+            const state = window.authUtils.getAuthState();
+            if (state?.user) return state.user;
+            if (window.authUtils.resolveAuthState) {
+                const resolved = await window.authUtils.resolveAuthState({ reason: 'api:getCurrentUser' });
+                if (resolved?.user) return resolved.user;
+            }
+        }
+
+        const { data: { session } } = await this.db.auth.getSession();
+        return session?.user || null;
     }
 
     async getProfile(userId) {
@@ -107,6 +135,28 @@ class GoatMouthAPI {
     }
 
     // ============ MARKETS ============
+    async enrichMarketsWithCreators(markets) {
+        const creatorIds = [...new Set(markets.map(m => m.created_by).filter(Boolean))];
+        if (creatorIds.length === 0) return markets;
+
+        try {
+            const { data: profiles, error } = await this.db
+                .from('profiles')
+                .select('id, username, avatar_url')
+                .in('id', creatorIds);
+
+            if (error || !profiles) return markets;
+
+            const profileMap = new Map(profiles.map(profile => [profile.id, profile]));
+            return markets.map(market => {
+                const profile = profileMap.get(market.created_by);
+                return profile ? { ...market, creator: profile } : market;
+            });
+        } catch (error) {
+            return markets;
+        }
+    }
+
     async getMarkets(filters = {}) {
         let query = this.db
             .from('markets')
@@ -125,27 +175,36 @@ class GoatMouthAPI {
         const { data, error } = await query;
         if (error) throw error;
 
-        // Fetch creator info for each market (handle RLS gracefully)
-        const marketsWithCreators = await Promise.all(data.map(async (market) => {
-            if (market.created_by) {
-                try {
-                    const { data: profile, error } = await this.db
-                        .from('profiles')
-                        .select('username, avatar_url')
-                        .eq('id', market.created_by)
-                        .single();
+        return this.enrichMarketsWithCreators(data || []);
+    }
 
-                    if (!error && profile) {
-                        return { ...market, creator: profile };
-                    }
-                } catch (err) {
-                    // RLS policy may block access, that's okay
-                }
-            }
-            return market;
-        }));
+    async getMarketsPage(filters = {}, options = {}) {
+        const limit = options.limit ?? 25;
+        const offset = options.offset ?? 0;
 
-        return marketsWithCreators;
+        let query = this.db
+            .from('markets')
+            .select('*', { count: 'exact' })
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1);
+
+        if (options.signal && typeof query.abortSignal === 'function') {
+            query = query.abortSignal(options.signal);
+        }
+
+        if (filters.status) {
+            query = query.eq('status', filters.status);
+        }
+
+        if (filters.category) {
+            query = query.eq('category', filters.category);
+        }
+
+        const { data, error, count } = await query;
+        if (error) throw error;
+
+        const markets = await this.enrichMarketsWithCreators(data || []);
+        return { markets, total: count ?? markets.length };
     }
 
     async getMarket(id) {
@@ -196,23 +255,25 @@ class GoatMouthAPI {
         return data;
     }
 
-    async getMarketOdds(marketId) {
-        return this.fetchOddsApi(`/api/markets/${marketId}/odds`);
+    async getMarketOdds(marketId, options = {}) {
+        return this.fetchOddsApi(`/api/markets/${marketId}/odds`, options);
     }
 
-    async getBetQuote(marketId, outcome, amount) {
+    async getBetQuote(marketId, outcome, amount, options = {}) {
         return this.fetchOddsApi(`/api/markets/${marketId}/quote`, {
+            ...options,
             method: 'POST',
             body: { outcome, amount }
         });
     }
 
-    async getMarketOddsMultiplier(marketId) {
-        return this.fetchOddsApi(`/api/markets/${marketId}/odds-multiplier`);
+    async getMarketOddsMultiplier(marketId, options = {}) {
+        return this.fetchOddsApi(`/api/markets/${marketId}/odds-multiplier`, options);
     }
 
-    async getBetQuoteWithOdds(marketId, outcome, amount) {
+    async getBetQuoteWithOdds(marketId, outcome, amount, options = {}) {
         return this.fetchOddsApi(`/api/markets/${marketId}/quote-odds`, {
+            ...options,
             method: 'POST',
             body: { outcome, amount }
         });
@@ -577,12 +638,18 @@ class GoatMouthAPI {
         return stats;
     }
 
-    async getLeaderboard(limit = 10) {
-        const { data, error } = await this.db
+    async getLeaderboard(limit = 10, options = {}) {
+        let query = this.db
             .from('profiles')
             .select('id, username, balance, created_at')
             .order('balance', { ascending: false })
             .limit(limit);
+
+        if (options.signal && typeof query.abortSignal === 'function') {
+            query = query.abortSignal(options.signal);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
 

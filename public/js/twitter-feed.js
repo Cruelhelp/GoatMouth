@@ -8,6 +8,8 @@ class TwitterFeed {
         this.lastFetchTime = null;
         this.refreshInterval = 5 * 60 * 1000; // 5 minutes
         this.maxTweets = 5;
+        this.refreshTimer = null;
+        this.visibilityHandlerBound = false;
         this.init();
     }
 
@@ -214,9 +216,37 @@ class TwitterFeed {
     }
 
     startAutoRefresh() {
-        setInterval(() => {
-            this.fetchTweets();
+        if (this.refreshTimer) {
+            clearInterval(this.refreshTimer);
+        }
+
+        this.bindVisibilityHandlers();
+
+        if (document.hidden) {
+            return;
+        }
+
+        this.refreshTimer = setInterval(() => {
+            if (!document.hidden) {
+                this.fetchTweets();
+            }
         }, this.refreshInterval);
+    }
+
+    bindVisibilityHandlers() {
+        if (this.visibilityHandlerBound) return;
+        this.visibilityHandlerBound = true;
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (this.refreshTimer) {
+                    clearInterval(this.refreshTimer);
+                    this.refreshTimer = null;
+                }
+            } else {
+                this.startAutoRefresh();
+            }
+        });
     }
 }
 

@@ -8,6 +8,8 @@ class MLInsightsManager {
         this.api = api;
         this.oddsApiUrl = window.ODDS_API_URL || 'https://goatmouth-odds-api.onrender.com';
         this.telemetryLogs = [];
+        this.telemetryInterval = null;
+        this.visibilityHandlerBound = false;
         this.init();
     }
 
@@ -537,10 +539,39 @@ class MLInsightsManager {
     }
 
     startTelemetryMonitor() {
+        this.bindVisibilityHandlers();
+        this.stopTelemetryMonitor();
+
+        if (document.hidden) {
+            return;
+        }
+
         // Monitor API every 30 seconds
-        setInterval(() => {
-            this.checkAPIHealth();
+        this.telemetryInterval = setInterval(() => {
+            if (!document.hidden) {
+                this.checkAPIHealth();
+            }
         }, 30000);
+    }
+
+    stopTelemetryMonitor() {
+        if (this.telemetryInterval) {
+            clearInterval(this.telemetryInterval);
+            this.telemetryInterval = null;
+        }
+    }
+
+    bindVisibilityHandlers() {
+        if (this.visibilityHandlerBound) return;
+        this.visibilityHandlerBound = true;
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.stopTelemetryMonitor();
+            } else {
+                this.startTelemetryMonitor();
+            }
+        });
     }
 }
 

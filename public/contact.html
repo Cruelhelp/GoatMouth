@@ -12,9 +12,9 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="stylesheet" href="css/output.css?v=4.5">
-    <link rel="stylesheet" href="css/styles.css?v=4.5">
-    <link rel="stylesheet" href="css/mobile.css?v=4.5">
+    <link rel="stylesheet" href="css/output.css?v=4.6">
+    <link rel="stylesheet" href="css/styles.css?v=4.6">
+    <link rel="stylesheet" href="css/mobile.css?v=4.6">
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
     <style>
@@ -149,6 +149,7 @@
                                     id="name"
                                     name="name"
                                     required
+                                    autocomplete="name"
                                     class="w-full px-4 py-2.5 bg-gray-900 border border-gray-600 rounded-lg text-white focus:border-teal-500 focus:outline-none transition text-sm"
                                     placeholder="John Doe">
                             </div>
@@ -160,6 +161,7 @@
                                     id="email"
                                     name="email"
                                     required
+                                    autocomplete="email"
                                     class="w-full px-4 py-2.5 bg-gray-900 border border-gray-600 rounded-lg text-white focus:border-teal-500 focus:outline-none transition text-sm"
                                     placeholder="john@example.com">
                             </div>
@@ -173,6 +175,7 @@
                                     id="subject"
                                     name="subject"
                                     required
+                                    autocomplete="off"
                                     class="w-full px-4 py-2.5 bg-gray-900 border border-gray-600 rounded-lg text-white focus:border-teal-500 focus:outline-none transition text-sm">
                                     <option value="">Select topic...</option>
                                     <option value="Bug Report">🐛 Bug Report</option>
@@ -191,6 +194,7 @@
                                     id="priority"
                                     name="priority"
                                     required
+                                    autocomplete="off"
                                     class="w-full px-4 py-2.5 bg-gray-900 border border-gray-600 rounded-lg text-white focus:border-teal-500 focus:outline-none transition text-sm">
                                     <option value="normal">Normal</option>
                                     <option value="high">High</option>
@@ -208,6 +212,7 @@
                                 name="message"
                                 rows="5"
                                 required
+                                autocomplete="off"
                                 class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg text-white focus:border-teal-500 focus:outline-none transition resize-none text-sm"
                                 placeholder="Describe your issue or question in detail..."></textarea>
                             <p class="text-xs text-gray-400 mt-1.5">Minimum 10 characters</p>
@@ -262,9 +267,11 @@
     <div id="footer-container"></div>
 
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="module" src="js/supabase-client.js"></script>
     <script type="module" src="js/api.js"></script>
+    <script type="module" src="js/utils-loader.js"></script>
+
     <script type="module" src="js/shared-components.js"></script>
     <script type="module" src="js/header-component.js"></script>
     <script type="module" src="js/footer-component.js"></script>
@@ -276,3 +283,4 @@
     </script>
 </body>
 </html>
+

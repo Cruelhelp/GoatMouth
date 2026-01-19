@@ -41,24 +41,21 @@ class AdminPanel {
         // Sign out
         document.getElementById('admin-signout').addEventListener('click', async () => {
             try {
-                await this.api.signOut();
-
-                // Clear all stored data
-                localStorage.clear();
-                sessionStorage.clear();
-
-                // Clear all cookies
-                document.cookie.split(";").forEach(function(c) {
-                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-                });
-
-                // Redirect using replace to prevent back button
-                window.location.replace('index.html');
+                if (typeof performSignOut === 'function') {
+                    await performSignOut({ redirect: true, redirectUrl: 'index.html' });
+                } else {
+                    await this.api.signOut();
+                    window.location.replace('index.html');
+                }
             } catch (error) {
                 console.error('Logout error:', error);
-                localStorage.clear();
-                sessionStorage.clear();
-                window.location.replace('index.html');
+                if (typeof performSignOut === 'function') {
+                    await performSignOut({ redirect: true, redirectUrl: 'index.html' });
+                } else {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.replace('index.html');
+                }
             }
         });
     }
@@ -515,13 +512,15 @@ class AdminPanel {
         const activityList = document.getElementById('activity-list');
         if (activityList) {
             if (recentActivities.length === 0) {
-                activityList.innerHTML = `
-                    <div style="text-align: center; padding: 32px; color: var(--muted);">
-                        <p>No recent activity</p>
-                    </div>
-                `;
+                const emptyState = document.createElement('div');
+                emptyState.style.textAlign = 'center';
+                emptyState.style.padding = '32px';
+                emptyState.style.color = 'var(--muted)';
+                emptyState.innerHTML = '<p>No recent activity</p>';
+                activityList.replaceChildren(emptyState);
             } else {
-                activityList.innerHTML = recentActivities.map(activity => {
+                const fragment = document.createDocumentFragment();
+                recentActivities.forEach(activity => {
                     const date = new Date(activity.created_at);
                     const timeAgo = this.getTimeAgo(date);
 
@@ -585,7 +584,8 @@ class AdminPanel {
 
                     const action = this.getActivityAction(activity);
                     const detailsHtml = this.renderActivityDetails(activity);
-                    return `
+                    const wrapper = document.createElement('div');
+                    wrapper.innerHTML = `
                         <div class="activity-item" style="border-left: 3px solid ${typeColor};">
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 <i class="fa-solid ${typeIcon}" style="color: ${typeColor}; font-size: 18px;"></i>
@@ -614,7 +614,11 @@ class AdminPanel {
                             </div>
                         </div>
                     `;
-                }).join('');
+                    if (wrapper.firstElementChild) {
+                        fragment.appendChild(wrapper.firstElementChild);
+                    }
+                });
+                activityList.replaceChildren(fragment);
             }
         }
         this.attachActivityHandlers(activityList);
@@ -930,77 +934,117 @@ class AdminPanel {
         }
     }
 
-    async renderMarkets(container) {
-        const markets = await this.api.getMarkets();
+    ensureAdminMarketsLayout(container) {
+        let layout = container.querySelector('[data-admin-markets-layout]');
+        if (layout) return layout;
 
-        container.innerHTML = `
+        layout = document.createElement('div');
+        layout.setAttribute('data-admin-markets-layout', 'true');
+        layout.innerHTML = `
             <div class="flex justify-between items-center mb-6" style="flex-wrap: wrap; gap: 12px;">
-                <h3 class="text-xl font-bold" style="color: var(--fg);">All Markets (${markets.length})</h3>
+                <h3 class="text-xl font-bold" style="color: var(--fg);">All Markets (<span data-admin-markets-count>0</span>)</h3>
             </div>
+            <div data-admin-markets-grid style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;"></div>
+        `;
+        container.replaceChildren(layout);
+        return layout;
+    }
 
-            <!-- Markets Grid View -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
-                ${markets.length > 0 ? markets.map(market => `
-                    <div class="card" style="padding: 0; overflow: hidden; transition: all 0.3s ease; cursor: pointer;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 24px rgba(0,0,0,0.3)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
-                        <!-- Market Image -->
-                        ${market.image_url ? `
-                            <div style="width: 100%; height: 180px; overflow: hidden; background: var(--bg3);">
-                                <img src="${market.image_url}" alt="${this.escapeHtml(market.title)}"
-                                     style="width: 100%; height: 100%; object-fit: cover;"
-                                     onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'display: flex; align-items: center; justify-content: center; height: 100%; color: var(--muted);\'><i class=\'fa-solid fa-image\' style=\'font-size: 48px; opacity: 0.3;\'></i></div>';">
-                            </div>
-                        ` : `
-                            <div style="width: 100%; height: 180px; background: linear-gradient(135deg, var(--bg3) 0%, var(--bg2) 100%); display: flex; align-items: center; justify-content: center;">
-                                <i class="fa-solid fa-chart-simple" style="font-size: 48px; color: var(--accent); opacity: 0.3;"></i>
-                            </div>
-                        `}
+    updateAdminMarketsGrid(layout, markets) {
+        const grid = layout.querySelector('[data-admin-markets-grid]');
+        if (!grid) return;
+        grid.replaceChildren(this.renderAdminMarketsGrid(markets));
+    }
 
-                        <!-- Market Info -->
-                        <div style="padding: 16px;">
-                            <h3 style="color: var(--fg); font-size: 16px; font-weight: 700; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.4;" title="${this.escapeHtml(market.title)}">
-                                ${this.escapeHtml(market.title)}
-                            </h3>
+    renderAdminMarketsGrid(markets) {
+        const fragment = document.createDocumentFragment();
 
-                            <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
-                                <span class="badge badge-${market.status}">${market.status}</span>
-                                <span style="color: var(--muted); font-size: 12px;">${market.category || 'Uncategorized'}</span>
-                            </div>
+        if (!markets || markets.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'card';
+            empty.style.gridColumn = '1/-1';
+            empty.style.textAlign = 'center';
+            empty.style.padding = '60px 20px';
+            empty.innerHTML = `
+                <i class="fa-solid fa-chart-simple" style="font-size: 64px; opacity: 0.2; color: var(--muted); display: block; margin-bottom: 16px;"></i>
+                <p style="color: var(--muted); font-size: 16px;">No markets found</p>
+            `;
+            fragment.appendChild(empty);
+            return fragment;
+        }
 
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; padding: 12px; background: var(--bg3); border-radius: 6px;">
-                                <div>
-                                    <div style="font-size: 11px; color: var(--muted); text-transform: uppercase;">Volume</div>
-                                    <div style="font-size: 16px; font-weight: 700; color: var(--accent);">J$${parseFloat(market.total_volume || 0).toFixed(0)}</div>
-                                </div>
-                                <div>
-                                    <div style="font-size: 11px; color: var(--muted); text-transform: uppercase;">End Date</div>
-                                    <div style="font-size: 12px; font-weight: 600; color: var(--fg);">${new Date(market.end_date).toLocaleDateString()}</div>
-                                </div>
-                            </div>
+        markets.forEach((market) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.style.padding = '0';
+            card.style.overflow = 'hidden';
+            card.style.transition = 'all 0.3s ease';
+            card.style.cursor = 'pointer';
+            card.setAttribute('onmouseover', "this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 24px rgba(0,0,0,0.3)';");
+            card.setAttribute('onmouseout', "this.style.transform=''; this.style.boxShadow='';");
 
-                            <!-- Actions -->
-                            <div style="display: flex; gap: 8px;">
-                                <button onclick="event.stopPropagation(); adminPanel.showEditMarketModal('${market.id}')" class="btn" style="flex: 1; background: var(--accent); color: white; padding: 8px 12px; font-size: 12px;" title="Edit">
-                                    <i class="fa-solid fa-edit"></i> Edit
-                                </button>
-                                ${market.status === 'active' ? `
-                                    <button onclick="event.stopPropagation(); adminPanel.showResolveMarketModal('${market.id}')" class="btn" style="background: var(--info); color: white; padding: 8px; font-size: 12px; min-width: 40px;" title="Resolve">
-                                        <i class="fa-solid fa-check"></i>
-                                    </button>
-                                ` : ''}
-                                <button onclick="event.stopPropagation(); adminPanel.deleteMarket('${market.id}')" class="btn danger" style="background: var(--error); color: white; padding: 8px; font-size: 12px; min-width: 40px;" title="Delete">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
+            card.innerHTML = `
+                ${market.image_url ? `
+                    <div style="width: 100%; height: 180px; overflow: hidden; background: var(--bg3);">
+                        <img src="${market.image_url}" alt="${this.escapeHtml(market.title)}"
+                             style="width: 100%; height: 100%; object-fit: cover;"
+                             onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'display: flex; align-items: center; justify-content: center; height: 100%; color: var(--muted);\'><i class=\'fa-solid fa-image\' style=\'font-size: 48px; opacity: 0.3;\'></i></div>'">
                     </div>
-                `).join('') : `
-                    <div class="card" style="grid-column: 1/-1; text-align: center; padding: 60px 20px;">
-                        <i class="fa-solid fa-chart-simple" style="font-size: 64px; opacity: 0.2; color: var(--muted); display: block; margin-bottom: 16px;"></i>
-                        <p style="color: var(--muted); font-size: 16px;">No markets found</p>
+                ` : `
+                    <div style="width: 100%; height: 180px; background: linear-gradient(135deg, var(--bg3) 0%, var(--bg2) 100%); display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-chart-simple" style="font-size: 48px; color: var(--accent); opacity: 0.3;"></i>
                     </div>
                 `}
-            </div>
-        `;
+
+                <div style="padding: 16px;">
+                    <h3 style="color: var(--fg); font-size: 16px; font-weight: 700; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.4;" title="${this.escapeHtml(market.title)}">
+                        ${this.escapeHtml(market.title)}
+                    </h3>
+
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+                        <span class="badge badge-${market.status}">${market.status}</span>
+                        <span style="color: var(--muted); font-size: 12px;">${market.category || 'Uncategorized'}</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; padding: 12px; background: var(--bg3); border-radius: 6px;">
+                        <div>
+                            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase;">Volume</div>
+                            <div style="font-size: 16px; font-weight: 700; color: var(--accent);">J$${parseFloat(market.total_volume || 0).toFixed(0)}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase;">End Date</div>
+                            <div style="font-size: 12px; font-weight: 600; color: var(--fg);">${new Date(market.end_date).toLocaleDateString()}</div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="event.stopPropagation(); adminPanel.showEditMarketModal('${market.id}')" class="btn" style="flex: 1; background: var(--accent); color: white; padding: 8px 12px; font-size: 12px;" title="Edit">
+                            <i class="fa-solid fa-edit"></i> Edit
+                        </button>
+                        ${market.status === 'active' ? `
+                            <button onclick="event.stopPropagation(); adminPanel.showResolveMarketModal('${market.id}')" class="btn" style="background: var(--info); color: white; padding: 8px; font-size: 12px; min-width: 40px;" title="Resolve">
+                                <i class="fa-solid fa-check"></i>
+                            </button>
+                        ` : ''}
+                        <button onclick="event.stopPropagation(); adminPanel.deleteMarket('${market.id}')" class="btn danger" style="background: var(--error); color: white; padding: 8px; font-size: 12px; min-width: 40px;" title="Delete">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            fragment.appendChild(card);
+        });
+
+        return fragment;
+    }
+
+    async renderMarkets(container) {
+        const markets = await this.api.getMarkets();
+        const layout = this.ensureAdminMarketsLayout(container);
+        const countEl = layout.querySelector('[data-admin-markets-count]');
+        if (countEl) countEl.textContent = markets.length;
+        this.updateAdminMarketsGrid(layout, markets);
     }
 
     async renderUsers(container) {
@@ -1054,9 +1098,11 @@ class AdminPanel {
 
             <!-- Users Table -->
             <div id="users-table-container">
-                ${this.renderUsersTable(users)}
+                
             </div>
         `;
+
+        this.updateUsersTable(container, users);
 
         // Attach search and filter handlers
         const searchInput = container.querySelector('#user-search');
@@ -1073,19 +1119,30 @@ class AdminPanel {
                 return matchesSearch && matchesRole;
             });
 
-            container.querySelector('#users-table-container').innerHTML = this.renderUsersTable(filtered);
+            this.updateUsersTable(container, filtered);
         };
 
         searchInput.addEventListener('input', filterUsers);
         roleFilter.addEventListener('change', filterUsers);
     }
 
+    updateUsersTable(container, users) {
+        const target = container.querySelector('#users-table-container');
+        if (!target) return;
+        target.replaceChildren(this.renderUsersTable(users));
+    }
+
     renderUsersTable(users) {
         if (users.length === 0) {
-            return `<div class="text-center py-12" style="color: var(--muted);">No users found</div>`;
+            const empty = document.createElement('div');
+            empty.className = 'text-center py-12';
+            empty.style.color = 'var(--muted)';
+            empty.textContent = 'No users found';
+            return empty;
         }
 
-        return `
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `
             <div class="card">
                 <div class="table-container">
                     <table style="width: 100%;">
@@ -1132,7 +1189,6 @@ class AdminPanel {
                                 </td>
                                 <td class="px-6 py-4">
                                     <div style="display: flex; gap: 6px; align-items: center;">
-                                        <!-- View Details -->
                                         <button onclick="adminPanel.showUserDetailsModal('${user.id}')"
                                             class="user-action-btn"
                                             style="background: var(--accent); color: white;"
@@ -1141,7 +1197,6 @@ class AdminPanel {
                                         </button>
 
                                         ${user.id !== this.currentProfile.id ? `
-                                            <!-- Edit Balance -->
                                             <button onclick="adminPanel.showEditBalanceModal('${user.id}', ${user.balance})"
                                                 class="user-action-btn"
                                                 style="background: #FFC107; color: #1a1a1a;"
@@ -1149,7 +1204,6 @@ class AdminPanel {
                                                 <i class="fa-solid fa-coins"></i>
                                             </button>
 
-                                            <!-- Toggle Role (Promote/Demote) -->
                                             <button onclick="adminPanel.toggleUserRole('${user.id}', '${user.role}')"
                                                 class="user-action-btn"
                                                 style="background: ${user.role === 'admin' ? '#3B82F6' : '#631BDD'}; color: white;"
@@ -1157,7 +1211,6 @@ class AdminPanel {
                                                 <i class="fa-solid ${user.role === 'admin' ? 'fa-user' : 'fa-user-shield'}"></i>
                                             </button>
 
-                                            <!-- More Actions Dropdown -->
                                             <div style="position: relative; display: inline-block;">
                                                 <button onclick="event.stopPropagation(); this.nextElementSibling.classList.toggle('show-dropdown')"
                                                     class="user-action-btn"
@@ -1187,6 +1240,8 @@ class AdminPanel {
                 </div>
             </div>
         `;
+
+        return wrapper.firstElementChild;
     }
 
     getUserColor(username) {
@@ -1796,10 +1851,13 @@ class AdminPanel {
         document.body.appendChild(modal);
     }
 
-    async renderTransactions(container) {
-        const transactions = await this.api.getAllTransactions({ limit: 100 });
+    ensureAdminTransactionsLayout(container) {
+        let layout = container.querySelector('[data-admin-transactions-layout]');
+        if (layout) return layout;
 
-        container.innerHTML = `
+        layout = document.createElement('div');
+        layout.setAttribute('data-admin-transactions-layout', 'true');
+        layout.innerHTML = `
             <div class="bg-gray-800 rounded-lg overflow-hidden">
                 <div class="table-container">
                     <table class="data-table">
@@ -1812,23 +1870,52 @@ class AdminPanel {
                                 <th>Date</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            ${transactions.map(tx => `
-                                <tr>
-                                    <td class="font-semibold">${tx.profiles?.username || 'Unknown'}</td>
-                                    <td><span class="badge badge-${tx.type}">${tx.type}</span></td>
-                                    <td class="font-semibold">J$${parseFloat(tx.amount).toFixed(2)}</td>
-                                    <td class="text-sm text-gray-400">J$${parseFloat(tx.balance_after).toFixed(2)}</td>
-                                    <td class="text-sm text-gray-400">${new Date(tx.created_at).toLocaleString()}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
+                        <tbody data-admin-transactions-body></tbody>
                     </table>
                 </div>
             </div>
         `;
+        container.replaceChildren(layout);
+        return layout;
     }
 
+    updateAdminTransactionsTable(layout, transactions) {
+        const tbody = layout.querySelector('[data-admin-transactions-body]');
+        if (!tbody) return;
+
+        if (!transactions || transactions.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td colspan="5" style="text-align: center; padding: 24px; color: var(--muted);">
+                    No transactions yet
+                </td>
+            `;
+            tbody.replaceChildren(row);
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        transactions.forEach((tx) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="font-semibold">${tx.profiles?.username || 'Unknown'}</td>
+                <td><span class="badge badge-${tx.type}">${tx.type}</span></td>
+                <td class="font-semibold">J$${parseFloat(tx.amount).toFixed(2)}</td>
+                <td class="text-sm text-gray-400">J$${parseFloat(tx.balance_after).toFixed(2)}</td>
+                <td class="text-sm text-gray-400">${new Date(tx.created_at).toLocaleString()}</td>
+            `;
+            fragment.appendChild(row);
+        });
+        tbody.replaceChildren(fragment);
+    }
+
+    async renderTransactions(container) {
+        const transactions = await this.api.getAllTransactions({ limit: 100 });
+        const layout = this.ensureAdminTransactionsLayout(container);
+        this.updateAdminTransactionsTable(layout, transactions);
+    }
+
+    // Market Management
     // Market Management
     showCreateMarketModal() {
         const modal = document.createElement('div');
@@ -2542,9 +2629,11 @@ class AdminPanel {
 
             <!-- Messages List -->
             <div id="messages-list" class="messages-container">
-                ${this.renderMessagesList(messages)}
+                
             </div>
         `;
+
+        this.updateMessagesList(container, messages);
 
         // Attach stat card click listeners for filtering
         container.querySelectorAll('.message-stat-card').forEach(card => {
@@ -2557,7 +2646,7 @@ class AdminPanel {
                 card.classList.add('active');
 
                 // Update list
-                document.getElementById('messages-list').innerHTML = this.renderMessagesList(filteredMessages);
+                this.updateMessagesList(container, filteredMessages);
             });
         });
 
@@ -2565,14 +2654,23 @@ class AdminPanel {
         container.querySelector('.message-stat-card[data-status="all"]').classList.add('active');
     }
 
+    updateMessagesList(container, messages) {
+        const list = container.querySelector('#messages-list');
+        if (!list) return;
+        list.replaceChildren(this.renderMessagesList(messages));
+    }
+
     renderMessagesList(messages) {
         if (messages.length === 0) {
-            return `
-                <div style="text-align: center; padding: 60px 20px; color: var(--muted);">
-                    <i class="fa-solid fa-inbox" style="font-size: 64px; opacity: 0.2; margin-bottom: 16px;"></i>
-                    <p style="font-size: 16px;">No messages found</p>
-                </div>
+            const empty = document.createElement('div');
+            empty.style.textAlign = 'center';
+            empty.style.padding = '60px 20px';
+            empty.style.color = 'var(--muted)';
+            empty.innerHTML = `
+                <i class="fa-solid fa-inbox" style="font-size: 64px; opacity: 0.2; margin-bottom: 16px;"></i>
+                <p style="font-size: 16px;">No messages found</p>
             `;
+            return empty;
         }
 
         const priorityIcons = {
@@ -2597,269 +2695,73 @@ class AdminPanel {
             archived: '#6B7280'
         };
 
-        return messages.map(msg => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'space-y-4';
+        const fragment = document.createDocumentFragment();
+
+        messages.forEach(msg => {
             const date = new Date(msg.created_at);
             const timeAgo = this.getTimeAgo(date);
             const username = msg.profiles?.username || 'Unknown User';
             const userEmail = msg.email;
 
-            return `
-                <div class="message-card">
-                    <!-- Header -->
-                    <div class="message-header">
-                        <div class="message-title-row">
-                            <h3 class="message-subject">${this.escapeHtml(msg.subject)}</h3>
-                            <div class="message-badges">
-                                <span class="message-badge" style="background: ${statusColors[msg.status]}20; color: ${statusColors[msg.status]}; border-color: ${statusColors[msg.status]};">
-                                    ${msg.status}
-                                </span>
-                                <span class="message-badge" style="background: ${priorityColors[msg.priority]}20; color: ${priorityColors[msg.priority]}; border-color: ${priorityColors[msg.priority]};">
-                                    <i class="fa-solid ${priorityIcons[msg.priority]}"></i>
-                                    ${msg.priority}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="message-meta">
-                            <div>
-                                <i class="fa-solid fa-user"></i>
-                                <strong>${this.escapeHtml(msg.name)}</strong>
-                                ${msg.user_id ? `<span class="text-muted">(${this.escapeHtml(username)})</span>` : '<span class="text-muted">(Guest)</span>'}
-                            </div>
-                            <div>
-                                <i class="fa-solid fa-envelope"></i>
-                                <a href="mailto:${this.escapeHtml(userEmail)}" style="color: var(--accent);">${this.escapeHtml(userEmail)}</a>
-                            </div>
-                            <div>
-                                <i class="fa-solid fa-clock"></i>
-                                ${timeAgo}
-                            </div>
+            const card = document.createElement('div');
+            card.className = 'message-card';
+            card.innerHTML = `
+                <div class="message-header">
+                    <div class="message-title-row">
+                        <h3 class="message-subject">${this.escapeHtml(msg.subject)}</h3>
+                        <div class="message-badges">
+                            <span class="message-badge" style="background: ${statusColors[msg.status]}20; color: ${statusColors[msg.status]}; border-color: ${statusColors[msg.status]};">
+                                ${msg.status}
+                            </span>
+                            <span class="message-badge" style="background: ${priorityColors[msg.priority]}20; color: ${priorityColors[msg.priority]}; border-color: ${priorityColors[msg.priority]};">
+                                <i class="fa-solid ${priorityIcons[msg.priority]}"></i>
+                                ${msg.priority}
+                            </span>
                         </div>
                     </div>
-
-                    <!-- Message Body -->
-                    <div class="message-body">
-                        <p>${this.escapeHtml(msg.message)}</p>
-                    </div>
-
-                    ${msg.admin_notes ? `
-                        <div class="message-notes">
-                            <i class="fa-solid fa-note-sticky"></i>
-                            <strong>Admin Notes:</strong>
-                            <p>${this.escapeHtml(msg.admin_notes)}</p>
+                    <div class="message-meta">
+                        <div>
+                            <i class="fa-solid fa-user"></i>
+                            <strong>${this.escapeHtml(msg.name)}</strong>
+                            ${msg.user_id ? `<span class="text-muted">(${this.escapeHtml(username)})</span>` : '<span class="text-muted">(Guest)</span>'}
                         </div>
-                    ` : ''}
-
-                    <!-- Actions -->
-                    <div class="message-actions">
-                        ${msg.status === 'new' ? `
-                            <button onclick="adminPanel.updateMessageStatus('${msg.id}', 'read')" class="message-action-btn" style="background: #631BDD;">
-                                <i class="fa-solid fa-eye"></i>
-                                <span>Read</span>
-                            </button>
-                        ` : ''}
-                        ${msg.status !== 'replied' && msg.status !== 'resolved' ? `
-                            <button onclick="adminPanel.showReplyModal('${msg.id}', '${this.escapeHtml(userEmail)}', '${this.escapeHtml(msg.name)}', ${msg.user_id ? `'${msg.user_id}'` : 'null'})" class="message-action-btn" style="background: var(--accent);">
-                                <i class="fa-solid fa-reply"></i>
-                                <span>Reply</span>
-                            </button>
-                        ` : ''}
-                        ${msg.status !== 'resolved' ? `
-                            <button onclick="adminPanel.updateMessageStatus('${msg.id}', 'resolved')" class="message-action-btn" style="background: #10B981;">
-                                <i class="fa-solid fa-check"></i>
-                                <span>Resolve</span>
-                            </button>
-                        ` : ''}
-
-                        <!-- More Actions Dropdown -->
-                        <div class="message-dropdown-wrapper">
-                            <button onclick="event.stopPropagation(); this.nextElementSibling.classList.toggle('show-dropdown')" class="message-action-btn" style="background: var(--bg3);">
-                                <i class="fa-solid fa-ellipsis-vertical"></i>
-                                <span>More</span>
-                            </button>
-                            <div class="message-dropdown-menu">
-                                <button onclick="adminPanel.showNotesModal('${msg.id}', ${msg.admin_notes ? `'${this.escapeHtml(msg.admin_notes)}'` : 'null'}); this.closest('.message-dropdown-menu').classList.remove('show-dropdown')">
-                                    <i class="fa-solid fa-note-sticky"></i>
-                                    ${msg.admin_notes ? 'Edit Notes' : 'Add Notes'}
-                                </button>
-                                <button onclick="adminPanel.updateMessageStatus('${msg.id}', 'archived'); this.closest('.message-dropdown-menu').classList.remove('show-dropdown')">
-                                    <i class="fa-solid fa-box-archive"></i>
-                                    Archive
-                                </button>
-                                <button onclick="adminPanel.deleteMessage('${msg.id}'); this.closest('.message-dropdown-menu').classList.remove('show-dropdown')" style="color: #EF4444;">
-                                    <i class="fa-solid fa-trash"></i>
-                                    Delete
-                                </button>
-                            </div>
+                        <div>
+                            <i class="fa-solid fa-envelope"></i>
+                            <a href="mailto:${this.escapeHtml(userEmail)}" style="color: var(--accent);">${this.escapeHtml(userEmail)}</a>
+                        </div>
+                        <div>
+                            <i class="fa-solid fa-clock"></i>
+                            ${timeAgo}
                         </div>
                     </div>
                 </div>
+
+                <div class="message-body">
+                    <p>${this.escapeHtml(msg.message)}</p>
+                </div>
+
+                ${msg.admin_notes ? `
+                    <div class="message-notes">
+                        <i class="fa-solid fa-note-sticky"></i>
+                        <strong>Admin Notes:</strong>
+                        <p>${this.escapeHtml(msg.admin_notes)}</p>
+                    </div>
+                ` : ''}
+
+                <div class="message-actions">
+                    <button onclick="adminPanel.updateMessageStatus('${msg.id}', 'read')" class="btn secondary">Mark Read</button>
+                    <button onclick="adminPanel.updateMessageStatus('${msg.id}', 'replied')" class="btn secondary">Mark Replied</button>
+                    <button onclick="adminPanel.updateMessageStatus('${msg.id}', 'resolved')" class="btn secondary">Resolve</button>
+                    <button onclick="adminPanel.deleteContactMessage('${msg.id}')" class="btn danger">Delete</button>
+                </div>
             `;
-        }).join('');
-    }
-
-    getTimeAgo(date) {
-        const seconds = Math.floor((new Date() - date) / 1000);
-        const intervals = {
-            year: 31536000,
-            month: 2592000,
-            week: 604800,
-            day: 86400,
-            hour: 3600,
-            minute: 60
-        };
-
-        for (const [unit, secondsInUnit] of Object.entries(intervals)) {
-            const interval = Math.floor(seconds / secondsInUnit);
-            if (interval >= 1) {
-                return `${interval} ${unit}${interval > 1 ? 's' : ''} ago`;
-            }
-        }
-        return 'Just now';
-    }
-
-    async updateMessageStatus(messageId, newStatus) {
-        try {
-            await this.api.updateContactMessage(messageId, { status: newStatus });
-            this.renderView('messages');
-        } catch (error) {
-            alert('Error updating message: ' + error.message);
-        }
-    }
-
-    showReplyModal(messageId, email, name, userId) {
-        const modal = document.createElement('div');
-        modal.className = 'admin-modal-overlay';
-        modal.innerHTML = `
-            <div class="bg-gray-800 rounded-2xl border-2 border-gray-700 p-8 max-w-2xl w-full">
-                <h2 class="text-2xl font-bold mb-4" style="color: #00CB97;">Reply to ${this.escapeHtml(name)}</h2>
-                <p class="text-gray-400 mb-6">To: ${this.escapeHtml(email)}</p>
-
-                <form id="reply-form">
-                    <div class="mb-4">
-                        <label class="block text-sm font-semibold mb-2">Subject</label>
-                        <input type="text" id="reply-subject" required
-                            class="w-full px-4 py-3 bg-gray-900 border-2 border-gray-600 rounded-xl text-white focus:border-teal-500 focus:outline-none"
-                            placeholder="Re: Your message">
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block text-sm font-semibold mb-2">Message</label>
-                        <textarea id="reply-message" rows="8" required
-                            class="w-full px-4 py-3 bg-gray-900 border-2 border-gray-600 rounded-xl text-white focus:border-teal-500 focus:outline-none resize-none"
-                            placeholder="Type your reply..."></textarea>
-                    </div>
-
-                    ${userId ? `
-                        <div class="mb-6">
-                            <label class="flex items-center gap-2 text-sm">
-                                <input type="checkbox" id="send-to-profile" checked
-                                    class="w-4 h-4 rounded">
-                                <span>Also send to user's in-app messages</span>
-                            </label>
-                        </div>
-                    ` : ''}
-
-                    <div class="flex gap-3">
-                        <button type="submit" class="flex-1 px-6 py-3 rounded-xl font-bold transition" style="background-color: #00CB97; color: white;">
-                            Send Reply
-                        </button>
-                        <button type="button" onclick="this.closest('.admin-modal-overlay').remove()"
-                            class="px-6 py-3 rounded-xl font-bold border-2 transition" style="border-color: #6B7280; color: #6B7280;">
-                            Cancel
-                        </button>
-                    </div>
-                </form>
-            </div>
-        `;
-
-        document.body.appendChild(modal);
-
-        // Handle form submission
-        modal.querySelector('#reply-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const subject = modal.querySelector('#reply-subject').value;
-            const message = modal.querySelector('#reply-message').value;
-            const sendToProfile = userId && modal.querySelector('#send-to-profile')?.checked;
-
-            try {
-                // Send email (you'll need to implement email sending via Supabase Edge Function or third-party service)
-                // For now, we'll just create the reply and user message
-
-                // Add reply to message thread
-                await this.api.addMessageReply(messageId, message, 'admin');
-
-                // If user has account, send to their in-app messages
-                if (sendToProfile && userId) {
-                    await this.api.createUserMessage(userId, subject, message, 'reply', messageId);
-                }
-
-                // Update message status to replied
-                await this.api.updateContactMessage(messageId, { status: 'replied' });
-
-                modal.remove();
-                this.renderView('messages');
-                alert(`Reply sent to ${email}${sendToProfile ? ' and user inbox' : ''}!`);
-            } catch (error) {
-                alert('Error sending reply: ' + error.message);
-            }
+            fragment.appendChild(card);
         });
-    }
 
-    showNotesModal(messageId, currentNotes) {
-        const modal = document.createElement('div');
-        modal.className = 'admin-modal-overlay';
-        modal.innerHTML = `
-            <div class="bg-gray-800 rounded-2xl border-2 border-gray-700 p-8 max-w-2xl w-full">
-                <h2 class="text-2xl font-bold mb-4" style="color: #631BDD;">Admin Notes</h2>
-                <p class="text-gray-400 mb-6">Internal notes (not visible to user)</p>
-
-                <form id="notes-form">
-                    <div class="mb-6">
-                        <textarea id="admin-notes" rows="6"
-                            class="w-full px-4 py-3 bg-gray-900 border-2 border-gray-600 rounded-xl text-white focus:border-purple-500 focus:outline-none resize-none"
-                            placeholder="Add internal notes...">${currentNotes || ''}</textarea>
-                    </div>
-
-                    <div class="flex gap-3">
-                        <button type="submit" class="flex-1 px-6 py-3 rounded-xl font-bold transition" style="background-color: #631BDD; color: white;">
-                            Save Notes
-                        </button>
-                        <button type="button" onclick="this.closest('.admin-modal-overlay').remove()"
-                            class="px-6 py-3 rounded-xl font-bold border-2 transition" style="border-color: #6B7280; color: #6B7280;">
-                            Cancel
-                        </button>
-                    </div>
-                </form>
-            </div>
-        `;
-
-        document.body.appendChild(modal);
-
-        modal.querySelector('#notes-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const notes = modal.querySelector('#admin-notes').value.trim();
-
-            try {
-                await this.api.updateContactMessage(messageId, { admin_notes: notes || null });
-                modal.remove();
-                this.renderView('messages');
-            } catch (error) {
-                alert('Error saving notes: ' + error.message);
-            }
-        });
-    }
-
-    async deleteMessage(messageId) {
-        if (!confirm('Are you sure you want to delete this message? This action cannot be undone.')) {
-            return;
-        }
-
-        try {
-            await this.api.deleteContactMessage(messageId);
-            this.renderView('messages');
-        } catch (error) {
-            alert('Error deleting message: ' + error.message);
-        }
+        wrapper.appendChild(fragment);
+        return wrapper;
     }
 
     async renderVoting(container) {
@@ -2932,9 +2834,11 @@ class AdminPanel {
             </div>
 
             <div id="proposals-list" class="proposals-list">
-                ${this.renderProposalsList(proposals)}
+                
             </div>
         `;
+
+        this.updateProposalsList(container, proposals);
 
         // Attach filter listeners to stat cards
         container.querySelectorAll('.voting-stat-card').forEach(card => {
@@ -2951,7 +2855,7 @@ class AdminPanel {
                     ? proposals
                     : proposals.filter(p => p.status === status);
 
-                document.getElementById('proposals-list').innerHTML = this.renderProposalsList(filteredProposals);
+                this.updateProposalsList(container, filteredProposals);
 
                 // Re-attach dropdown listeners
                 this.attachProposalDropdownListeners();
@@ -2968,12 +2872,24 @@ class AdminPanel {
         this.attachProposalDropdownListeners();
     }
 
+    updateProposalsList(container, proposals) {
+        const list = container.querySelector('#proposals-list');
+        if (!list) return;
+        list.replaceChildren(this.renderProposalsList(proposals));
+    }
+
     renderProposalsList(proposals) {
         if (proposals.length === 0) {
-            return `<div class="text-center py-12 text-gray-400">No proposals found</div>`;
+            const empty = document.createElement('div');
+            empty.className = 'text-center py-12 text-gray-400';
+            empty.textContent = 'No proposals found';
+            return empty;
         }
 
-        return proposals.map(proposal => {
+        const wrapper = document.createElement('div');
+        const fragment = document.createDocumentFragment();
+
+        proposals.forEach(proposal => {
             const yesVotes = proposal.proposal_votes.filter(v => v.vote === 'yes').length;
             const noVotes = proposal.proposal_votes.filter(v => v.vote === 'no').length;
             const totalVotes = yesVotes + noVotes;
@@ -2986,86 +2902,90 @@ class AdminPanel {
                 rejected: { class: 'proposal-status-rejected', label: 'REJECTED' }
             }[proposal.status];
 
-            return `
-                <div class="proposal-list-item">
-                    ${proposal.image_url ? `
-                        <img src="${proposal.image_url}" alt="${proposal.title}" class="proposal-list-image">
-                    ` : ''}
+            const item = document.createElement('div');
+            item.className = 'proposal-list-item';
+            item.innerHTML = `
+                ${proposal.image_url ? `
+                    <img src="${proposal.image_url}" alt="${proposal.title}" class="proposal-list-image">
+                ` : ''}
 
-                    <div class="proposal-list-content">
-                        <div class="proposal-list-header">
-                            <div class="proposal-list-title-section">
-                                <h4 class="proposal-list-title">${proposal.title}</h4>
-                                <span class="proposal-status-badge ${statusBadge.class}">${statusBadge.label}</span>
-                            </div>
-                            <div class="proposal-list-meta">
-                                <span><i class="fa-solid fa-user"></i> ${proposal.profiles?.username || 'Unknown'}</span>
-                                <span><i class="fa-solid fa-calendar"></i> ${new Date(proposal.created_at).toLocaleDateString()}</span>
-                                <span><i class="fa-solid fa-comments"></i> ${commentCount}</span>
-                                ${proposal.category ? `<span class="proposal-list-category"><i class="fa-solid fa-tag"></i> ${proposal.category}</span>` : ''}
-                            </div>
+                <div class="proposal-list-content">
+                    <div class="proposal-list-header">
+                        <div class="proposal-list-title-section">
+                            <h4 class="proposal-list-title">${proposal.title}</h4>
+                            <span class="proposal-status-badge ${statusBadge.class}">${statusBadge.label}</span>
                         </div>
-
-                        <p class="proposal-list-description">${proposal.description}</p>
-
-                        <div class="proposal-list-votes">
-                            <div class="proposal-vote-item">
-                                <div class="proposal-vote-header">
-                                    <span class="proposal-vote-label"><i class="fa-solid fa-thumbs-up"></i> Yes</span>
-                                    <span class="proposal-vote-count" style="color: #047857;">${yesVotes}</span>
-                                </div>
-                                <div class="proposal-vote-bar">
-                                    <div class="proposal-vote-fill" style="background-color: #047857; width: ${yesPercent}%"></div>
-                                </div>
-                            </div>
-                            <div class="proposal-vote-item">
-                                <div class="proposal-vote-header">
-                                    <span class="proposal-vote-label"><i class="fa-solid fa-thumbs-down"></i> No</span>
-                                    <span class="proposal-vote-count text-red-400">${noVotes}</span>
-                                </div>
-                                <div class="proposal-vote-bar">
-                                    <div class="proposal-vote-fill bg-red-400" style="width: ${100 - yesPercent}%"></div>
-                                </div>
-                            </div>
-                            <div class="proposal-vote-summary">
-                                <span class="proposal-vote-total"><i class="fa-solid fa-chart-simple"></i> ${totalVotes} total votes</span>
-                                <span class="proposal-vote-percent">${yesPercent}% approval</span>
-                            </div>
+                        <div class="proposal-list-meta">
+                            <span><i class="fa-solid fa-user"></i> ${proposal.profiles?.username || 'Unknown'}</span>
+                            <span><i class="fa-solid fa-calendar"></i> ${new Date(proposal.created_at).toLocaleDateString()}</span>
+                            <span><i class="fa-solid fa-comments"></i> ${commentCount}</span>
+                            ${proposal.category ? `<span class="proposal-list-category"><i class="fa-solid fa-tag"></i> ${proposal.category}</span>` : ''}
                         </div>
                     </div>
 
-                    <div class="proposal-list-actions">
-                        ${proposal.status === 'pending' ? `
-                            <button onclick="adminPanel.approveProposal('${proposal.id}')" class="proposal-action-btn proposal-btn-approve" title="Approve">
-                                <i class="fa-solid fa-circle-check"></i>
-                                <span class="proposal-btn-text">Approve</span>
-                            </button>
-                            <button onclick="adminPanel.rejectProposal('${proposal.id}')" class="proposal-action-btn proposal-btn-reject" title="Reject">
-                                <i class="fa-solid fa-circle-xmark"></i>
-                                <span class="proposal-btn-text">Reject</span>
-                            </button>
-                        ` : ''}
-                        ${proposal.status === 'approved' || proposal.status === 'rejected' ? `
-                            <button onclick="adminPanel.resetProposalStatus('${proposal.id}')" class="proposal-action-btn proposal-btn-reset" title="Reset">
-                                <i class="fa-solid fa-rotate-left"></i>
-                                <span class="proposal-btn-text">Reset</span>
-                            </button>
-                        ` : ''}
-                        <div class="proposal-dropdown">
-                            <button class="proposal-action-btn proposal-btn-more" data-proposal-id="${proposal.id}" title="More options">
-                                <i class="fa-solid fa-ellipsis-vertical"></i>
-                            </button>
-                            <div class="proposal-dropdown-menu" data-proposal-id="${proposal.id}">
-                                <button onclick="adminPanel.deleteProposal('${proposal.id}')" class="proposal-dropdown-item proposal-dropdown-delete">
-                                    <i class="fa-solid fa-trash"></i>
-                                    <span>Delete Proposal</span>
-                                </button>
+                    <p class="proposal-list-description">${proposal.description}</p>
+
+                    <div class="proposal-list-votes">
+                        <div class="proposal-vote-item">
+                            <div class="proposal-vote-header">
+                                <span class="proposal-vote-label"><i class="fa-solid fa-thumbs-up"></i> Yes</span>
+                                <span class="proposal-vote-count" style="color: #047857;">${yesVotes}</span>
                             </div>
+                            <div class="proposal-vote-bar">
+                                <div class="proposal-vote-fill" style="background-color: #047857; width: ${yesPercent}%"></div>
+                            </div>
+                        </div>
+                        <div class="proposal-vote-item">
+                            <div class="proposal-vote-header">
+                                <span class="proposal-vote-label"><i class="fa-solid fa-thumbs-down"></i> No</span>
+                                <span class="proposal-vote-count text-red-400">${noVotes}</span>
+                            </div>
+                            <div class="proposal-vote-bar">
+                                <div class="proposal-vote-fill bg-red-400" style="width: ${100 - yesPercent}%"></div>
+                            </div>
+                        </div>
+                        <div class="proposal-vote-summary">
+                            <span class="proposal-vote-total"><i class="fa-solid fa-chart-simple"></i> ${totalVotes} total votes</span>
+                            <span class="proposal-vote-percent">${yesPercent}% approval</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="proposal-list-actions">
+                    ${proposal.status === 'pending' ? `
+                        <button onclick="adminPanel.approveProposal('${proposal.id}')" class="proposal-action-btn proposal-btn-approve" title="Approve">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <span class="proposal-btn-text">Approve</span>
+                        </button>
+                        <button onclick="adminPanel.rejectProposal('${proposal.id}')" class="proposal-action-btn proposal-btn-reject" title="Reject">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                            <span class="proposal-btn-text">Reject</span>
+                        </button>
+                    ` : ''}
+                    ${proposal.status === 'approved' || proposal.status === 'rejected' ? `
+                        <button onclick="adminPanel.resetProposalStatus('${proposal.id}')" class="proposal-action-btn proposal-btn-reset" title="Reset">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            <span class="proposal-btn-text">Reset</span>
+                        </button>
+                    ` : ''}
+                    <div class="proposal-dropdown">
+                        <button class="proposal-action-btn proposal-btn-more" data-proposal-id="${proposal.id}" title="More options">
+                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                        </button>
+                        <div class="proposal-dropdown-menu" data-proposal-id="${proposal.id}">
+                            <button onclick="adminPanel.deleteProposal('${proposal.id}')" class="proposal-dropdown-item proposal-dropdown-delete">
+                                <i class="fa-solid fa-trash"></i>
+                                <span>Delete Proposal</span>
+                            </button>
                         </div>
                     </div>
                 </div>
             `;
-        }).join('');
+            fragment.appendChild(item);
+        });
+
+        wrapper.appendChild(fragment);
+        return wrapper;
     }
 
     attachProposalDropdownListeners() {
@@ -4132,9 +4052,147 @@ class AdminPanel {
 
 
 
+    ensureAdminActivityLayout(container) {
+        let layout = container.querySelector('[data-admin-activity-layout]');
+        if (layout) return layout;
+
+        layout = document.createElement('div');
+        layout.setAttribute('data-admin-activity-layout', 'true');
+        layout.innerHTML = `
+            <div style="background: var(--bg2); border-radius: 12px; padding: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <h3 style="font-size: 18px; font-weight: 600;">All Site Activity</h3>
+                    <span style="color: var(--muted);" data-admin-activity-count>0 total activities</span>
+                </div>
+                <div data-admin-activity-list style="overflow-x: auto;"></div>
+            </div>
+        `;
+        container.replaceChildren(layout);
+        return layout;
+    }
+
+    updateAdminActivityList(layout, activities) {
+        const list = layout.querySelector('[data-admin-activity-list]');
+        if (!list) return;
+
+        if (!activities || activities.length === 0) {
+            const empty = document.createElement('div');
+            empty.style.textAlign = 'center';
+            empty.style.padding = '48px';
+            empty.style.color = 'var(--muted)';
+            empty.innerHTML = `
+                <i class="fa-solid fa-inbox" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
+                <p>No activities yet</p>
+            `;
+            list.replaceChildren(empty);
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        activities.forEach(activity => {
+            const date = new Date(activity.created_at);
+            const timeAgo = this.getTimeAgo(date);
+            const fullDate = date.toLocaleString();
+
+            let typeIcon, typeColor, typeText, description;
+
+            switch (activity.type) {
+                case 'bet':
+                    typeIcon = 'fa-chart-line';
+                    typeColor = '#00CB97';
+                    typeText = 'Bet Placed';
+                    description = `${activity.data.outcome?.toUpperCase()} on "${activity.data.market?.title || 'Unknown Market'}" - J$${parseFloat(activity.data.amount).toFixed(2)}`;
+                    break;
+                case 'market_created':
+                    typeIcon = 'fa-plus-circle';
+                    typeColor = '#631BDD';
+                    typeText = 'Market Created';
+                    description = activity.data.title;
+                    break;
+                case 'comment':
+                    typeIcon = 'fa-comment';
+                    typeColor = '#027A40';
+                    typeText = 'Comment';
+                    description = `On "${activity.data.market?.title || 'Unknown Market'}"`;
+                    break;
+                case 'user_joined':
+                    typeIcon = 'fa-user-plus';
+                    typeColor = '#F2C300';
+                    typeText = 'New Member';
+                    description = `@${activity.user} joined`;
+                    break;
+                case 'proposal':
+                    typeIcon = 'fa-lightbulb';
+                    typeColor = '#00e5af';
+                    typeText = 'Proposal';
+                    description = activity.data.title || activity.data.market_question;
+                    break;
+                case 'payout':
+                    typeIcon = 'fa-trophy';
+                    typeColor = '#F2C300';
+                    typeText = 'Payout';
+                    description = `Won J$${parseFloat(activity.data.amount).toFixed(2)}`;
+                    break;
+                case 'deposit':
+                    typeIcon = 'fa-arrow-down';
+                    typeColor = '#027A40';
+                    typeText = 'Deposit';
+                    description = `+J$${parseFloat(activity.data.amount).toFixed(2)}`;
+                    break;
+                case 'withdrawal':
+                    typeIcon = 'fa-arrow-up';
+                    typeColor = '#ef4444';
+                    typeText = 'Withdrawal';
+                    description = `-J$${parseFloat(Math.abs(activity.data.amount)).toFixed(2)}`;
+                    break;
+                default:
+                    typeIcon = 'fa-circle-info';
+                    typeColor = '#9333ea';
+                    typeText = activity.type;
+                    description = activity.data.description || '';
+            }
+
+            const action = this.getActivityAction(activity);
+            const detailsHtml = this.renderActivityDetails(activity);
+            const item = document.createElement('div');
+            item.className = 'activity-item';
+            item.setAttribute('style', "display: flex; align-items: center; gap: 16px; padding: 16px; border-bottom: 1px solid var(--bg3); transition: background 0.2s;");
+            item.setAttribute('onmouseover', "this.style.background='var(--bg3)'");
+            item.setAttribute('onmouseout', "this.style.background='transparent'");
+            item.innerHTML = `
+                <div style="flex-shrink: 0;">
+                    <i class="fa-solid ${typeIcon}" style="color: ${typeColor}; font-size: 20px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: rgba(${parseInt(typeColor.slice(1,3), 16)}, ${parseInt(typeColor.slice(3,5), 16)}, ${parseInt(typeColor.slice(5,7), 16)}, 0.1); border-radius: 8px;"></i>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <strong style="color: var(--text-primary); font-size: 14px;">${typeText}</strong>
+                        <span style="color: var(--muted); font-size: 12px;">?</span>
+                        <span style="color: var(--muted); font-size: 12px;">${activity.user}</span>
+                    </div>
+                    <div style="color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${description}
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                        <button class="btn secondary btn-sm" data-action="activity-toggle" type="button">Details</button>
+                        ${action ? this.renderActivityAction(action) : ''}
+                    </div>
+                    <div class="activity-details hidden" style="margin-top: 10px;">
+                        ${detailsHtml}
+                    </div>
+                </div>
+                <div style="flex-shrink: 0; text-align: right;">
+                    <div style="color: var(--text-primary); font-size: 13px; margin-bottom: 2px;" title="${fullDate}">${timeAgo}</div>
+                    <div style="color: var(--muted); font-size: 11px;">${date.toLocaleDateString()}</div>
+                </div>
+            `;
+            fragment.appendChild(item);
+        });
+
+        list.replaceChildren(fragment);
+    }
+
     async renderActivity(container) {
         try {
-            // Fetch all activities (guard against partial failures in prod)
             const [
                 recentBetsResult,
                 recentMarketsResult,
@@ -4253,10 +4311,8 @@ class AdminPanel {
                 this.buildMarketsMap(Array.from(marketIds))
             ]);
 
-            // Combine all activities
             const allActivities = [];
 
-            // Add bets
             if (recentBets?.data) {
                 recentBets.data.forEach((bet) => {
                     const betUser = bet.user?.username || profilesMap.get(bet.user_id) || 'Unknown';
@@ -4270,7 +4326,6 @@ class AdminPanel {
                 });
             }
 
-            // Add new markets
             if (recentMarkets?.data) {
                 recentMarkets.data.forEach((market) => {
                     const marketUser = market.creator?.username || profilesMap.get(market.created_by) || 'Unknown';
@@ -4283,7 +4338,6 @@ class AdminPanel {
                 });
             }
 
-            // Add comments
             if (recentComments?.data) {
                 recentComments.data.forEach((comment) => {
                     const commentUser = comment.user?.username || profilesMap.get(comment.user_id) || 'Unknown';
@@ -4297,7 +4351,6 @@ class AdminPanel {
                 });
             }
 
-            // Add new users
             if (recentUsers?.data) {
                 recentUsers.data.forEach((user) => {
                     allActivities.push({
@@ -4309,7 +4362,6 @@ class AdminPanel {
                 });
             }
 
-            // Add proposals
             if (recentProposals?.data) {
                 recentProposals.data.forEach((proposal) => {
                     const proposalUser = proposal.user?.username || profilesMap.get(proposal.user_id) || 'Unknown';
@@ -4322,7 +4374,6 @@ class AdminPanel {
                 });
             }
 
-            // Add transactions (payouts, deposits, withdrawals)
             if (transactions) {
                 transactions.forEach((tx) => {
                     if (tx.type !== 'bet') {
@@ -4337,122 +4388,121 @@ class AdminPanel {
                 });
             }
 
-            // Sort by date (most recent first)
             allActivities.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-            // Render activities in a table
-            container.innerHTML = `
-                <div style="background: var(--bg2); border-radius: 12px; padding: 24px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                        <h3 style="font-size: 18px; font-weight: 600;">All Site Activity</h3>
-                        <span style="color: var(--muted);">${allActivities.length} total activities</span>
-                    </div>
+            const recentActivities = allActivities.slice(0, 25);
+            const activityList = document.getElementById('activity-list');
+            if (activityList) {
+                if (recentActivities.length === 0) {
+                    const emptyState = document.createElement('div');
+                    emptyState.style.textAlign = 'center';
+                    emptyState.style.padding = '32px';
+                    emptyState.style.color = 'var(--muted)';
+                    emptyState.innerHTML = '<p>No recent activity</p>';
+                    activityList.replaceChildren(emptyState);
+                } else {
+                    const fragment = document.createDocumentFragment();
+                    recentActivities.forEach(activity => {
+                        const date = new Date(activity.created_at);
+                        const timeAgo = this.getTimeAgo(date);
 
-                    ${allActivities.length === 0 ? `
-                        <div style="text-align: center; padding: 48px; color: var(--muted);">
-                            <i class="fa-solid fa-inbox" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
-                            <p>No activities yet</p>
-                        </div>
-                    ` : `
-                        <div style="overflow-x: auto;">
-                            ${allActivities.map(activity => {
-                                const date = new Date(activity.created_at);
-                                const timeAgo = this.getTimeAgo(date);
-                                const fullDate = date.toLocaleString();
+                        let typeIcon, typeColor, typeText, description;
 
-                                let typeIcon, typeColor, typeText, description;
+                        switch (activity.type) {
+                            case 'bet':
+                                typeIcon = 'fa-chart-line';
+                                typeColor = '#00CB97';
+                                typeText = 'Bet Placed';
+                                description = `${activity.data.outcome?.toUpperCase()} on "${activity.data.market?.title || 'Unknown Market'}" - J$${parseFloat(activity.data.amount).toFixed(2)}`;
+                                break;
+                            case 'market_created':
+                                typeIcon = 'fa-plus-circle';
+                                typeColor = '#631BDD';
+                                typeText = 'Market Created';
+                                description = activity.data.title;
+                                break;
+                            case 'comment':
+                                typeIcon = 'fa-comment';
+                                typeColor = '#027A40';
+                                typeText = 'Comment Posted';
+                                description = `On "${activity.data.market?.title || 'Unknown Market'}"`;
+                                break;
+                            case 'user_joined':
+                                typeIcon = 'fa-user-plus';
+                                typeColor = '#F2C300';
+                                typeText = 'New Member';
+                                description = `@${activity.user} joined GoatMouth`;
+                                break;
+                            case 'proposal':
+                                typeIcon = 'fa-lightbulb';
+                                typeColor = '#00e5af';
+                                typeText = 'Proposal Created';
+                                description = activity.data.title || activity.data.market_question;
+                                break;
+                            case 'payout':
+                                typeIcon = 'fa-trophy';
+                                typeColor = '#F2C300';
+                                typeText = 'Payout';
+                                description = `Won J$${parseFloat(activity.data.amount).toFixed(2)}`;
+                                break;
+                            case 'deposit':
+                                typeIcon = 'fa-arrow-down';
+                                typeColor = '#027A40';
+                                typeText = 'Deposit';
+                                description = `+J$${parseFloat(activity.data.amount).toFixed(2)}`;
+                                break;
+                            case 'withdrawal':
+                                typeIcon = 'fa-arrow-up';
+                                typeColor = '#ef4444';
+                                typeText = 'Withdrawal';
+                                description = `-J$${parseFloat(Math.abs(activity.data.amount)).toFixed(2)}`;
+                                break;
+                            default:
+                                typeIcon = 'fa-circle-info';
+                                typeColor = '#9333ea';
+                                typeText = activity.type;
+                                description = activity.data.description || '';
+                        }
 
-                                switch (activity.type) {
-                                    case 'bet':
-                                        typeIcon = 'fa-chart-line';
-                                        typeColor = '#00CB97';
-                                        typeText = 'Bet Placed';
-                                        description = `${activity.data.outcome?.toUpperCase()} on "${activity.data.market?.title || 'Unknown Market'}" - J$${parseFloat(activity.data.amount).toFixed(2)}`;
-                                        break;
-                                    case 'market_created':
-                                        typeIcon = 'fa-plus-circle';
-                                        typeColor = '#631BDD';
-                                        typeText = 'Market Created';
-                                        description = activity.data.title;
-                                        break;
-                                    case 'comment':
-                                        typeIcon = 'fa-comment';
-                                        typeColor = '#027A40';
-                                        typeText = 'Comment';
-                                        description = `On "${activity.data.market?.title || 'Unknown Market'}"`;
-                                        break;
-                                    case 'user_joined':
-                                        typeIcon = 'fa-user-plus';
-                                        typeColor = '#F2C300';
-                                        typeText = 'New Member';
-                                        description = `@${activity.user} joined`;
-                                        break;
-                                    case 'proposal':
-                                        typeIcon = 'fa-lightbulb';
-                                        typeColor = '#00e5af';
-                                        typeText = 'Proposal';
-                                        description = activity.data.title || activity.data.market_question;
-                                        break;
-                                    case 'payout':
-                                        typeIcon = 'fa-trophy';
-                                        typeColor = '#F2C300';
-                                        typeText = 'Payout';
-                                        description = `Won J$${parseFloat(activity.data.amount).toFixed(2)}`;
-                                        break;
-                                    case 'deposit':
-                                        typeIcon = 'fa-arrow-down';
-                                        typeColor = '#027A40';
-                                        typeText = 'Deposit';
-                                        description = `+J$${parseFloat(activity.data.amount).toFixed(2)}`;
-                                        break;
-                                    case 'withdrawal':
-                                        typeIcon = 'fa-arrow-up';
-                                        typeColor = '#ef4444';
-                                        typeText = 'Withdrawal';
-                                        description = `-J$${parseFloat(Math.abs(activity.data.amount)).toFixed(2)}`;
-                                        break;
-                                    default:
-                                        typeIcon = 'fa-circle-info';
-                                        typeColor = '#9333ea';
-                                        typeText = activity.type;
-                                        description = activity.data.description || '';
-                                }
-
-                                const action = this.getActivityAction(activity);
-                                const detailsHtml = this.renderActivityDetails(activity);
-                                return `
-                                    <div class="activity-item" style="display: flex; align-items: center; gap: 16px; padding: 16px; border-bottom: 1px solid var(--bg3); transition: background 0.2s;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='transparent'">
-                                        <div style="flex-shrink: 0;">
-                                            <i class="fa-solid ${typeIcon}" style="color: ${typeColor}; font-size: 20px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: rgba(${parseInt(typeColor.slice(1,3), 16)}, ${parseInt(typeColor.slice(3,5), 16)}, ${parseInt(typeColor.slice(5,7), 16)}, 0.1); border-radius: 8px;"></i>
-                                        </div>
-                                        <div style="flex: 1; min-width: 0;">
-                                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                                                <strong style="color: var(--text-primary); font-size: 14px;">${typeText}</strong>
-                                                <span style="color: var(--muted); font-size: 12px;">•</span>
-                                                <span style="color: var(--muted); font-size: 12px;">${activity.user}</span>
+                        const action = this.getActivityAction(activity);
+                        const detailsHtml = this.renderActivityDetails(activity);
+                        const wrapper = document.createElement('div');
+                        wrapper.innerHTML = `
+                            <div class="activity-item" style="border-left: 3px solid ${typeColor};">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <i class="fa-solid ${typeIcon}" style="color: ${typeColor}; font-size: 18px;"></i>
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                            <div>
+                                                <div style="font-weight: 600; color: var(--text-primary);">${typeText}</div>
+                                                <div style="font-size: 13px; color: var(--muted); margin-top: 2px;">${description}</div>
+                                                <div style="font-size: 11px; color: var(--muted); margin-top: 6px;">${activity.user}</div>
                                             </div>
-                                            <div style="color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                ${description}
-                                            </div>
-                                            <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
-                                                <button class="btn secondary btn-sm" data-action="activity-toggle" type="button">Details</button>
-                                                ${action ? this.renderActivityAction(action) : ''}
-                                            </div>
-                                            <div class="activity-details hidden" style="margin-top: 10px;">
-                                                ${detailsHtml}
+                                            <div style="text-align: right; font-size: 11px; color: var(--muted);">
+                                                ${timeAgo}
                                             </div>
                                         </div>
-                                        <div style="flex-shrink: 0; text-align: right;">
-                                            <div style="color: var(--text-primary); font-size: 13px; margin-bottom: 2px;" title="${fullDate}">${timeAgo}</div>
-                                            <div style="color: var(--muted); font-size: 11px;">${date.toLocaleDateString()}</div>
+                                        <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+                                            <button class="btn secondary btn-sm" data-action="activity-toggle" type="button">Details</button>
+                                            ${action ? this.renderActivityAction(action) : ''}
+                                        </div>
+                                        <div class="activity-details hidden" style="margin-top: 10px;">
+                                            ${detailsHtml}
                                         </div>
                                     </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    `}
-                </div>
-            `;
+                                </div>
+                            </div>
+                        `;
+                        fragment.appendChild(wrapper.firstElementChild);
+                    });
+                    activityList.replaceChildren(fragment);
+                }
+            }
+
+            const layout = this.ensureAdminActivityLayout(container);
+            const countEl = layout.querySelector('[data-admin-activity-count]');
+            if (countEl) countEl.textContent = `${allActivities.length} total activities`;
+            this.updateAdminActivityList(layout, allActivities);
 
             this.attachActivityHandlers(container);
         } catch (error) {
