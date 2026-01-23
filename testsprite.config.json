@@ -1,0 +1,14 @@
+{
+  "framework": "playwright",
+  "language": "typescript",
+  "testDir": "tests/e2e",
+  "baseUrl": "http://localhost:5173",
+  "ai": {
+    "testStability": true,
+    "preferRoleSelectors": true
+  },
+  "api": {
+    "keyEnv": "TESTSPRITE_API_KEY",
+    "endpointEnv": "TESTSPRITE_API_URL"
+  }
+}

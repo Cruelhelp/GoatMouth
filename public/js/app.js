@@ -1859,7 +1859,7 @@ class GoatMouth {
                     </div>
                     <div class="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                            <p class="text-gray-400">Shares</p>
+                            <p class="text-gray-400">Contracts</p>
                             <p class="font-semibold">${parseFloat(pos.shares).toFixed(2)}</p>
                         </div>
                         <div>
@@ -1968,7 +1968,7 @@ class GoatMouth {
                             </div>
                             <div class="flex items-center gap-4 text-sm flex-wrap">
                                 <div class="flex items-center gap-2 whitespace-nowrap">
-                                    <span class="text-gray-400">Shares:</span>
+                                    <span class="text-gray-400">Contracts:</span>
                                     <span class="font-semibold text-white">${shares}</span>
                                 </div>
                                 <div class="flex items-center gap-2 whitespace-nowrap">
@@ -2346,7 +2346,7 @@ class GoatMouth {
                                 <p class="text-sm ${pos.outcome === 'yes' ? 'text-green-400' : 'text-red-400'} font-semibold">${pos.outcome.toUpperCase()}</p>
                             </div>
                             <div class="text-right">
-                                <p class="text-sm text-gray-400" style="overflow: hidden;">Shares: ${parseFloat(pos.shares).toFixed(2)}</p>
+                                <p class="text-sm text-gray-400" style="overflow: hidden;">Contracts: ${parseFloat(pos.shares).toFixed(2)}</p>
                                 <p class="text-sm text-gray-400" style="overflow: hidden;">Avg: ${(parseFloat(pos.avg_price) * 100).toFixed(1)}A?</p>
                                 <p class="text-sm font-semibold">Value: J$${parseFloat(pos.current_value).toFixed(2)}</p>
                             </div>
@@ -2885,6 +2885,16 @@ class GoatMouth {
             loginForm.classList.add('hidden');
         });
 
+        const showAuthError = (message, style = 'error') => {
+            const errorDiv = modal.querySelector('#auth-error');
+            if (!errorDiv) return;
+            const isSuccess = style === 'success';
+            errorDiv.textContent = message;
+            errorDiv.className = `mb-4 p-3 rounded-lg text-sm ${isSuccess ? 'bg-green-900 bg-opacity-30 border border-green-500 text-green-300' : 'bg-red-900 bg-opacity-30 border border-red-500 text-red-300'}`;
+            errorDiv.classList.remove('hidden');
+            errorDiv.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        };
+
         // Login form submission
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -2894,7 +2904,7 @@ class GoatMouth {
             const submitBtn = loginForm.querySelector('button[type="submit"]');
 
             // Clear previous errors
-            errorDiv.classList.add('hidden');
+            errorDiv?.classList.add('hidden');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Signing in...';
 
@@ -2903,9 +2913,8 @@ class GoatMouth {
                 closeModal();
                 this.init(); // Refresh app
             } catch (error) {
-                errorDiv.textContent = error.message || 'Sign in failed. Please check your credentials.';
-                errorDiv.className = 'mb-4 p-3 rounded-lg text-sm bg-red-900 bg-opacity-30 border border-red-500 text-red-300';
-                errorDiv.classList.remove('hidden');
+                const message = error?.message || 'Sign in failed. Please check your credentials.';
+                showAuthError(message, 'error');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Sign In';
             }
@@ -2921,7 +2930,7 @@ class GoatMouth {
             const submitBtn = signupForm.querySelector('button[type="submit"]');
 
             // Clear previous errors
-            errorDiv.classList.add('hidden');
+            errorDiv?.classList.add('hidden');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Creating account...';
 
@@ -2937,9 +2946,7 @@ class GoatMouth {
                     this.init(); // Refresh app
                 } catch (signInError) {
                     // Sign in failed (probably email verification required)
-                    errorDiv.textContent = 'Account created! Please check your email for verification, then sign in.';
-                    errorDiv.className = 'mb-4 p-3 rounded-lg text-sm bg-green-900 bg-opacity-30 border border-green-500 text-green-300';
-                    errorDiv.classList.remove('hidden');
+                    showAuthError('Account created! Please check your email for verification, then sign in.', 'success');
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Create Account';
                     // Switch to login tab after 3 seconds
@@ -2948,9 +2955,8 @@ class GoatMouth {
                     }, 3000);
                 }
             } catch (error) {
-                errorDiv.textContent = error.message || 'Sign up failed. Please try again.';
-                errorDiv.className = 'mb-4 p-3 rounded-lg text-sm bg-red-900 bg-opacity-30 border border-red-500 text-red-300';
-                errorDiv.classList.remove('hidden');
+                const message = error?.message || 'Sign up failed. Please try again.';
+                showAuthError(message, 'error');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Create Account';
             }
@@ -2961,11 +2967,10 @@ class GoatMouth {
         const googleSignupBtn = modal.querySelector('#google-signup-btn');
 
         const handleGoogleAuth = async () => {
-            const errorDiv = modal.querySelector('#auth-error');
-
             try {
                 // Clear previous errors
-                errorDiv.classList.add('hidden');
+                const errorDiv = modal.querySelector('#auth-error');
+                errorDiv?.classList.add('hidden');
 
                 // Mark that this is GoatMouth app for redirect after OAuth
                 localStorage.setItem('oauth_app', 'goatmouth');
@@ -2985,14 +2990,16 @@ class GoatMouth {
                 });
 
                 if (error) throw error;
+                if (data?.url) {
+                    window.location.href = data.url;
+                }
 
                 // The user will be redirected to Google for authentication
                 // After successful auth, they'll be redirected back to the app
             } catch (error) {
                 console.error('Google OAuth error:', error);
-                errorDiv.textContent = error.message || 'Failed to sign in with Google. Please try again.';
-                errorDiv.className = 'mb-4 p-3 rounded-lg text-sm bg-red-900 bg-opacity-30 border border-red-500 text-red-300';
-                errorDiv.classList.remove('hidden');
+                const message = error?.message || 'Failed to sign in with Google. Please try again.';
+                showAuthError(message, 'error');
             }
         };
 
@@ -3516,7 +3523,7 @@ class GoatMouth {
                         </button>
                     </div>
                     <div class="mt-1 text-[11px] text-gray-500 flex items-center justify-between mb-2">
-                        <span>Est. shares: <span id="quick-summary-shares-inline">--</span></span>
+                        <span>Est. contracts: <span id="quick-summary-shares-inline">--</span></span>
                         <span>Price: <span id="quick-summary-price-inline">${outcomeOddsDisplay}</span></span>
                     </div>
                     <div class="grid grid-cols-4 gap-2">
@@ -3535,7 +3542,7 @@ class GoatMouth {
                 <div data-step="summary" class="quick-bet-step hidden mt-2">
                     <div class="rounded-lg border border-gray-700 bg-gray-900/70 p-2 mb-2">
                         <div class="flex items-center justify-between text-xs mb-1.5">
-                            <span class="text-gray-400">Est. shares</span>
+                            <span class="text-gray-400">Est. contracts</span>
                             <span class="font-semibold" id="quick-summary-shares">-</span>
                         </div>
                         <div class="flex items-center justify-between text-xs mb-1.5">
@@ -3569,7 +3576,7 @@ class GoatMouth {
                             <span class="font-semibold" id="quick-confirm-amount">J$0.00</span>
                         </div>
                         <div class="flex items-center justify-between mb-1.5">
-                            <span>Est. shares</span>
+                            <span>Est. contracts</span>
                             <span class="font-semibold" id="quick-confirm-shares">--</span>
                         </div>
                         <div class="flex items-center justify-between">

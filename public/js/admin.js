@@ -78,7 +78,8 @@ class AdminPanel {
             'messages': 'admin-content-messages',
             'voting': 'admin-content-voting',
             'banners': 'admin-content-banners',
-            'api': 'admin-content-api'
+            'api': 'admin-content-api',
+            'tests': 'admin-content-tests'
         };
 
         const containerId = containerMap[view];
@@ -122,12 +123,234 @@ class AdminPanel {
                 case 'api':
                     await this.renderApiInsights(container);
                     break;
+                case 'tests':
+                    await this.renderTests(container);
+                    break;
             }
         } catch (error) {
             if (container) {
                 container.innerHTML = `<div class="text-center py-12" style="color: var(--error);">Error: ${error.message}</div>`;
             }
         }
+    }
+
+    async renderTests(container) {
+        if (!container) return;
+
+        container.innerHTML = `
+            <div class="card mb-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="flex items-center gap-2.5">
+                        <i class="fa-solid fa-flask text-admin-accent"></i>
+                        TestSprite Runs
+                    </h3>
+                    <button class="btn secondary" id="refresh-testsprite-runs">
+                        <i class="fa-solid fa-rotate"></i> Refresh
+                    </button>
+                </div>
+                <div id="testsprite-summary" class="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2.5 mb-5">
+                    <div class="stat-card">
+                        <div class="stat-value" id="testsprite-total">--</div>
+                        <div class="stat-label">Total Runs</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="testsprite-passrate">--</div>
+                        <div class="stat-label">Pass Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="testsprite-latest">--</div>
+                        <div class="stat-label">Latest Status</div>
+                    </div>
+                </div>
+                <div id="testsprite-runs" class="space-y-3">
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-3"></i>
+                        <p>Loading TestSprite runs...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="flex items-center gap-2.5">
+                        <i class="fa-solid fa-clipboard-check text-[#2196f3]"></i>
+                        Playwright Reports
+                    </h3>
+                    <button class="btn secondary" id="refresh-playwright-runs">
+                        <i class="fa-solid fa-rotate"></i> Refresh
+                    </button>
+                </div>
+                <div id="playwright-runs" class="space-y-3">
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-3"></i>
+                        <p>Loading Playwright reports...</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const refreshBtn = document.getElementById('refresh-testsprite-runs');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => this.renderTests(container));
+        }
+
+        const refreshPlaywrightBtn = document.getElementById('refresh-playwright-runs');
+        if (refreshPlaywrightBtn) {
+            refreshPlaywrightBtn.addEventListener('click', () => this.renderTests(container));
+        }
+
+        let runs = [];
+        try {
+            runs = await this.api.getTestSpriteRuns();
+        } catch (error) {
+            const runsContainer = document.getElementById('testsprite-runs');
+            if (runsContainer) {
+                runsContainer.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fa-solid fa-triangle-exclamation text-2xl mb-3"></i>
+                        <p>Unable to load TestSprite runs.</p>
+                        <p class="text-xs text-gray-500 mt-2">${error.message || 'Check your TestSprite API settings.'}</p>
+                    </div>
+                `;
+            }
+            return;
+        }
+
+        const normalizedRuns = runs.map((run, index) => {
+            const stats = run.stats || {};
+            const passed = run.passed ?? run.passed_count ?? stats.passed ?? stats.passedCount ?? null;
+            const failed = run.failed ?? run.failed_count ?? stats.failed ?? stats.failedCount ?? null;
+            const total = run.total ?? run.total_count ?? stats.total ?? stats.totalCount ?? null;
+
+            return {
+                id: run.id || run.run_id || run.uuid || `run-${index + 1}`,
+                name: run.name || run.title || run.suite || `Run ${index + 1}`,
+                status: run.status || run.state || run.result || 'unknown',
+                createdAt: run.created_at || run.createdAt || run.started_at || run.startTime || null,
+                duration: run.duration || run.duration_ms || run.runtime || null,
+                passed,
+                failed,
+                total: total ?? ((passed ?? 0) + (failed ?? 0)),
+                reportUrl: run.report_url || run.reportUrl || run.playwright_report_url || run.playwrightReportUrl || null,
+                aiSummary: run.ai_summary || run.summary || run.description || null
+            };
+        });
+
+        const totalRuns = normalizedRuns.length;
+        const totalPassed = normalizedRuns.reduce((sum, run) => sum + (run.passed || 0), 0);
+        const totalTests = normalizedRuns.reduce((sum, run) => sum + (run.total || 0), 0);
+        const passRate = totalTests > 0 ? Math.round((totalPassed / totalTests) * 100) : null;
+        const latestStatus = normalizedRuns[0]?.status || '--';
+
+        const totalEl = document.getElementById('testsprite-total');
+        const passRateEl = document.getElementById('testsprite-passrate');
+        const latestEl = document.getElementById('testsprite-latest');
+        if (totalEl) totalEl.textContent = totalRuns ? String(totalRuns) : '0';
+        if (passRateEl) passRateEl.textContent = passRate !== null ? `${passRate}%` : '--';
+        if (latestEl) latestEl.textContent = latestStatus;
+
+        const runsContainer = document.getElementById('testsprite-runs');
+        if (!runsContainer) return;
+
+        if (!normalizedRuns.length) {
+            runsContainer.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fa-solid fa-flask text-2xl mb-3"></i>
+                    <p>No TestSprite runs found.</p>
+                </div>
+            `;
+            return;
+        }
+
+        runsContainer.innerHTML = normalizedRuns.map((run) => {
+            const statusColor = run.status?.toLowerCase().includes('pass') || run.status?.toLowerCase().includes('success')
+                ? 'var(--success)'
+                : run.status?.toLowerCase().includes('fail') || run.status?.toLowerCase().includes('error')
+                    ? 'var(--error)'
+                    : 'var(--warning)';
+
+            const createdAt = run.createdAt ? new Date(run.createdAt).toLocaleString() : 'Unknown';
+            const duration = run.duration ? `${run.duration} ms` : '--';
+            const summary = run.aiSummary ? `<p class="text-xs text-gray-500 mt-2">${run.aiSummary}</p>` : '';
+            const reportLink = run.reportUrl
+                ? `<a href="${run.reportUrl}" target="_blank" rel="noopener" class="btn secondary btn-sm">View Report</a>`
+                : '';
+
+            return `
+                <div class="bg-admin-bg2 border border-admin-border rounded-lg p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-semibold text-white">${run.name}</div>
+                            <div class="text-xs text-gray-500">Run ID: ${run.id}</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-semibold uppercase" style="color: ${statusColor};">${run.status}</span>
+                            ${reportLink}
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3 mt-3 text-xs text-gray-400">
+                        <div><span class="text-gray-500">Created:</span> ${createdAt}</div>
+                        <div><span class="text-gray-500">Duration:</span> ${duration}</div>
+                        <div><span class="text-gray-500">Passed:</span> ${run.passed ?? '--'}</div>
+                        <div><span class="text-gray-500">Failed:</span> ${run.failed ?? '--'}</div>
+                        <div><span class="text-gray-500">Total:</span> ${run.total ?? '--'}</div>
+                    </div>
+                    ${summary}
+                </div>
+            `;
+        }).join('');
+
+        const playwrightContainer = document.getElementById('playwright-runs');
+        if (!playwrightContainer) return;
+
+        let playwrightIndex = null;
+        try {
+            const response = await fetch('/reports/playwright/index.json', { cache: 'no-store' });
+            if (response.ok) {
+                playwrightIndex = await response.json();
+            }
+        } catch (_) {
+            playwrightIndex = null;
+        }
+
+        const reportTemplate = 'https://goatmouth.com/reports/playwright/{runId}/index.html';
+        const playwrightRuns = Array.isArray(playwrightIndex?.runs) ? playwrightIndex.runs : [];
+
+        if (!playwrightRuns.length) {
+            playwrightContainer.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fa-solid fa-clipboard-check text-2xl mb-3"></i>
+                    <p>No Playwright reports available yet.</p>
+                </div>
+            `;
+            return;
+        }
+
+        playwrightContainer.innerHTML = playwrightRuns.map((run) => {
+            const statusColor = run.status === 'passed' ? 'var(--success)' : 'var(--error)';
+            const reportUrl = run.reportUrl || reportTemplate.replace('{runId}', run.runId);
+            const createdAt = run.createdAt ? new Date(run.createdAt).toLocaleString() : 'Unknown';
+
+            return `
+                <div class="bg-admin-bg2 border border-admin-border rounded-lg p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-semibold text-white">Run ${run.runId}</div>
+                            <div class="text-xs text-gray-500">Created: ${createdAt}</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-semibold uppercase" style="color: ${statusColor};">${run.status || 'unknown'}</span>
+                            <a href="${reportUrl}" target="_blank" rel="noopener" class="btn secondary btn-sm">View Report</a>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3 mt-3 text-xs text-gray-400">
+                        <div><span class="text-gray-500">Passed:</span> ${run.passed ?? '--'}</div>
+                        <div><span class="text-gray-500">Failed:</span> ${run.failed ?? '--'}</div>
+                        <div><span class="text-gray-500">Skipped:</span> ${run.skipped ?? '--'}</div>
+                        <div><span class="text-gray-500">Total:</span> ${run.total ?? '--'}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     async renderDashboard() {
@@ -1423,7 +1646,7 @@ class AdminPanel {
                                         <div class="flex justify-between items-center py-2 border-b border-gray-800 last:border-0">
                                             <div>
                                                 <p class="font-semibold">${pos.markets?.title || 'Unknown Market'}</p>
-                                                <p class="text-sm text-gray-400">${pos.outcome} • ${pos.shares} shares @ J$${parseFloat(pos.avg_price).toFixed(2)}</p>
+                                                <p class="text-sm text-gray-400">${pos.outcome} • ${pos.shares} contracts @ J$${parseFloat(pos.avg_price).toFixed(2)}</p>
                                             </div>
                                             <p class="font-bold" style="color: #00CB97;">J$${(pos.shares * parseFloat(pos.avg_price)).toFixed(2)}</p>
                                         </div>

@@ -746,7 +746,7 @@ class MarketPage {
                             <span class="text-xs text-gray-400 whitespace-nowrap">${timeAgo}</span>
                         </div>
                         <div class="text-sm text-gray-300 mb-1">
-                            Bought <span class="font-semibold whitespace-nowrap" style="color: ${outcomeColor};">${shares} ${outcome}</span> shares
+                            Bought <span class="font-semibold whitespace-nowrap" style="color: ${outcomeColor};">${shares} ${outcome}</span> contracts
                         </div>
                         <div class="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
                             <span class="whitespace-nowrap">Price: <span class="font-semibold text-white">${price}¢</span></span>

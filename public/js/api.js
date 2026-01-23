@@ -536,6 +536,27 @@ class GoatMouthAPI {
         return allUsers;
     }
 
+    async getTestSpriteRuns(options = {}) {
+        if (!this.db?.functions?.invoke) {
+            throw new Error('Supabase functions client not available');
+        }
+
+        const { data, error } = await this.db.functions.invoke('testsprite-proxy', {
+            body: {
+                path: options.path || '/runs',
+                query: options.query || {}
+            }
+        });
+
+        if (error) {
+            throw new Error(error.message || 'Failed to load TestSprite runs');
+        }
+
+        const payload = data?.data ?? data;
+        const runs = payload?.runs || payload?.data || payload || [];
+        return Array.isArray(runs) ? runs : [];
+    }
+
     async updateUserProfile(userId, updates) {
         const { data, error } = await this.db
             .from('profiles')

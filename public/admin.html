@@ -105,6 +105,9 @@
             <i class="fa-solid fa-check-circle"></i> Voting
             <span id="pending-proposals-badge" class="badge warning hidden">0</span>
         </button>
+        <button data-view="tests">
+            <i class="fa-solid fa-flask"></i> Tests
+        </button>
         <button data-view="api">
             <i class="fa-solid fa-signal"></i> API & Insights
         </button>
@@ -926,6 +929,26 @@
                 </div>
             </section>
 
+            <!-- Tests Panel -->
+            <section class="tabpanel" id="testsPanel">
+                <div class="section-banner">
+                    <div class="section-banner-icon">
+                        <i class="fa-solid fa-flask"></i>
+                    </div>
+                    <div class="section-banner-content">
+                        <h2>Tests</h2>
+                        <p>TestSprite runs and Playwright results overview</p>
+                    </div>
+                </div>
+                <div id="admin-content-tests">
+                    <div class="skeleton-list">
+                        <div class="skeleton skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
+                    </div>
+                </div>
+            </section>
+
             <!-- API & Insights Panel -->
             <section class="tabpanel" id="apiPanel">
                 <div class="section-banner">
@@ -1293,6 +1316,7 @@
                   'transactions': 'transactionsPanel',
                   'messages': 'messagesPanel',
                   'voting': 'votingPanel',
+                  'tests': 'testsPanel',
                   'api': 'apiPanel'
               };
 
